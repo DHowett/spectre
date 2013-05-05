@@ -1,0 +1,6 @@
+{{define "body"}}
+All Pastes ({{len .}})
+{{range .}}
+<a href="{{.URL}}">{{.ID}}</a><br>
+{{end}}
+{{end}}
