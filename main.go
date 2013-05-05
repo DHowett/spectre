@@ -48,12 +48,12 @@ func renderError(e error, statusCode int, w http.ResponseWriter) {
 func requiresModelObject(lookup func(*http.Request) (Model, error), fn func(Model, http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		obj, err := lookup(r)
-		fn(obj, w, r)
-
 		if err != nil {
 			renderError(err, http.StatusNotFound, w)
 			return
 		}
+
+		fn(obj, w, r)
 
 	})
 }
