@@ -49,3 +49,7 @@ func GetPaste(id uint64) (p *Paste, err error) {
 	}
 	return
 }
+
+func init() {
+	pastes = make(map[uint64]*Paste)
+}

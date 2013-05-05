@@ -14,6 +14,11 @@ type Model interface{}
 
 var tmpl map[string]*template.Template
 
+func renderError(e error, statusCode int, w http.ResponseWriter) {
+	w.WriteHeader(statusCode)
+	tmpl["error"].ExecuteTemplate(w, "base", e)
+}
+
 // renderModelWith takes a template name and
 // returns a function that takes a single model object,
 // which when called will render the given template using that object.
@@ -21,6 +26,24 @@ func renderModelWith(template string) func(Model, http.ResponseWriter, *http.Req
 	return func(o Model, w http.ResponseWriter, r *http.Request) {
 		tmpl[template].ExecuteTemplate(w, "base", o)
 	}
+}
+
+func renderTemplate(template string) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tmpl[template].ExecuteTemplate(w, "base", nil)
+	})
+}
+func requiresModelObject(lookup func(*http.Request) (Model, error), fn func(Model, http.ResponseWriter, *http.Request)) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		obj, err := lookup(r)
+		if err != nil {
+			renderError(err, http.StatusNotFound, w)
+			return
+		}
+
+		fn(obj, w, r)
+
+	})
 }
 
 func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
@@ -39,24 +62,6 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 
 	//w.Header().Set("Location", p.URL())
 	//w.WriteHeader(http.StatusFound)
-}
-
-func renderError(e error, statusCode int, w http.ResponseWriter) {
-	w.WriteHeader(statusCode)
-	tmpl["error"].ExecuteTemplate(w, "base", e)
-}
-
-func requiresModelObject(lookup func(*http.Request) (Model, error), fn func(Model, http.ResponseWriter, *http.Request)) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		obj, err := lookup(r)
-		if err != nil {
-			renderError(err, http.StatusNotFound, w)
-			return
-		}
-
-		fn(obj, w, r)
-
-	})
 }
 
 func lookupPasteWithRequest(r *http.Request) (p Model, err error) {
@@ -96,13 +101,13 @@ func initTemplates() {
 	filepath.Walk("tmpl", walkFunc)
 }
 
+func init() {
+	initTemplates()
+}
+
 func main() {
 	port, bind := flag.String("port", "8080", "HTTP port"), flag.String("bind", "0.0.0.0", "bind address")
 	flag.Parse()
-
-	pastes = make(map[uint64]*Paste)
-
-	initTemplates()
 
 	m := pat.New()
 	m.Get("/paste/all", http.HandlerFunc(allPastes))
@@ -110,7 +115,7 @@ func main() {
 	m.Get("/paste/:id/edit", requiresModelObject(lookupPasteWithRequest, renderModelWith("paste_edit")))
 	m.Post("/paste/:id/edit", requiresModelObject(lookupPasteWithRequest, pasteUpdate))
 	m.Post("/paste/new", http.HandlerFunc(pasteCreate))
-	m.Get("/", http.HandlerFunc(indexGet))
+	m.Get("/", renderTemplate("index"))
 	http.Handle("/", m)
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
 
