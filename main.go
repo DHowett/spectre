@@ -1,11 +1,12 @@
 package main
 
 import (
-	//"fmt"
 	"flag"
 	"github.com/bmizerany/pat"
 	"html/template"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 )
 
@@ -82,17 +83,17 @@ func allPastes(w http.ResponseWriter, r *http.Request) {
 }
 
 func initTemplates() {
-	withBase := func(files ...string) *template.Template {
-		f := append([]string{"base.tmpl"}, files...)
-		return template.Must(template.ParseFiles(f...))
+	walkFunc := func(path string, info os.FileInfo, err error) error {
+		base := filepath.Base(path)
+		if base == "_base.tmpl" || info.IsDir() {
+			return nil
+		}
+		name := base[:len(base)-len(filepath.Ext(base))]
+		tmpl[name] = template.Must(template.ParseFiles("tmpl/_base.tmpl", path))
+		return nil
 	}
-	tmpl = map[string]*template.Template{
-		"index":      withBase("index.tmpl"),
-		"paste_show": withBase("paste.tmpl"),
-		"paste_edit": withBase("paste_edit.tmpl"),
-		"error":      withBase("error.tmpl"),
-		"all":        withBase("all.tmpl"),
-	}
+	tmpl = make(map[string]*template.Template)
+	filepath.Walk("tmpl", walkFunc)
 }
 
 func main() {
