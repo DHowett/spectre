@@ -5,14 +5,24 @@ import (
 	"strconv"
 )
 
+type PasteID uint64
 type Paste struct {
-	ID           uint64
+	ID           PasteID
 	Body         string
 	RenderedBody template.HTML
 }
 
+func (id PasteID) toString() string {
+	return strconv.FormatUint(uint64(id), 10)
+}
+
+func PasteIDFromString(s string) PasteID {
+	id, _ := strconv.ParseUint(s, 10, 64)
+	return PasteID(id)
+}
+
 func (p *Paste) URL() string {
-	return "/paste/" + strconv.FormatUint(p.ID, 10)
+	return "/paste/" + p.ID.toString()
 }
 
 func (p *Paste) Render() template.HTML {
@@ -20,15 +30,15 @@ func (p *Paste) Render() template.HTML {
 }
 
 type PasteNotFoundError struct {
-	ID uint64
+	ID PasteID
 }
 
 func (e PasteNotFoundError) Error() string {
-	return "Paste " + strconv.FormatUint(e.ID, 10) + " was not found."
+	return "Paste " + e.ID.toString() + " was not found."
 }
 
-var pastes map[uint64]*Paste
-var last_paste_id uint64
+var pastes map[PasteID]*Paste
+var last_paste_id PasteID
 
 func NewPaste() *Paste {
 	last_paste_id++
@@ -40,7 +50,7 @@ func NewPaste() *Paste {
 	return p
 }
 
-func GetPaste(id uint64) (p *Paste, err error) {
+func GetPaste(id PasteID) (p *Paste, err error) {
 	p, exist := pastes[id]
 	if !exist {
 		err = PasteNotFoundError{ID: id}
@@ -51,5 +61,5 @@ func GetPaste(id uint64) (p *Paste, err error) {
 }
 
 func init() {
-	pastes = make(map[uint64]*Paste)
+	pastes = make(map[PasteID]*Paste)
 }

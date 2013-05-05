@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 )
 
 type Model interface{}
@@ -58,14 +57,10 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	p := NewPaste()
 	pasteUpdate(p, w, r)
-	//p.Body = r.FormValue("text")
-
-	//w.Header().Set("Location", p.URL())
-	//w.WriteHeader(http.StatusFound)
 }
 
 func lookupPasteWithRequest(r *http.Request) (p Model, err error) {
-	id, err := strconv.ParseUint(r.URL.Query().Get(":id"), 10, 64)
+	id := PasteIDFromString(r.URL.Query().Get(":id"))
 	if err != nil {
 		return nil, err
 	}
