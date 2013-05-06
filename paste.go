@@ -12,7 +12,7 @@ type Paste struct {
 	RenderedBody template.HTML
 }
 
-func (id PasteID) toString() string {
+func (id PasteID) ToString() string {
 	return strconv.FormatUint(uint64(id), 10)
 }
 
@@ -22,7 +22,7 @@ func PasteIDFromString(s string) PasteID {
 }
 
 func (p *Paste) URL() string {
-	return "/paste/" + p.ID.toString()
+	return "/paste/" + p.ID.ToString()
 }
 
 func (p *Paste) Render() template.HTML {
@@ -34,7 +34,7 @@ type PasteNotFoundError struct {
 }
 
 func (e PasteNotFoundError) Error() string {
-	return "Paste " + e.ID.toString() + " was not found."
+	return "Paste " + e.ID.ToString() + " was not found."
 }
 
 var pastes map[PasteID]*Paste
