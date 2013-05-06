@@ -69,10 +69,6 @@ func lookupPasteWithRequest(r *http.Request) (p Model, err error) {
 	return
 }
 
-func indexGet(w http.ResponseWriter, r *http.Request) {
-	tmpl("index").ExecuteTemplate(w, "base", nil)
-}
-
 func allPastes(w http.ResponseWriter, r *http.Request) {
 	pasteList := make([]*Paste, len(pastes))
 	i := 0
