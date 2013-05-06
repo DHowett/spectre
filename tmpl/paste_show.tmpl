@@ -1,9 +1,7 @@
 {{define "body"}}
-<pre>
-Paste {{.ID}}
-
-{{.Render}}
-</pre>
-<br>
-<a href="{{.URL}}/edit">Edit</a>
+<h1>Paste {{.ID}}</h1>
+<div class="code input-block-level">{{.Render}}</div>
+<div class="pull-right">
+<a href="{{.URL}}/edit" class="btn btn-large">Edit</a>
+</div>
 {{end}}

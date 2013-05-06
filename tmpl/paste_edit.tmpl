@@ -1,7 +1,8 @@
 {{define "body"}}
 <h1>Paste {{.ID}}</h1>
 <form action="{{.URL}}/edit" method="post">
-<textarea name="text">{{.Body}}</textarea><br>
-<input type="submit" value="Go!">
+{{template "pastebox" .Body}}
+{{template "submit" "Save"}}
+<input type="button" value="Delete" class="btn btn-danger btn-large">
 </form>
 {{end}}
