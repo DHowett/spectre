@@ -119,9 +119,7 @@ func initTemplates(rebuild bool) {
 	}
 }
 
-type Language struct {
-	ID, Title string
-}
+type Language struct{ ID, Title string }
 
 func Languages() []Language {
 	return []Language{{"text", "Plain Text"}}
