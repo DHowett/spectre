@@ -18,21 +18,20 @@
 	</div>
 	<div class="container">
 {{end}}
+
 {{define "footer"}}
 	</div>
 </body>
 </html>
 {{end}}
-{{define "pastebox"}}
-<textarea name="text" class="input-block-level code" rows="20">{{if .}}{{.}}{{end}}</textarea>
-{{end}}
-{{define "submit"}}
-<div class="pull-right">
-<select name="lang">
-{{range langs}}
-<option value="{{.ID}}">{{.Title}}</option>
-{{end}}
-</select>
-<input type="submit" value="{{if .}}{{.}}{{else}}Submit{{end}}" class="btn btn-primary btn-large">
-</div>
-{{end}}
+
+{{define "pastebox"}}<textarea name="text" class="input-block-level code" rows="20">{{if .}}{{.}}{{end}}</textarea>{{end}}
+
+{{define "langbox"}}{{ $lang := or .Language "text" }}<select name="lang">
+{{range $k, $v := langs}}<option value="{{$k}}"{{if .}}{{if equal $lang $k}} selected{{end}}{{end}}>{{$v}}</option>{{end}}
+</select>{{end}}
+
+{{define "submit"}}<div class="pull-right">
+{{template "langbox" .}}
+<input type="submit" value="{{if .}}Save{{else}}Paste!{{end}}" class="btn btn-primary btn-large">
+</div>{{end}}

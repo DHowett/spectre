@@ -10,6 +10,7 @@ type PasteID string
 type Paste struct {
 	ID           PasteID
 	Body         string
+	Language	string
 	RenderedBody *string
 }
 

@@ -73,6 +73,7 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 	body := r.FormValue("text")
 	p.Body = body
+	p.Language = r.FormValue("lang")
 
 	w.Header().Set("Location", p.URL())
 	w.WriteHeader(http.StatusFound)
@@ -102,6 +103,7 @@ func allPastes(w http.ResponseWriter, r *http.Request) {
 func initTemplates(rebuild bool) {
 	templateFuncs := template.FuncMap{
 		"langs": Languages,
+		"equal": func(t1, t2 string) bool { return t1 == t2 },
 	}
 
 	tmpl = func() *template.Template {
@@ -119,10 +121,14 @@ func initTemplates(rebuild bool) {
 	}
 }
 
-type Language struct{ ID, Title string }
+type LanguageMap map[string]string
 
-func Languages() []Language {
-	return []Language{{"text", "Plain Text"}}
+var languages LanguageMap = LanguageMap{
+	"text":   "Plain Text",
+}
+
+func Languages() LanguageMap {
+	return languages
 }
 
 func main() {

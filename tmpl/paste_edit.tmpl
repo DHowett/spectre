@@ -3,7 +3,7 @@
 <h1>Paste {{.ID}}</h1>
 <form action="{{.URL}}/edit" method="post">
 {{template "pastebox" .Body}}
-{{template "submit" "Save"}}
+{{template "submit" .}}
 <input type="button" value="Delete" class="btn btn-danger btn-large">
 </form>
 {{template "footer" .}}
