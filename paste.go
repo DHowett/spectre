@@ -1,11 +1,12 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/base32"
 	"html/template"
-	"strconv"
 )
 
-type PasteID uint64
+type PasteID string
 type Paste struct {
 	ID           PasteID
 	Body         string
@@ -13,12 +14,11 @@ type Paste struct {
 }
 
 func (id PasteID) ToString() string {
-	return strconv.FormatUint(uint64(id), 10)
+	return string(id)
 }
 
 func PasteIDFromString(s string) PasteID {
-	id, _ := strconv.ParseUint(s, 10, 64)
-	return PasteID(id)
+	return PasteID(s)
 }
 
 func (p *Paste) URL() string {
@@ -46,11 +46,19 @@ func (e PasteNotFoundError) Error() string {
 }
 
 var pastes map[PasteID]*Paste
-var last_paste_id PasteID
+
+func genPasteID() (PasteID, error) {
+	uuid := make([]byte, 3)
+	n, err := rand.Read(uuid)
+	if n != len(uuid) || err != nil {
+		return "", err
+	}
+
+	return PasteIDFromString(base32.NewEncoding("abcdefghijklmnopqrstuvwxyz1234567").EncodeToString(uuid)[0:5]), nil
+}
 
 func NewPaste() *Paste {
-	last_paste_id++
-	id := last_paste_id
+	id, _ := genPasteID()
 	p := &Paste{
 		ID: id,
 	}
