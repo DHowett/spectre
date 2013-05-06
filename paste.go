@@ -17,6 +17,7 @@ type Paste struct {
 	Body         string
 	Language     string
 	RenderedBody *string
+	SourceIP	string
 }
 
 func (id PasteID) ToString() string {
@@ -125,6 +126,10 @@ func writePasteToDisk(p *Paste) {
 	if err := p.PutMetadata("language", p.Language); err != nil {
 		panic(err)
 	}
+
+	if err := p.PutMetadata("source_ip", p.SourceIP); err != nil {
+		panic(err)
+	}
 }
 
 func loadPasteFromDisk(id PasteID) *Paste {
@@ -141,6 +146,7 @@ func loadPasteFromDisk(id PasteID) *Paste {
 	p.ID = id
 	p.Body = buf.String()
 	p.Language = p.GetMetadataWithDefault("language", "text")
+	p.SourceIP = p.GetMetadataWithDefault("source_ip", "0.0.0.0")
 	return p
 }
 
