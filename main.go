@@ -79,20 +79,15 @@ func allPastes(w http.ResponseWriter, r *http.Request) {
 }
 
 func initTemplates(rebuild bool) {
-	if rebuild {
-		tmpl = func() *template.Template {
-			files, err := filepath.Glob("tmpl/*")
-			if err != nil {
-				panic(err)
-			}
-			return template.Must(template.ParseFiles(files...))
-		}
-	} else {
+	tmpl = func() *template.Template {
 		files, err := filepath.Glob("tmpl/*")
 		if err != nil {
 			panic(err)
 		}
-		t := template.Must(template.ParseFiles(files...))
+		return template.Must(template.New("base").ParseFiles(files...))
+	}
+	if !rebuild {
+		t := tmpl()
 		tmpl = func() *template.Template {
 			return t
 		}
