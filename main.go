@@ -11,11 +11,11 @@ import (
 
 type Model interface{}
 
-var tmpl map[string]*template.Template
+var tmpl func(string) *template.Template
 
 func renderError(e error, statusCode int, w http.ResponseWriter) {
 	w.WriteHeader(statusCode)
-	tmpl["error"].ExecuteTemplate(w, "base", e)
+	tmpl("error").ExecuteTemplate(w, "base", e)
 }
 
 // renderModelWith takes a template name and
@@ -23,15 +23,16 @@ func renderError(e error, statusCode int, w http.ResponseWriter) {
 // which when called will render the given template using that object.
 func renderModelWith(template string) func(Model, http.ResponseWriter, *http.Request) {
 	return func(o Model, w http.ResponseWriter, r *http.Request) {
-		tmpl[template].ExecuteTemplate(w, "base", o)
+		tmpl(template).ExecuteTemplate(w, "base", o)
 	}
 }
 
 func renderTemplate(template string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tmpl[template].ExecuteTemplate(w, "base", nil)
+		tmpl(template).ExecuteTemplate(w, "base", nil)
 	})
 }
+
 func requiresModelObject(lookup func(*http.Request) (Model, error), fn func(Model, http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		obj, err := lookup(r)
@@ -69,7 +70,7 @@ func lookupPasteWithRequest(r *http.Request) (p Model, err error) {
 }
 
 func indexGet(w http.ResponseWriter, r *http.Request) {
-	tmpl["index"].ExecuteTemplate(w, "base", nil)
+	tmpl("index").ExecuteTemplate(w, "base", nil)
 }
 
 func allPastes(w http.ResponseWriter, r *http.Request) {
@@ -79,30 +80,38 @@ func allPastes(w http.ResponseWriter, r *http.Request) {
 		pasteList[i] = v
 		i++
 	}
-	tmpl["all"].ExecuteTemplate(w, "base", pasteList)
+	tmpl("all").ExecuteTemplate(w, "base", pasteList)
 }
 
-func initTemplates() {
-	walkFunc := func(path string, info os.FileInfo, err error) error {
-		base := filepath.Base(path)
-		if base == "_base.tmpl" || info.IsDir() {
+func initTemplates(rebuild bool) {
+	if rebuild {
+		tmpl = func(name string) *template.Template {
+			return template.Must(template.ParseFiles("tmpl/_base.tmpl", "tmpl/"+name+".tmpl"))
+		}
+	} else {
+		templates := make(map[string]*template.Template)
+		walkFunc := func(path string, info os.FileInfo, err error) error {
+			base := filepath.Base(path)
+			if base == "_base.tmpl" || info.IsDir() {
+				return nil
+			}
+			name := base[:len(base)-len(filepath.Ext(base))]
+			templates[name] = template.Must(template.ParseFiles("tmpl/_base.tmpl", path))
 			return nil
 		}
-		name := base[:len(base)-len(filepath.Ext(base))]
-		tmpl[name] = template.Must(template.ParseFiles("tmpl/_base.tmpl", path))
-		return nil
+		filepath.Walk("tmpl", walkFunc)
+		tmpl = func(name string) *template.Template {
+			return templates[name]
+		}
 	}
-	tmpl = make(map[string]*template.Template)
-	filepath.Walk("tmpl", walkFunc)
-}
-
-func init() {
-	initTemplates()
 }
 
 func main() {
 	port, bind := flag.String("port", "8080", "HTTP port"), flag.String("bind", "0.0.0.0", "bind address")
+	rebuild := flag.Bool("rebuild", false, "rebuild all templates for each request")
 	flag.Parse()
+
+	initTemplates(*rebuild)
 
 	m := pat.New()
 	m.Get("/paste/all", http.HandlerFunc(allPastes))
