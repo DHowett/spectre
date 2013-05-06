@@ -2,15 +2,16 @@
 	font-family: envy;
 	font-size: 12pt;
 	min-height: 40%;
+	background-color: #222;
+	color: #ebebeb;
 }
 
 div.code {
 	padding: 9.5px;
 	margin: 0px 0px 10px;
-	word-break: break-all;
-	word-wrap: break-word;
-	white-space: pre-wrap;
-	background-color: rgb(245, 245, 245);
+	white-space: pre;
 	border: 1px solid rgba(0, 0, 0, 0.15);
 	border-radius: 4px;
+	overflow-x: auto;
+	text-overflow: clip;
 }
