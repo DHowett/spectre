@@ -100,12 +100,16 @@ func allPastes(w http.ResponseWriter, r *http.Request) {
 }
 
 func initTemplates(rebuild bool) {
+	templateFuncs := template.FuncMap{
+		"langs": Languages,
+	}
+
 	tmpl = func() *template.Template {
 		files, err := filepath.Glob("tmpl/*")
 		if err != nil {
 			panic(err)
 		}
-		return template.Must(template.New("base").ParseFiles(files...))
+		return template.Must(template.New("base").Funcs(templateFuncs).ParseFiles(files...))
 	}
 	if !rebuild {
 		t := tmpl()
@@ -113,6 +117,14 @@ func initTemplates(rebuild bool) {
 			return t
 		}
 	}
+}
+
+type Language struct {
+	ID, Title string
+}
+
+func Languages() []Language {
+	return []Language{{"text", "Plain Text"}}
 }
 
 func main() {

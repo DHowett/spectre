@@ -28,6 +28,11 @@
 {{end}}
 {{define "submit"}}
 <div class="pull-right">
+<select name="lang">
+{{range langs}}
+<option value="{{.ID}}">{{.Title}}</option>
+{{end}}
+</select>
 <input type="submit" value="{{if .}}{{.}}{{else}}Submit{{end}}" class="btn btn-primary btn-large">
 </div>
 {{end}}
