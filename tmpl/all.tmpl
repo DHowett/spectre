@@ -1,6 +1,12 @@
-{{define "body"}}
-All Pastes ({{len .}})
+{{define "page_all"}}
+{{template "header" .}}
+<div class="well" style="margin-top: 20px; padding: 8px 0px;">
+<ul class="nav nav-list">
+<li class="nav-header">All Pastes ({{len .}})</li>
 {{range .}}
-<a href="{{.URL}}">{{.ID}}</a><br>
+<li><a href="{{.URL}}">{{.ID}}</a><br></li>
 {{end}}
+</ul>
+</div>
+{{template "footer" .}}
 {{end}}

@@ -1,7 +1,9 @@
-{{define "body"}}
+{{define "page_index"}}
+{{template "header" .}}
 <h1>New Paste</h1>
 <form action="/paste/new" method="post">
 {{template "pastebox"}}
 {{template "submit" "Paste!"}}
 </form>
+{{template "footer" .}}
 {{end}}

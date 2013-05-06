@@ -5,17 +5,16 @@ import (
 	"github.com/bmizerany/pat"
 	"html/template"
 	"net/http"
-	"os"
 	"path/filepath"
 )
 
 type Model interface{}
 
-var tmpl func(string) *template.Template
+var tmpl func() *template.Template
 
 func renderError(e error, statusCode int, w http.ResponseWriter) {
 	w.WriteHeader(statusCode)
-	tmpl("error").ExecuteTemplate(w, "base", e)
+	tmpl().ExecuteTemplate(w, "page_error", e)
 }
 
 // renderModelWith takes a template name and
@@ -23,13 +22,13 @@ func renderError(e error, statusCode int, w http.ResponseWriter) {
 // which when called will render the given template using that object.
 func renderModelWith(template string) func(Model, http.ResponseWriter, *http.Request) {
 	return func(o Model, w http.ResponseWriter, r *http.Request) {
-		tmpl(template).ExecuteTemplate(w, "base", o)
+		tmpl().ExecuteTemplate(w, "page_"+template, o)
 	}
 }
 
 func renderTemplate(template string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tmpl(template).ExecuteTemplate(w, "base", nil)
+		tmpl().ExecuteTemplate(w, "page_"+template, nil)
 	})
 }
 
@@ -76,28 +75,26 @@ func allPastes(w http.ResponseWriter, r *http.Request) {
 		pasteList[i] = v
 		i++
 	}
-	tmpl("all").ExecuteTemplate(w, "base", pasteList)
+	tmpl().ExecuteTemplate(w, "page_all", pasteList)
 }
 
 func initTemplates(rebuild bool) {
 	if rebuild {
-		tmpl = func(name string) *template.Template {
-			return template.Must(template.ParseFiles("tmpl/_base.tmpl", "tmpl/"+name+".tmpl"))
+		tmpl = func() *template.Template {
+			files, err := filepath.Glob("tmpl/*")
+			if err != nil {
+				panic(err)
+			}
+			return template.Must(template.ParseFiles(files...))
 		}
 	} else {
-		templates := make(map[string]*template.Template)
-		walkFunc := func(path string, info os.FileInfo, err error) error {
-			base := filepath.Base(path)
-			if base == "_base.tmpl" || info.IsDir() {
-				return nil
-			}
-			name := base[:len(base)-len(filepath.Ext(base))]
-			templates[name] = template.Must(template.ParseFiles("tmpl/_base.tmpl", path))
-			return nil
+		files, err := filepath.Glob("tmpl/*")
+		if err != nil {
+			panic(err)
 		}
-		filepath.Walk("tmpl", walkFunc)
-		tmpl = func(name string) *template.Template {
-			return templates[name]
+		t := template.Must(template.ParseFiles(files...))
+		tmpl = func() *template.Template {
+			return t
 		}
 	}
 }

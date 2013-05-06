@@ -1,6 +1,8 @@
-{{define "body"}}
-<div class="alert alert-error">
+{{define "page_error"}}
+{{template "header" .}}
+<div class="alert alert-error alert-block">
 {{.Error}}<br><br>
 <a href="/">Go to the homepage and try again.</a>
 </div>
+{{template "footer" .}}
 {{end}}
