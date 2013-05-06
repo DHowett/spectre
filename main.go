@@ -74,6 +74,7 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 	body := r.FormValue("text")
 	p.Body = body
 	p.Language = r.FormValue("lang")
+	p.Save()
 
 	w.Header().Set("Location", p.URL())
 	w.WriteHeader(http.StatusFound)

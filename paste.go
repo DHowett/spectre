@@ -1,16 +1,21 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base32"
+	"github.com/DHowett/go-xattr"
 	"html/template"
+	"io"
+	"os"
+	"strings"
 )
 
 type PasteID string
 type Paste struct {
 	ID           PasteID
 	Body         string
-	Language	string
+	Language     string
 	RenderedBody *string
 }
 
@@ -22,8 +27,41 @@ func PasteIDFromString(s string) PasteID {
 	return PasteID(s)
 }
 
+func filenameForPasteID(id PasteID) string {
+	return "pastes/" + id.ToString()
+}
+
+func (p *Paste) Filename() string {
+	return filenameForPasteID(p.ID)
+}
+
 func (p *Paste) URL() string {
 	return "/paste/" + p.ID.ToString()
+}
+
+func (p *Paste) MetadataKey() string {
+	return "paste:"
+}
+
+func (p *Paste) PutMetadata(name, value string) error {
+	return xattr.Setxattr(p.Filename(), p.MetadataKey()+name, []byte(value), 0, 0)
+}
+
+func (p *Paste) GetMetadata(name string) (string, error) {
+	bytes, err := xattr.Getxattr(p.Filename(), p.MetadataKey()+name, 0, 0)
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytes), nil
+}
+
+func (p *Paste) GetMetadataWithDefault(name, dflt string) string {
+	val, err := p.GetMetadata(name)
+	if err != nil {
+		return dflt
+	}
+	return val
 }
 
 func (p *Paste) Render() template.HTML {
@@ -71,10 +109,47 @@ func NewPaste() *Paste {
 	return p
 }
 
+func (p *Paste) Save() {
+	writePasteToDisk(p)
+}
+func writePasteToDisk(p *Paste) {
+	filename := p.Filename()
+	file, err := os.Create(filename)
+	if err != nil {
+		panic(err)
+	}
+	sreader := strings.NewReader(p.Body)
+	io.Copy(file, sreader)
+	file.Close()
+
+	if err := p.PutMetadata("language", p.Language); err != nil {
+		panic(err)
+	}
+}
+
+func loadPasteFromDisk(id PasteID) *Paste {
+	filename := "pastes/" + id.ToString()
+	file, err := os.Open(filename)
+	if err != nil {
+		panic(PasteNotFoundError{ID: id})
+	}
+	buf := bytes.Buffer{}
+	io.Copy(&buf, file)
+	file.Close()
+
+	p := &Paste{}
+	p.ID = id
+	p.Body = buf.String()
+	p.Language = p.GetMetadataWithDefault("language", "text")
+	return p
+}
+
 func GetPaste(id PasteID) *Paste {
 	p, exist := pastes[id]
 	if !exist {
-		panic(PasteNotFoundError{ID: id})
+		p = loadPasteFromDisk(id)
+		pastes[id] = p
+		return p
 	}
 	return p
 }
