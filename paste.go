@@ -9,7 +9,7 @@ type PasteID uint64
 type Paste struct {
 	ID           PasteID
 	Body         string
-	RenderedBody template.HTML
+	RenderedBody *string
 }
 
 func (id PasteID) ToString() string {
@@ -26,7 +26,15 @@ func (p *Paste) URL() string {
 }
 
 func (p *Paste) Render() template.HTML {
-	return template.HTML(p.Body)
+	if p.RenderedBody == nil {
+		pygmentized, err := Pygmentize(p.Body)
+		if err != nil {
+			return template.HTML("Error")
+		}
+
+		p.RenderedBody = &pygmentized
+	}
+	return template.HTML(*p.RenderedBody)
 }
 
 type PasteNotFoundError struct {
