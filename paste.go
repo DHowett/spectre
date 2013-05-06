@@ -29,7 +29,7 @@ func (p *Paste) Render() template.HTML {
 	if p.RenderedBody == nil {
 		pygmentized, err := Pygmentize(p.Body)
 		if err != nil {
-			return template.HTML("Error")
+			return template.HTML("There was an error rendering this paste.")
 		}
 
 		p.RenderedBody = &pygmentized
@@ -58,7 +58,11 @@ func genPasteID() (PasteID, error) {
 }
 
 func NewPaste() *Paste {
-	id, _ := genPasteID()
+	id, err := genPasteID()
+	if err != nil {
+		panic(err)
+	}
+
 	p := &Paste{
 		ID: id,
 	}
@@ -66,14 +70,12 @@ func NewPaste() *Paste {
 	return p
 }
 
-func GetPaste(id PasteID) (p *Paste, err error) {
+func GetPaste(id PasteID) *Paste {
 	p, exist := pastes[id]
 	if !exist {
-		err = PasteNotFoundError{ID: id}
-	} else {
-		err = nil
+		panic(PasteNotFoundError{ID: id})
 	}
-	return
+	return p
 }
 
 func init() {

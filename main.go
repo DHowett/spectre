@@ -9,6 +9,13 @@ import (
 )
 
 type Model interface{}
+type HTTPError interface {
+	StatusCode() int
+}
+
+func (e PasteNotFoundError) StatusCode() int {
+	return http.StatusNotFound
+}
 
 var tmpl func() *template.Template
 
@@ -21,6 +28,7 @@ func renderError(e error, statusCode int, w http.ResponseWriter) {
 // returns a function that takes a single model object,
 // which when called will render the given template using that object.
 func renderModelWith(template string) func(Model, http.ResponseWriter, *http.Request) {
+	// We don't defer the error handler here because it happened a step up
 	return func(o Model, w http.ResponseWriter, r *http.Request) {
 		tmpl().ExecuteTemplate(w, "page_"+template, o)
 	}
@@ -28,12 +36,28 @@ func renderModelWith(template string) func(Model, http.ResponseWriter, *http.Req
 
 func renderTemplate(template string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer errorRecoveryHandler(w)()
 		tmpl().ExecuteTemplate(w, "page_"+template, nil)
 	})
 }
 
+func errorRecoveryHandler(w http.ResponseWriter) func() {
+	return func() {
+		if err := recover(); err != nil {
+			status := http.StatusInternalServerError
+			if weberr, ok := err.(HTTPError); ok {
+				status = weberr.StatusCode()
+			}
+
+			renderError(err.(error), status, w)
+		}
+	}
+}
+
 func requiresModelObject(lookup func(*http.Request) (Model, error), fn func(Model, http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer errorRecoveryHandler(w)()
+
 		obj, err := lookup(r)
 		if err != nil {
 			renderError(err, http.StatusNotFound, w)
@@ -61,10 +85,7 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 
 func lookupPasteWithRequest(r *http.Request) (p Model, err error) {
 	id := PasteIDFromString(r.URL.Query().Get(":id"))
-	if err != nil {
-		return nil, err
-	}
-	p, err = GetPaste(id)
+	p = GetPaste(id)
 	return
 }
 
