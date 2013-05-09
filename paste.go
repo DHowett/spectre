@@ -41,7 +41,7 @@ func (p *Paste) URL() string {
 }
 
 func (p *Paste) MetadataKey() string {
-	return "paste:"
+	return "user.paste."
 }
 
 func (p *Paste) PutMetadata(name, value string) error {
