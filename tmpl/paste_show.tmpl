@@ -2,8 +2,8 @@
 {{template "header" .}}
 <h1>Paste {{.Obj.ID}} <small>{{with index langs .Obj.Language}}{{.}}{{else}}({{.Obj.Language}}){{end}}</small></h1>
 <div class="code input-block-level">{{.Obj.Render}}</div>
-<div class="pull-right">
+{{if editAllowed .}}<div class="pull-right">
 <a href="{{.Obj.URL}}/edit" class="btn btn-large">Edit</a>
-</div>
+</div>{{end}}
 {{template "footer" .}}
 {{end}}

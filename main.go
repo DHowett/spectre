@@ -169,6 +169,7 @@ func initTemplates(rebuild bool) {
 	templateFuncs := template.FuncMap{
 		"langs":       Languages,
 		"equal":       func(t1, t2 string) bool { return t1 == t2 },
+		"editAllowed": func(ri *RenderInfo) bool { return isEditAllowed(ri.Obj.(*Paste), ri.Request) },
 	}
 
 	tmpl = func() *template.Template {
