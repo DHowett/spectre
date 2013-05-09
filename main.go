@@ -67,25 +67,31 @@ func errorRecoveryHandler(w http.ResponseWriter) func() {
 	}
 }
 
+func isEditAllowed(p *Paste, r *http.Request) bool {
+	cookie, err := r.Cookie("gb_pastes")
+	if err != nil {
+		return false
+	}
+
+	pastes := strings.Split(cookie.Value, "|")
+	for _, v := range pastes {
+		if v == p.ID.ToString() {
+			return true
+		}
+	}
+	return false
+}
+
 func requiresEditPermission(fn func(Model, http.ResponseWriter, *http.Request)) func(Model, http.ResponseWriter, *http.Request) {
 	return func(o Model, w http.ResponseWriter, r *http.Request) {
 		defer errorRecoveryHandler(w)()
 
 		p := o.(*Paste)
 		accerr := PasteAccessDeniedError{"modify", p.ID}
-		cookie, ok := r.Cookie("gb_pastes")
-		if ok != nil {
+		if !isEditAllowed(p, r) {
 			panic(accerr)
 		}
-
-		pastes := strings.Split(cookie.Value, "|")
-		for _, v := range pastes {
-			if v == p.ID.ToString() {
-				fn(p, w, r)
-				return
-			}
-		}
-		panic(accerr)
+		fn(p, w, r)
 	}
 }
 
