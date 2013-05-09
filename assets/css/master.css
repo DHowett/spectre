@@ -15,3 +15,11 @@ div.code {
 	overflow-x: auto;
 	text-overflow: clip;
 }
+
+input,
+button,
+select,
+textarea,
+body {
+	font-family: "LatinModernSans10Regular";
+}
