@@ -145,13 +145,33 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 		pastes = append(pastes, p.ID.ToString())
 		cookie.Value = strings.Join(pastes, "|")
 	}
+	cookie.Path = "/"
 	http.SetCookie(w, cookie)
 	pasteUpdate(p, w, r)
 }
 
 func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
+	oldId := p.ID
 	p.Destroy()
+
+	cookie, ok := r.Cookie("gb_pastes")
+	presence := make(map[string]bool)
+	if ok == nil {
+		for _, v := range strings.Split(cookie.Value, "|") {
+			presence[v] = true
+		}
+	}
+	delete(presence, oldId.ToString())
+	pastes := make([]string, len(presence))
+	i := 0
+	for k, _ := range presence {
+		pastes[i] = k
+		i++
+	}
+	cookie.Value = strings.Join(pastes, "|")
+	cookie.Path = "/"
+	http.SetCookie(w, cookie)
 
 	w.Header().Set("Location", "/")
 	w.WriteHeader(http.StatusFound)
