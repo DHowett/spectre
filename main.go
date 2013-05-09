@@ -149,6 +149,14 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	pasteUpdate(p, w, r)
 }
 
+func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
+	p := o.(*Paste)
+	p.Destroy()
+
+	w.Header().Set("Location", "/")
+	w.WriteHeader(http.StatusFound)
+}
+
 func lookupPasteWithRequest(r *http.Request) (p Model, err error) {
 	id := PasteIDFromString(r.URL.Query().Get(":id"))
 	p = GetPaste(id)
@@ -210,6 +218,8 @@ func main() {
 	m.Get("/paste/:id", requiresModelObject(lookupPasteWithRequest, renderModelWith("paste_show")))
 	m.Get("/paste/:id/edit", requiresModelObject(lookupPasteWithRequest, requiresEditPermission(renderModelWith("paste_edit"))))
 	m.Post("/paste/:id/edit", requiresModelObject(lookupPasteWithRequest, requiresEditPermission(pasteUpdate)))
+	m.Get("/paste/:id/delete", requiresModelObject(lookupPasteWithRequest, requiresEditPermission(renderModelWith("paste_delete_confirm"))))
+	m.Post("/paste/:id/delete", requiresModelObject(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
 	m.Post("/paste/new", http.HandlerFunc(pasteCreate))
 	m.Get("/", renderTemplate("index"))
 	http.Handle("/", m)

@@ -4,7 +4,7 @@
 <form action="{{.Obj.URL}}/edit" method="post">
 {{template "pastebox" .Obj.Body}}
 {{template "submit" .Obj}}
-<input type="button" value="Delete" class="btn btn-danger btn-large">
+<a href="{{.Obj.URL}}/delete" class="btn btn-danger btn-large">Delete</a>
 </form>
 {{template "footer" .}}
 {{end}}

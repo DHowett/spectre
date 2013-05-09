@@ -164,6 +164,11 @@ func GetPaste(id PasteID) *Paste {
 	return p
 }
 
+func (p *Paste) Destroy() {
+	os.Remove(p.Filename())
+	delete(pastes, p.ID)
+}
+
 func init() {
 	pastes = make(map[PasteID]*Paste)
 }
