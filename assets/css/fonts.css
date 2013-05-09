@@ -3,7 +3,7 @@
 @font-face {
 	font-family: 'Envy Code R';
 	src: url('/assets/fonts/Envy Code R.eot');
-	src: local('☺'), url('/assets/fonts/Envy Code R.woff') format('woff'), url('/assets/fonts/Envy Code R.ttf') format('truetype'), url('/assets/fonts/Envy Code R.svg') format('svg');
+	src: local('☺'), url('/assets/fonts/Envy Code R.woff') format('woff'), url('/assets/fonts/Envy Code R.ttf') format('truetype');
 	font-weight: normal;
 	font-style: normal;
 }
