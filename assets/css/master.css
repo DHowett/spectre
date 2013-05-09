@@ -30,6 +30,10 @@ div.code-miniature {
 	color: #ebebeb;
 }
 
+body .well {
+	margin-top: 10px;
+}
+
 input,
 button,
 select,
