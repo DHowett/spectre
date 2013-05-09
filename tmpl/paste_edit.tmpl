@@ -1,9 +1,9 @@
 {{define "page_paste_edit"}}
 {{template "header" .}}
-<h1>Paste {{.ID}}</h1>
-<form action="{{.URL}}/edit" method="post">
-{{template "pastebox" .Body}}
-{{template "submit" .}}
+<h1>Paste {{.Obj.ID}}</h1>
+<form action="{{.Obj.URL}}/edit" method="post">
+{{template "pastebox" .Obj.Body}}
+{{template "submit" .Obj}}
 <input type="button" value="Delete" class="btn btn-danger btn-large">
 </form>
 {{template "footer" .}}

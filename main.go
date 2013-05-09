@@ -32,9 +32,14 @@ func (e PasteNotFoundError) StatusCode() int {
 
 var tmpl func() *template.Template
 
+type RenderInfo struct {
+	Obj     interface{}
+	Request *http.Request
+}
+
 func renderError(e error, statusCode int, w http.ResponseWriter) {
 	w.WriteHeader(statusCode)
-	tmpl().ExecuteTemplate(w, "page_error", e)
+	tmpl().ExecuteTemplate(w, "page_error", &RenderInfo{e, nil})
 }
 
 // renderModelWith takes a template name and
@@ -43,7 +48,7 @@ func renderError(e error, statusCode int, w http.ResponseWriter) {
 func renderModelWith(template string) func(Model, http.ResponseWriter, *http.Request) {
 	// We don't defer the error handler here because it happened a step up
 	return func(o Model, w http.ResponseWriter, r *http.Request) {
-		tmpl().ExecuteTemplate(w, "page_"+template, o)
+		tmpl().ExecuteTemplate(w, "page_"+template, &RenderInfo{o, r})
 	}
 }
 
@@ -157,13 +162,13 @@ func allPastes(w http.ResponseWriter, r *http.Request) {
 		pasteList[i] = v
 		i++
 	}
-	tmpl().ExecuteTemplate(w, "page_all", pasteList)
+	tmpl().ExecuteTemplate(w, "page_all", &RenderInfo{pasteList, r})
 }
 
 func initTemplates(rebuild bool) {
 	templateFuncs := template.FuncMap{
-		"langs": Languages,
-		"equal": func(t1, t2 string) bool { return t1 == t2 },
+		"langs":       Languages,
+		"equal":       func(t1, t2 string) bool { return t1 == t2 },
 	}
 
 	tmpl = func() *template.Template {
@@ -184,8 +189,8 @@ func initTemplates(rebuild bool) {
 type LanguageMap map[string]string
 
 var languages LanguageMap = LanguageMap{
-	"_auto":  "Automatically Detect",
-	"text":   "Plain Text",
+	"_auto": "Automatically Detect",
+	"text":  "Plain Text",
 }
 
 func Languages() LanguageMap {
