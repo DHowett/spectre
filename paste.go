@@ -66,6 +66,10 @@ func (p *Paste) GetMetadataWithDefault(name, dflt string) string {
 }
 
 func (p *Paste) Render() template.HTML {
+	if p.Language == "text" {
+		return template.HTML(template.HTMLEscapeString(p.Body))
+	}
+
 	if p.RenderedBody == nil {
 		pygmentized, err := Pygmentize(&p.Body)
 		if err != nil {
