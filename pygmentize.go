@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const pygmentizePath string = "/Users/dustin/junk/pygments/pygmentize"
+const pygmentizePath string = "./pygments/pygmentize"
 
 func execWithData(data *string, cmd string, args ...string) (string, error) {
 	var outbuf bytes.Buffer
