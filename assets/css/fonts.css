@@ -2,18 +2,18 @@
  * He's awesome. Patronize his site and love his font. */
 @font-face {
 	font-family: 'Envy Code R';
-	src: url('/assets/fonts/Envy Code R.eot');
-	src: local('☺'), url('/assets/fonts/Envy Code R.woff') format('woff'), url('/assets/fonts/Envy Code R.ttf') format('truetype');
+	src: url('../fonts/Envy Code R.eot');
+	src: local('☺'), url('../fonts/Envy Code R.woff') format('woff'), url('../fonts/Envy Code R.ttf') format('truetype');
 	font-weight: normal;
 	font-style: normal;
 }
 
 @font-face {
     font-family: 'LatinModernSans10Regular';
-    src: url('/assets/fonts/lmsans10-regular-webfont.eot');
-    src: url('/assets/fonts/lmsans10-regular-webfont.eot?#iefix') format('embedded-opentype'),
-         url('/assets/fonts/lmsans10-regular-webfont.woff') format('woff'),
-         url('/assets/fonts/lmsans10-regular-webfont.ttf') format('truetype');
+    src: url('../fonts/lmsans10-regular-webfont.eot');
+    src: url('../fonts/lmsans10-regular-webfont.eot?#iefix') format('embedded-opentype'),
+         url('../fonts/lmsans10-regular-webfont.woff') format('woff'),
+         url('../fonts/lmsans10-regular-webfont.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 
@@ -21,10 +21,10 @@
 
 @font-face {
     font-family: 'LatinModernSans10Bold';
-    src: url('/assets/fonts/lmsans10-bold-webfont.eot');
-    src: url('/assets/fonts/lmsans10-bold-webfont.eot?#iefix') format('embedded-opentype'),
-         url('/assets/fonts/lmsans10-bold-webfont.woff') format('woff'),
-         url('/assets/fonts/lmsans10-bold-webfont.ttf') format('truetype');
+    src: url('../fonts/lmsans10-bold-webfont.eot');
+    src: url('../fonts/lmsans10-bold-webfont.eot?#iefix') format('embedded-opentype'),
+         url('../fonts/lmsans10-bold-webfont.woff') format('woff'),
+         url('../fonts/lmsans10-bold-webfont.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 
