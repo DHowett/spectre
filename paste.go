@@ -17,7 +17,7 @@ type Paste struct {
 	Body         string
 	Language     string
 	RenderedBody *string
-	SourceIP	string
+	SourceIP     string
 }
 
 func (id PasteID) ToString() string {
