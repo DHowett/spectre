@@ -67,7 +67,7 @@ func (p *Paste) GetMetadataWithDefault(name, dflt string) string {
 
 func (p *Paste) Render() template.HTML {
 	if p.RenderedBody == nil {
-		pygmentized, err := Pygmentize(p.Body)
+		pygmentized, err := Pygmentize(&p.Body)
 		if err != nil {
 			return template.HTML("There was an error rendering this paste.")
 		}

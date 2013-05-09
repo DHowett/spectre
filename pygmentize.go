@@ -6,14 +6,24 @@ import (
 	"strings"
 )
 
-func Pygmentize(in string) (string, error) {
+const pygmentizePath string = "/Users/dustin/junk/pygments/pygmentize"
+
+func execWithData(data *string, cmd string, args ...string) (string, error) {
 	var outbuf bytes.Buffer
-	pygments := exec.Command("/Users/dustin/junk/pygments/pygmentize", "-f", "html", "-O", "nowrap=True", "-g")
-	pygments.Stdin = strings.NewReader(in)
+	pygments := exec.Command(cmd, args...)
+	pygments.Stdin = strings.NewReader(*data)
 	pygments.Stdout = &outbuf
 	err := pygments.Run()
 	if err != nil {
 		return "", err
 	}
-	return outbuf.String(), nil
+	return strings.TrimSpace(outbuf.String()), nil
+}
+
+func PygmentsGuessLexer(data *string) (string, error) {
+	return execWithData(data, pygmentizePath, "-G")
+}
+
+func Pygmentize(data *string) (string, error) {
+	return execWithData(data, pygmentizePath, "-f", "html", "-O", "nowrap=True", "-g")
 }

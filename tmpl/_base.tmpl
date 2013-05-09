@@ -27,7 +27,7 @@
 
 {{define "pastebox"}}<textarea name="text" class="input-block-level code" rows="20">{{if .}}{{.}}{{end}}</textarea>{{end}}
 
-{{define "langbox"}}{{ $lang := or .Language "text" }}<select name="lang">
+{{define "langbox"}}{{ $lang := or .Language "_auto" }}{{if index langs $lang | not}}{{$lang := "_auto"}}{{end}}<select name="lang">
 {{range $k, $v := langs}}<option value="{{$k}}"{{if .}}{{if equal $lang $k}} selected{{end}}{{end}}>{{$v}}</option>{{end}}
 </select>{{end}}
 

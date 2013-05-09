@@ -74,7 +74,11 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 	body := r.FormValue("text")
 	p.Body = body
 	p.Language = r.FormValue("lang")
+	if p.Language == "_auto" {
+		p.Language, _ = PygmentsGuessLexer(&body)
+	}
 	p.SourceIP = r.RemoteAddr
+	p.RenderedBody = nil
 	p.Save()
 
 	w.Header().Set("Location", p.URL())
@@ -126,6 +130,7 @@ func initTemplates(rebuild bool) {
 type LanguageMap map[string]string
 
 var languages LanguageMap = LanguageMap{
+	"_auto":  "Automatically Detect",
 	"text":   "Plain Text",
 }
 
