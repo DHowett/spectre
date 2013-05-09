@@ -6,11 +6,24 @@ import (
 	"html/template"
 	"net/http"
 	"path/filepath"
+	"strings"
 )
 
 type Model interface{}
 type HTTPError interface {
 	StatusCode() int
+}
+type PasteAccessDeniedError struct {
+	action string
+	ID     PasteID
+}
+
+func (e PasteAccessDeniedError) Error() string {
+	return "You're not allowed to " + e.action + " paste " + e.ID.ToString()
+}
+
+func (e PasteAccessDeniedError) StatusCode() int {
+	return http.StatusForbidden
 }
 
 func (e PasteNotFoundError) StatusCode() int {
@@ -54,6 +67,28 @@ func errorRecoveryHandler(w http.ResponseWriter) func() {
 	}
 }
 
+func requiresEditPermission(fn func(Model, http.ResponseWriter, *http.Request)) func(Model, http.ResponseWriter, *http.Request) {
+	return func(o Model, w http.ResponseWriter, r *http.Request) {
+		defer errorRecoveryHandler(w)()
+
+		p := o.(*Paste)
+		accerr := PasteAccessDeniedError{"modify", p.ID}
+		cookie, ok := r.Cookie("gb_pastes")
+		if ok != nil {
+			panic(accerr)
+		}
+
+		pastes := strings.Split(cookie.Value, "|")
+		for _, v := range pastes {
+			if v == p.ID.ToString() {
+				fn(p, w, r)
+				return
+			}
+		}
+		panic(accerr)
+	}
+}
+
 func requiresModelObject(lookup func(*http.Request) (Model, error), fn func(Model, http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer errorRecoveryHandler(w)()
@@ -87,6 +122,19 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 
 func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	p := NewPaste()
+	cookie, ok := r.Cookie("gb_pastes")
+	if ok != nil {
+		cookie = &http.Cookie{
+			Name:  "gb_pastes",
+			Value: p.ID.ToString(),
+			Path:  "/",
+		}
+	} else {
+		pastes := strings.Split(cookie.Value, "|")
+		pastes = append(pastes, p.ID.ToString())
+		cookie.Value = strings.Join(pastes, "|")
+	}
+	http.SetCookie(w, cookie)
 	pasteUpdate(p, w, r)
 }
 
@@ -148,8 +196,8 @@ func main() {
 	m := pat.New()
 	m.Get("/paste/all", http.HandlerFunc(allPastes))
 	m.Get("/paste/:id", requiresModelObject(lookupPasteWithRequest, renderModelWith("paste_show")))
-	m.Get("/paste/:id/edit", requiresModelObject(lookupPasteWithRequest, renderModelWith("paste_edit")))
-	m.Post("/paste/:id/edit", requiresModelObject(lookupPasteWithRequest, pasteUpdate))
+	m.Get("/paste/:id/edit", requiresModelObject(lookupPasteWithRequest, requiresEditPermission(renderModelWith("paste_edit"))))
+	m.Post("/paste/:id/edit", requiresModelObject(lookupPasteWithRequest, requiresEditPermission(pasteUpdate)))
 	m.Post("/paste/new", http.HandlerFunc(pasteCreate))
 	m.Get("/", renderTemplate("index"))
 	http.Handle("/", m)
