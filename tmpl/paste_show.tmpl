@@ -1,6 +1,6 @@
 {{define "page_paste_show"}}
 {{template "header" .}}
-<h1>Paste {{.ID}} <small>{{index langs .Language}}</small></h1>
+<h1>Paste {{.ID}} <small>{{with index langs .Language}}{{.}}{{else}}({{.Language}}){{end}}</small></h1>
 <div class="code input-block-level">{{.Render}}</div>
 <div class="pull-right">
 <a href="{{.URL}}/edit" class="btn btn-large">Edit</a>
