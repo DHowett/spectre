@@ -30,15 +30,11 @@ div.code-miniature {
 	color: #ebebeb;
 }
 
-body .well {
+.well {
 	margin-top: 1em;
 }
 
-input,
-button,
-select,
-textarea,
-body {
+input, button, select, textarea, body {
 	font-family: "LatinModernSans10Regular";
 }
 
@@ -47,7 +43,7 @@ form {
 }
 
 select#langbox {
-	width: 300px;
+	width: 250px;
 }
 
 @media (max-width: 767px) {
