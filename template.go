@@ -17,7 +17,7 @@ func InitTemplates(rebuild bool) {
 	RegisterTemplateFunction("equal", func(t1, t2 string) bool { return t1 == t2 })
 
 	tmpl = func() *template.Template {
-		files, err := filepath.Glob("tmpl/*")
+		files, err := filepath.Glob("templates/*")
 		if err != nil {
 			panic(err)
 		}
