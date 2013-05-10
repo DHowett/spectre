@@ -11,6 +11,9 @@
 	<link rel="stylesheet" href="/assets/css/master.css" type="text/css" media="screen" charset="utf-8">
 	<link rel="stylesheet" href="/assets/css/fonts.css" type="text/css" media="screen" charset="utf-8">
 	<link rel="stylesheet" href="/assets/css/pygments.css" type="text/css" media="screen" charset="utf-8">
+	<link rel="stylesheet" href="/assets/css/select2.css" type="text/css" media="screen" charset="utf-8">
+	<script src="/assets/js/jquery-2.0.0.min.js"></script>
+	<script src="/assets/js/select2.min.js"></script>
 </head>
 <body>
 	<div class="navbar navbar-static-top navbar-inverse">
@@ -29,9 +32,9 @@
 
 {{define "pastebox"}}<textarea name="text" class="input-block-level code" rows="20">{{if .}}{{.}}{{end}}</textarea>{{end}}
 
-{{define "langbox"}}{{ $lang := or .Language "_auto" }}{{if index langs $lang | not}}{{$lang := "_auto"}}{{end}}<select name="lang">
+{{define "langbox"}}{{ $lang := or .Language "_auto" }}{{if index langs $lang | not}}{{$lang := "_auto"}}{{end}}<select id="langbox" name="lang">
 {{range $k, $v := langs}}<option value="{{$k}}"{{if .}}{{if equal $lang $k}} selected{{end}}{{end}}>{{$v}}</option>{{end}}
-</select>{{end}}
+</select><script>$(document).ready(function() { $("#langbox").select2({width:"resolve"}); });</script>{{end}}
 
 {{define "submit"}}<div class="pull-right">
 {{template "langbox" .}}

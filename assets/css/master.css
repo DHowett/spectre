@@ -46,6 +46,10 @@ form {
 	margin-bottom: 0;
 }
 
+select#langbox {
+	width: 300px;
+}
+
 @media (max-width: 767px) {
 	.code {
 		font-size: 10pt !important;
