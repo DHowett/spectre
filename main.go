@@ -196,6 +196,7 @@ func allPastes(w http.ResponseWriter, r *http.Request) {
 func initTemplates(rebuild bool) {
 	templateFuncs := template.FuncMap{
 		"langs":       Languages,
+		"langByLexer": LanguageByLexer,
 		"equal":       func(t1, t2 string) bool { return t1 == t2 },
 		"editAllowed": func(ri *RenderInfo) bool { return isEditAllowed(ri.Obj.(*Paste), ri.Request) },
 	}
@@ -215,15 +216,38 @@ func initTemplates(rebuild bool) {
 	}
 }
 
-type LanguageMap map[string]string
-
-var languages LanguageMap = LanguageMap{
-	"_auto": "Automatically Detect",
-	"text":  "Plain Text",
+type Language struct {
+	Lexer, Title string
 }
 
-func Languages() LanguageMap {
+var languages []Language = []Language{
+	{"_auto", "Automatically Detect"},
+	{"text", "Plain Text"},
+	{"logos", "Logos + Objective-C"},
+	{"objective-c", "Objective-C"},
+	{"c", "C"},
+	{"irc", "IRC Log"},
+}
+
+func Languages() []Language {
 	return languages
+}
+
+func LanguageByLexer(name string) *Language {
+	v, ok := langMap[name]
+	if !ok {
+		return nil
+	}
+	return v
+}
+
+var langMap map[string]*Language
+
+func init() {
+	langMap = make(map[string]*Language)
+	for i, v := range languages {
+		langMap[v.Lexer] = &languages[i]
+	}
 }
 
 func main() {
