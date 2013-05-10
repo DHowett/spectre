@@ -41,3 +41,7 @@ textarea,
 body {
 	font-family: "LatinModernSans10Regular";
 }
+
+form {
+	margin-bottom: 0;
+}
