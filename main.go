@@ -3,9 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/bmizerany/pat"
-	"html/template"
 	"net/http"
-	"path/filepath"
 	"strings"
 )
 
@@ -30,35 +28,6 @@ func (e PasteNotFoundError) StatusCode() int {
 	return http.StatusNotFound
 }
 
-var tmpl func() *template.Template
-
-type RenderInfo struct {
-	Obj     interface{}
-	Request *http.Request
-}
-
-func renderError(e error, statusCode int, w http.ResponseWriter) {
-	w.WriteHeader(statusCode)
-	tmpl().ExecuteTemplate(w, "page_error", &RenderInfo{e, nil})
-}
-
-// renderModelWith takes a template name and
-// returns a function that takes a single model object,
-// which when called will render the given template using that object.
-func renderModelWith(template string) func(Model, http.ResponseWriter, *http.Request) {
-	// We don't defer the error handler here because it happened a step up
-	return func(o Model, w http.ResponseWriter, r *http.Request) {
-		tmpl().ExecuteTemplate(w, "page_"+template, &RenderInfo{o, r})
-	}
-}
-
-func renderTemplate(template string) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer errorRecoveryHandler(w)()
-		tmpl().ExecuteTemplate(w, "page_"+template, nil)
-	})
-}
-
 func errorRecoveryHandler(w http.ResponseWriter) func() {
 	return func() {
 		if err := recover(); err != nil {
@@ -67,7 +36,7 @@ func errorRecoveryHandler(w http.ResponseWriter) func() {
 				status = weberr.StatusCode()
 			}
 
-			renderError(err.(error), status, w)
+			RenderError(err.(error), status, w)
 		}
 	}
 }
@@ -87,7 +56,7 @@ func isEditAllowed(p *Paste, r *http.Request) bool {
 	return false
 }
 
-func requiresEditPermission(fn func(Model, http.ResponseWriter, *http.Request)) func(Model, http.ResponseWriter, *http.Request) {
+func requiresEditPermission(fn ModelRenderFunc) ModelRenderFunc {
 	return func(o Model, w http.ResponseWriter, r *http.Request) {
 		defer errorRecoveryHandler(w)()
 
@@ -98,21 +67,6 @@ func requiresEditPermission(fn func(Model, http.ResponseWriter, *http.Request)) 
 		}
 		fn(p, w, r)
 	}
-}
-
-func requiresModelObject(lookup func(*http.Request) (Model, error), fn func(Model, http.ResponseWriter, *http.Request)) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer errorRecoveryHandler(w)()
-
-		obj, err := lookup(r)
-		if err != nil {
-			renderError(err, http.StatusNotFound, w)
-			return
-		}
-
-		fn(obj, w, r)
-
-	})
 }
 
 func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
@@ -190,64 +144,11 @@ func allPastes(w http.ResponseWriter, r *http.Request) {
 		pasteList[i] = v
 		i++
 	}
-	tmpl().ExecuteTemplate(w, "page_all", &RenderInfo{pasteList, r})
+	ExecuteTemplate(w, "page_all", &RenderContext{pasteList, r})
 }
-
-func initTemplates(rebuild bool) {
-	templateFuncs := template.FuncMap{
-		"langs":       Languages,
-		"langByLexer": LanguageByLexer,
-		"equal":       func(t1, t2 string) bool { return t1 == t2 },
-		"editAllowed": func(ri *RenderInfo) bool { return isEditAllowed(ri.Obj.(*Paste), ri.Request) },
-	}
-
-	tmpl = func() *template.Template {
-		files, err := filepath.Glob("tmpl/*")
-		if err != nil {
-			panic(err)
-		}
-		return template.Must(template.New("base").Funcs(templateFuncs).ParseFiles(files...))
-	}
-	if !rebuild {
-		t := tmpl()
-		tmpl = func() *template.Template {
-			return t
-		}
-	}
-}
-
-type Language struct {
-	Lexer, Title string
-}
-
-var languages []Language = []Language{
-	{"_auto", "Automatically Detect"},
-	{"text", "Plain Text"},
-	{"logos", "Logos + Objective-C"},
-	{"objective-c", "Objective-C"},
-	{"c", "C"},
-	{"irc", "IRC Log"},
-}
-
-func Languages() []Language {
-	return languages
-}
-
-func LanguageByLexer(name string) *Language {
-	v, ok := langMap[name]
-	if !ok {
-		return nil
-	}
-	return v
-}
-
-var langMap map[string]*Language
 
 func init() {
-	langMap = make(map[string]*Language)
-	for i, v := range languages {
-		langMap[v.Lexer] = &languages[i]
-	}
+	RegisterTemplateFunction("editAllowed", func(ri *RenderContext) bool { return isEditAllowed(ri.Obj.(*Paste), ri.Request) })
 }
 
 func main() {
@@ -255,17 +156,17 @@ func main() {
 	rebuild := flag.Bool("rebuild", false, "rebuild all templates for each request")
 	flag.Parse()
 
-	initTemplates(*rebuild)
+	InitTemplates(*rebuild)
 
 	m := pat.New()
 	m.Get("/paste/all", http.HandlerFunc(allPastes))
-	m.Get("/paste/:id", requiresModelObject(lookupPasteWithRequest, renderModelWith("paste_show")))
-	m.Get("/paste/:id/edit", requiresModelObject(lookupPasteWithRequest, requiresEditPermission(renderModelWith("paste_edit"))))
-	m.Post("/paste/:id/edit", requiresModelObject(lookupPasteWithRequest, requiresEditPermission(pasteUpdate)))
-	m.Get("/paste/:id/delete", requiresModelObject(lookupPasteWithRequest, requiresEditPermission(renderModelWith("paste_delete_confirm"))))
-	m.Post("/paste/:id/delete", requiresModelObject(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
+	m.Get("/paste/:id", RequiredModelObjectHandler(lookupPasteWithRequest, RenderTemplateForModel("paste_show")))
+	m.Get("/paste/:id/edit", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_edit"))))
+	m.Post("/paste/:id/edit", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteUpdate)))
+	m.Get("/paste/:id/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_delete_confirm"))))
+	m.Post("/paste/:id/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
 	m.Post("/paste/new", http.HandlerFunc(pasteCreate))
-	m.Get("/", renderTemplate("index"))
+	m.Get("/", RenderTemplateHandler("index"))
 	http.Handle("/", m)
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
 
