@@ -45,3 +45,9 @@ body {
 form {
 	margin-bottom: 0;
 }
+
+@media (max-width: 767px) {
+	.code {
+		font-size: 10pt !important;
+	}
+}
