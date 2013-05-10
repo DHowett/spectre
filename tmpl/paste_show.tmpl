@@ -1,6 +1,6 @@
 {{define "page_paste_show"}}
 {{template "header" .}}
-<h1>Paste {{.Obj.ID}} <small>{{with index langs .Obj.Language}}{{.}}{{else}}({{.Obj.Language}}){{end}}</small></h1>
+<h3>Paste {{.Obj.ID}} <small>{{with index langs .Obj.Language}}{{.}}{{else}}({{.Obj.Language}}){{end}}</small></h3>
 <div class="code input-block-level">{{.Obj.Render}}</div>
 {{if editAllowed .}}<div class="pull-right">
 <a href="{{.Obj.URL}}/edit" class="btn btn-large">Edit</a>

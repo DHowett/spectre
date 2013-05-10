@@ -1,6 +1,6 @@
 {{define "page_paste_edit"}}
 {{template "header" .}}
-<h1>Paste {{.Obj.ID}}</h1>
+<h3>Paste {{.Obj.ID}}</h3>
 <form action="{{.Obj.URL}}/edit" method="post">
 {{template "pastebox" .Obj.Body}}
 {{template "submit" .Obj}}
