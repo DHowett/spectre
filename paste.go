@@ -71,7 +71,7 @@ func (p *Paste) Render() template.HTML {
 	}
 
 	if p.RenderedBody == nil {
-		pygmentized, err := Pygmentize(&p.Body)
+		pygmentized, err := Pygmentize(&p.Body, p.Language)
 		if err != nil {
 			return template.HTML("There was an error rendering this paste.")
 		}
