@@ -20,7 +20,7 @@ type Paste struct {
 	SourceIP     string
 }
 
-func (id PasteID) ToString() string {
+func (id PasteID) String() string {
 	return string(id)
 }
 
@@ -29,7 +29,7 @@ func PasteIDFromString(s string) PasteID {
 }
 
 func filenameForPasteID(id PasteID) string {
-	return "pastes/" + id.ToString()
+	return "pastes/" + id.String()
 }
 
 func (p *Paste) Filename() string {
@@ -37,7 +37,7 @@ func (p *Paste) Filename() string {
 }
 
 func (p *Paste) URL() string {
-	return "/paste/" + p.ID.ToString()
+	return "/paste/" + p.ID.String()
 }
 
 func (p *Paste) MetadataKey() string {
@@ -86,7 +86,7 @@ type PasteNotFoundError struct {
 }
 
 func (e PasteNotFoundError) Error() string {
-	return "Paste " + e.ID.ToString() + " was not found."
+	return "Paste " + e.ID.String() + " was not found."
 }
 
 var pastes map[PasteID]*Paste
@@ -137,7 +137,7 @@ func writePasteToDisk(p *Paste) {
 }
 
 func loadPasteFromDisk(id PasteID) *Paste {
-	filename := "pastes/" + id.ToString()
+	filename := "pastes/" + id.String()
 	file, err := os.Open(filename)
 	if err != nil {
 		panic(PasteNotFoundError{ID: id})

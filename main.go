@@ -17,7 +17,7 @@ type PasteAccessDeniedError struct {
 }
 
 func (e PasteAccessDeniedError) Error() string {
-	return "You're not allowed to " + e.action + " paste " + e.ID.ToString()
+	return "You're not allowed to " + e.action + " paste " + e.ID.String()
 }
 
 func (e PasteAccessDeniedError) StatusCode() int {
@@ -49,7 +49,7 @@ func isEditAllowed(p *Paste, r *http.Request) bool {
 
 	pastes := strings.Split(cookie.Value, "|")
 	for _, v := range pastes {
-		if v == p.ID.ToString() {
+		if v == p.ID.String() {
 			return true
 		}
 	}
@@ -91,12 +91,12 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	if ok != nil {
 		cookie = &http.Cookie{
 			Name:  "gb_pastes",
-			Value: p.ID.ToString(),
+			Value: p.ID.String(),
 			Path:  "/",
 		}
 	} else {
 		pastes := strings.Split(cookie.Value, "|")
-		pastes = append(pastes, p.ID.ToString())
+		pastes = append(pastes, p.ID.String())
 		cookie.Value = strings.Join(pastes, "|")
 	}
 	cookie.Path = "/"
@@ -116,7 +116,7 @@ func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 			presence[v] = true
 		}
 	}
-	delete(presence, oldId.ToString())
+	delete(presence, oldId.String())
 	pastes := make([]string, len(presence))
 	i := 0
 	for k, _ := range presence {
