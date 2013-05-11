@@ -27,5 +27,5 @@ func PygmentsGuessLexer(data *string) (string, error) {
 }
 
 func Pygmentize(data *string, lexer string) (string, error) {
-	return execWithData(data, pygmentizePath, "-f", "html", "-l", lexer, "-O", "nowrap=True")
+	return execWithData(data, pygmentizePath, "-f", "html", "-l", lexer, "-O", "nowrap=True,encoding=utf-8")
 }
