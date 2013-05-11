@@ -8,16 +8,18 @@ import (
 
 const pygmentizePath string = "./pygments/pygmentize"
 
-func execWithData(data *string, cmd string, args ...string) (string, error) {
-	var outbuf bytes.Buffer
+func execWithData(data *string, cmd string, args ...string) (output string, err error) {
+	var outbuf, errbuf bytes.Buffer
 	pygments := exec.Command(cmd, args...)
 	pygments.Stdin = strings.NewReader(*data)
 	pygments.Stdout = &outbuf
-	err := pygments.Run()
-	if err != nil {
-		return "", err
+	pygments.Stderr = &errbuf
+	err = pygments.Run()
+	output = strings.TrimSpace(outbuf.String())
+	if(err != nil) {
+		output = strings.TrimSpace(errbuf.String())
 	}
-	return strings.TrimSpace(outbuf.String()), nil
+	return
 }
 
 func PygmentsGuessLexer(data *string) (string, error) {
