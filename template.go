@@ -3,7 +3,6 @@ package main
 import (
 	"html/template"
 	"io"
-	"path/filepath"
 )
 
 var templateFunctions template.FuncMap = template.FuncMap{}
@@ -17,11 +16,7 @@ func InitTemplates(rebuild bool) {
 	RegisterTemplateFunction("equal", func(t1, t2 string) bool { return t1 == t2 })
 
 	tmpl = func() *template.Template {
-		files, err := filepath.Glob("templates/*")
-		if err != nil {
-			panic(err)
-		}
-		return template.Must(template.New("base").Funcs(templateFunctions).ParseFiles(files...))
+		return template.Must(template.New("base").Funcs(templateFunctions).ParseGlob("templates/*"))
 	}
 	if !rebuild {
 		t := tmpl()
