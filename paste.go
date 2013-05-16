@@ -48,13 +48,14 @@ func (p *Paste) PutMetadata(name, value string) error {
 	return xattr.Setxattr(p.Filename(), p.MetadataKey()+name, []byte(value), 0, 0)
 }
 
-func (p *Paste) GetMetadata(name string) (string, error) {
+func (p *Paste) GetMetadata(name string) (s string, err error) {
 	bytes, err := xattr.Getxattr(p.Filename(), p.MetadataKey()+name, 0, 0)
 	if err != nil {
-		return "", err
+		return
 	}
 
-	return string(bytes), nil
+	s = string(bytes)
+	return
 }
 
 func (p *Paste) GetMetadataWithDefault(name, dflt string) string {
