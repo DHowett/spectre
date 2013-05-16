@@ -82,7 +82,7 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 	p.Save()
 
 	w.Header().Set("Location", p.URL())
-	w.WriteHeader(http.StatusFound)
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func pasteCreate(w http.ResponseWriter, r *http.Request) {
