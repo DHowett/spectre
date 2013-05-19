@@ -8,9 +8,6 @@ import (
 )
 
 type Model interface{}
-type HTTPError interface {
-	StatusCode() int
-}
 type PasteAccessDeniedError struct {
 	action string
 	ID     PasteID
@@ -26,19 +23,6 @@ func (e PasteAccessDeniedError) StatusCode() int {
 
 func (e PasteNotFoundError) StatusCode() int {
 	return http.StatusNotFound
-}
-
-func errorRecoveryHandler(w http.ResponseWriter) func() {
-	return func() {
-		if err := recover(); err != nil {
-			status := http.StatusInternalServerError
-			if weberr, ok := err.(HTTPError); ok {
-				status = weberr.StatusCode()
-			}
-
-			RenderError(err.(error), status, w)
-		}
-	}
 }
 
 func isEditAllowed(p *Paste, r *http.Request) bool {

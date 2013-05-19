@@ -7,12 +7,29 @@ type RenderContext struct {
 	Request *http.Request
 }
 
+type HTTPError interface {
+	StatusCode() int
+}
+
 type ModelRenderFunc func(Model, http.ResponseWriter, *http.Request)
 type ModelLookupFunc func(*http.Request) (Model, error)
 
 func RenderError(e error, statusCode int, w http.ResponseWriter) {
 	w.WriteHeader(statusCode)
 	ExecuteTemplate(w, "page_error", &RenderContext{e, nil})
+}
+
+func errorRecoveryHandler(w http.ResponseWriter) func() {
+	return func() {
+		if err := recover(); err != nil {
+			status := http.StatusInternalServerError
+			if weberr, ok := err.(HTTPError); ok {
+				status = weberr.StatusCode()
+			}
+
+			RenderError(err.(error), status, w)
+		}
+	}
 }
 
 // renderModelWith takes a template name and
@@ -36,13 +53,10 @@ func RequiredModelObjectHandler(lookup ModelLookupFunc, fn ModelRenderFunc) http
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer errorRecoveryHandler(w)()
 
-		obj, err := lookup(r)
-		if err != nil {
-			RenderError(err, http.StatusNotFound, w)
-			return
+		if obj, err := lookup(r); err != nil {
+			panic(err)
+		} else {
+			fn(obj, w, r)
 		}
-
-		fn(obj, w, r)
-
 	})
 }
