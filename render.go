@@ -19,16 +19,14 @@ func RenderError(e error, statusCode int, w http.ResponseWriter) {
 	ExecuteTemplate(w, "page_error", &RenderContext{e, nil})
 }
 
-func errorRecoveryHandler(w http.ResponseWriter) func() {
-	return func() {
-		if err := recover(); err != nil {
-			status := http.StatusInternalServerError
-			if weberr, ok := err.(HTTPError); ok {
-				status = weberr.StatusCode()
-			}
-
-			RenderError(err.(error), status, w)
+func errorRecoveryHandler(w http.ResponseWriter) {
+	if err := recover(); err != nil {
+		status := http.StatusInternalServerError
+		if weberr, ok := err.(HTTPError); ok {
+			status = weberr.StatusCode()
 		}
+
+		RenderError(err.(error), status, w)
 	}
 }
 
@@ -44,14 +42,14 @@ func RenderTemplateForModel(template string) ModelRenderFunc {
 
 func RenderTemplateHandler(template string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer errorRecoveryHandler(w)()
+		defer errorRecoveryHandler(w)
 		ExecuteTemplate(w, "page_"+template, nil)
 	})
 }
 
 func RequiredModelObjectHandler(lookup ModelLookupFunc, fn ModelRenderFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer errorRecoveryHandler(w)()
+		defer errorRecoveryHandler(w)
 
 		if obj, err := lookup(r); err != nil {
 			panic(err)

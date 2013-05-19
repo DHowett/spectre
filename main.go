@@ -42,7 +42,7 @@ func isEditAllowed(p *Paste, r *http.Request) bool {
 
 func requiresEditPermission(fn ModelRenderFunc) ModelRenderFunc {
 	return func(o Model, w http.ResponseWriter, r *http.Request) {
-		defer errorRecoveryHandler(w)()
+		defer errorRecoveryHandler(w)
 
 		p := o.(*Paste)
 		accerr := PasteAccessDeniedError{"modify", p.ID}
