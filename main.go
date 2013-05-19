@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-type Model interface{}
 type PasteAccessDeniedError struct {
 	action string
 	ID     PasteID

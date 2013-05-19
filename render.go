@@ -2,6 +2,7 @@ package main
 
 import "net/http"
 
+type Model interface{}
 type RenderContext struct {
 	Obj     interface{}
 	Request *http.Request
