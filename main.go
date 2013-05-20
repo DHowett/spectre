@@ -31,6 +31,12 @@ func (e PasteNotFoundError) StatusCode() int {
 	return http.StatusNotFound
 }
 
+func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
+	p := o.(*Paste)
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(p.Body))
+}
+
 func isEditAllowed(p *Paste, r *http.Request) bool {
 	session, _ := sessionStore.Get(r, "session")
 	pastes, ok := session.Values["pastes"].([]string)
@@ -221,6 +227,7 @@ func main() {
 
 	if getRouter := router.Methods("GET").Subrouter(); getRouter != nil {
 		getRouter.HandleFunc("/paste/{id}", RequiredModelObjectHandler(lookupPasteWithRequest, RenderTemplateForModel("paste_show"))).Name("paste_show")
+		getRouter.HandleFunc("/paste/{id}/raw", RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteRawHandler))).Name("paste_raw")
 		getRouter.HandleFunc("/paste/{id}/edit", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_edit")))).Name("paste_edit")
 		getRouter.HandleFunc("/paste/{id}/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_delete_confirm")))).Name("paste_delete")
 		getRouter.HandleFunc("/", RenderTemplateHandler("index"))
