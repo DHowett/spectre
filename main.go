@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"flag"
-	"github.com/bmizerany/pat"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"io"
 	"log"
@@ -117,7 +117,7 @@ func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 }
 
 func lookupPasteWithRequest(r *http.Request) (p Model, err error) {
-	id := PasteIDFromString(r.URL.Query().Get(":id"))
+	id := PasteIDFromString(mux.Vars(r)["id"])
 	p = GetPaste(id)
 	return
 }
@@ -174,16 +174,21 @@ func init() {
 func main() {
 	InitTemplates(*arguments.rebuild)
 
-	m := pat.New()
-	m.Get("/paste/all", http.HandlerFunc(allPastes))
-	m.Get("/paste/:id", RequiredModelObjectHandler(lookupPasteWithRequest, RenderTemplateForModel("paste_show")))
-	m.Get("/paste/:id/edit", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_edit"))))
-	m.Post("/paste/:id/edit", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteUpdate)))
-	m.Get("/paste/:id/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_delete_confirm"))))
-	m.Post("/paste/:id/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
-	m.Post("/paste/new", http.HandlerFunc(pasteCreate))
-	m.Get("/", RenderTemplateHandler("index"))
-	http.Handle("/", m)
+	router := mux.NewRouter()
+
+	if getRouter := router.Methods("GET").Subrouter(); getRouter != nil {
+		getRouter.HandleFunc("/paste/all", http.HandlerFunc(allPastes))
+		getRouter.HandleFunc("/paste/{id}", RequiredModelObjectHandler(lookupPasteWithRequest, RenderTemplateForModel("paste_show")))
+		getRouter.HandleFunc("/paste/{id}/edit", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_edit"))))
+		getRouter.HandleFunc("/paste/{id}/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_delete_confirm"))))
+		getRouter.HandleFunc("/", RenderTemplateHandler("index"))
+	}
+	if postRouter := router.Methods("POST").Subrouter(); postRouter != nil {
+		postRouter.HandleFunc("/paste/{id}/edit", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteUpdate)))
+		postRouter.HandleFunc("/paste/{id}/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
+		postRouter.HandleFunc("/paste/new", http.HandlerFunc(pasteCreate))
+	}
+	http.Handle("/", router)
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
 
 	var addr string = *arguments.bind + ":" + *arguments.port
