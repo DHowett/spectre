@@ -130,16 +130,31 @@ func allPastes(w http.ResponseWriter, r *http.Request) {
 	ExecuteTemplate(w, "page_all", &RenderContext{pasteList, r})
 }
 
+type args struct {
+	port, bind *string
+	rebuild    *bool
+}
+
+func (a *args) register() {
+	a.port, a.bind = flag.String("port", "8080", "HTTP port"), flag.String("bind", "0.0.0.0", "bind address")
+	a.rebuild = flag.Bool("rebuild", false, "rebuild all templates for each request")
+}
+
+func (a *args) parse() {
+	flag.Parse()
+}
+
+var arguments = &args{}
+
 func init() {
+	arguments.register()
+	arguments.parse()
+
 	RegisterTemplateFunction("editAllowed", func(ri *RenderContext) bool { return isEditAllowed(ri.Obj.(*Paste), ri.Request) })
 }
 
 func main() {
-	port, bind := flag.String("port", "8080", "HTTP port"), flag.String("bind", "0.0.0.0", "bind address")
-	rebuild := flag.Bool("rebuild", false, "rebuild all templates for each request")
-	flag.Parse()
-
-	InitTemplates(*rebuild)
+	InitTemplates(*arguments.rebuild)
 
 	m := pat.New()
 	m.Get("/paste/all", http.HandlerFunc(allPastes))
@@ -153,7 +168,7 @@ func main() {
 	http.Handle("/", m)
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
 
-	var addr string = *bind + ":" + *port
+	var addr string = *arguments.bind + ":" + *arguments.port
 	server := &http.Server{
 		Addr:    addr,
 		Handler: http.DefaultServeMux,
