@@ -1,1 +1,5 @@
 paste
+session.key
+sessions/session_*
+pastes/*
+*.vim
