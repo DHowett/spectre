@@ -30,7 +30,7 @@ div.code-miniature {
 	color: #ebebeb;
 }
 
-.well {
+.well, .alert-block {
 	margin-top: 1em;
 }
 
