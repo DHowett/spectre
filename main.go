@@ -5,6 +5,7 @@ import (
 	"github.com/bmizerany/pat"
 	"net/http"
 	"strings"
+	"runtime"
 )
 
 type PasteAccessDeniedError struct {
@@ -149,6 +150,8 @@ var arguments = &args{}
 func init() {
 	arguments.register()
 	arguments.parse()
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	RegisterTemplateFunction("editAllowed", func(ri *RenderContext) bool { return isEditAllowed(ri.Obj.(*Paste), ri.Request) })
 }
