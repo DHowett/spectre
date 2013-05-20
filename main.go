@@ -230,13 +230,12 @@ func main() {
 		postRouter.HandleFunc("/paste/{id}/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
 		postRouter.HandleFunc("/paste/new", http.HandlerFunc(pasteCreate))
 	}
-	http.Handle("/", router)
-	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
+	router.PathPrefix("/assets").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
 
 	var addr string = *arguments.bind + ":" + *arguments.port
 	server := &http.Server{
 		Addr:    addr,
-		Handler: http.DefaultServeMux,
+		Handler: router,
 	}
 	server.ListenAndServe()
 }
