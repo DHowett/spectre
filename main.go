@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"github.com/bmizerany/pat"
+	"github.com/gorilla/sessions"
+	"io"
+	"log"
 	"net/http"
-	"strings"
+	"os"
 	"runtime"
 )
 
@@ -26,12 +30,12 @@ func (e PasteNotFoundError) StatusCode() int {
 }
 
 func isEditAllowed(p *Paste, r *http.Request) bool {
-	cookie, err := r.Cookie("gb_pastes")
-	if err != nil {
+	session, _ := sessionStore.Get(r, "session")
+	pastes, ok := session.Values["pastes"].([]string)
+	if !ok {
 		return false
 	}
 
-	pastes := strings.Split(cookie.Value, "|")
 	for _, v := range pastes {
 		if v == p.ID.String() {
 			return true
@@ -71,20 +75,15 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 
 func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	p := NewPaste()
-	cookie, ok := r.Cookie("gb_pastes")
-	if ok != nil {
-		cookie = &http.Cookie{
-			Name:  "gb_pastes",
-			Value: p.ID.String(),
-			Path:  "/",
-		}
-	} else {
-		pastes := strings.Split(cookie.Value, "|")
-		pastes = append(pastes, p.ID.String())
-		cookie.Value = strings.Join(pastes, "|")
+	session, _ := sessionStore.Get(r, "session")
+	pastes, ok := session.Values["pastes"].([]string)
+	if !ok {
+		pastes = []string{}
 	}
-	cookie.Path = "/"
-	http.SetCookie(w, cookie)
+
+	pastes = append(pastes, p.ID.String())
+	session.Values["pastes"] = pastes
+	session.Save(r, w)
 	pasteUpdate(p, w, r)
 }
 
@@ -93,23 +92,25 @@ func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 	oldId := p.ID
 	p.Destroy()
 
-	cookie, ok := r.Cookie("gb_pastes")
+	session, _ := sessionStore.Get(r, "session")
+	pastes, ok := session.Values["pastes"].([]string)
+
 	presence := make(map[string]bool)
-	if ok == nil {
-		for _, v := range strings.Split(cookie.Value, "|") {
+	if ok {
+		for _, v := range pastes {
 			presence[v] = true
 		}
 	}
 	delete(presence, oldId.String())
-	pastes := make([]string, len(presence))
+	pastes = make([]string, len(presence))
 	i := 0
 	for k, _ := range presence {
 		pastes[i] = k
 		i++
 	}
-	cookie.Value = strings.Join(pastes, "|")
-	cookie.Path = "/"
-	http.SetCookie(w, cookie)
+
+	session.Values["pastes"] = pastes
+	session.Save(r, w)
 
 	w.Header().Set("Location", "/")
 	w.WriteHeader(http.StatusFound)
@@ -130,6 +131,8 @@ func allPastes(w http.ResponseWriter, r *http.Request) {
 	}
 	ExecuteTemplate(w, "page_all", &RenderContext{pasteList, r})
 }
+
+var sessionStore *sessions.FilesystemStore
 
 type args struct {
 	port, bind *string
@@ -152,8 +155,20 @@ func init() {
 	arguments.parse()
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
-
 	RegisterTemplateFunction("editAllowed", func(ri *RenderContext) bool { return isEditAllowed(ri.Obj.(*Paste), ri.Request) })
+
+	os.Mkdir("./sessions", 0700)
+	var sessionKey []byte = nil
+	if sessionKeyFile, err := os.Open("session.key"); err == nil {
+		buf := &bytes.Buffer{}
+		io.Copy(buf, sessionKeyFile)
+		sessionKey = buf.Bytes()
+		sessionKeyFile.Close()
+	} else {
+		log.Fatalln("session.key not found. make one with seskey.go?")
+	}
+	sessionStore = sessions.NewFilesystemStore("./sessions", sessionKey)
+	sessionStore.Options.Path = "/"
 }
 
 func main() {
