@@ -1,9 +1,9 @@
 {{define "page_paste_show"}}
 {{template "header" .}}
 <h3>Paste {{.Obj.ID}} <small>{{with langByLexer .Obj.Language}}{{.Title}}{{else}}({{.Obj.Language}}){{end}}</small></h3>
-<div class="code input-block-level">{{.Obj.Render}}</div>
+<div class="code input-block-level">{{render .Obj}}</div>
 {{if editAllowed .}}<div class="pull-right">
-<a href="{{.Obj.URL}}/edit" class="btn btn-large">Edit</a>
+<a href="{{pasteURL "edit" .Obj}}" class="btn btn-large">Edit</a>
 </div>{{end}}
 {{template "footer" .}}
 {{end}}

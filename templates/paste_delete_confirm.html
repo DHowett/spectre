@@ -1,12 +1,12 @@
 {{define "page_paste_delete_confirm"}}
 {{template "header" .}}
 <div class="well">
-<form action="{{.Obj.URL}}/delete" method="post">
+<form action="{{pasteURL "delete" .Obj}}" method="post">
 <strong>Confirm</strong><br>
 <p>Are you sure you want to delete paste {{.Obj.ID}}?</p>
-<div class="code-miniature">{{.Obj.Render}}</div>
+<div class="code-miniature">{{render .Obj}}</div>
 <input type="submit" class="btn btn-danger" value="Destroy! Annihilate!">
-<a href="{{.Obj.URL}}" class="btn">Nevermind</a>
+<a href="{{pasteURL "show" .Obj}}" class="btn">Nevermind</a>
 </form>
 </div>
 {{template "footer" .}}

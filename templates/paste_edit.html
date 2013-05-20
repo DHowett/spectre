@@ -1,10 +1,10 @@
 {{define "page_paste_edit"}}
 {{template "header" .}}
 <h3>Paste {{.Obj.ID}}</h3>
-<form action="{{.Obj.URL}}/edit" method="post">
+<form action="{{pasteURL "edit" .Obj}}" method="post">
 {{template "pastebox" .Obj.Body}}
 {{template "submit" .Obj}}
-<a href="{{.Obj.URL}}/delete" class="btn btn-danger btn-large">Delete</a>
+<a href="{{pasteURL "delete" .Obj}}" class="btn btn-danger btn-large">Delete</a>
 </form>
 {{template "footer" .}}
 {{end}}
