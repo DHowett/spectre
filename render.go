@@ -44,7 +44,7 @@ func RenderTemplateForModel(template string) ModelRenderFunc {
 func RenderTemplateHandler(template string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer errorRecoveryHandler(w)
-		ExecuteTemplate(w, "page_"+template, nil)
+		ExecuteTemplate(w, "page_"+template, &RenderContext{nil, r})
 	})
 }
 
