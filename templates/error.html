@@ -6,3 +6,13 @@
 </div>
 {{template "footer" .}}
 {{end}}
+
+{{define "page_404"}}
+{{template "header" .}}
+<div class="alert alert-error alert-block">
+	<strong>404 - File Not Found :(</strong><br>
+	The file you were looking for, "{{.Request.URL.Path}}", could not be found.<br>
+<a href="/">Go to the homepage and try again.</a>
+</div>
+{{template "footer" .}}
+{{end}}

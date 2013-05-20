@@ -175,6 +175,7 @@ func main() {
 	InitTemplates(*arguments.rebuild)
 
 	router := mux.NewRouter()
+	router.NotFoundHandler = RenderTemplateHandler("404")
 
 	if getRouter := router.Methods("GET").Subrouter(); getRouter != nil {
 		getRouter.HandleFunc("/paste/all", http.HandlerFunc(allPastes))
