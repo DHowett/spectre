@@ -133,7 +133,7 @@ func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 			pastes[n] = v
 			n++
 		}
-		session.Values["pastes"] = pastes
+		session.Values["pastes"] = pastes[:n]
 		session.Save(r, w)
 	}
 
