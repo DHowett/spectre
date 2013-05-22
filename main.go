@@ -202,36 +202,6 @@ func (a *args) parse() {
 
 var arguments = &args{}
 
-type fourOhFourConsumerWriter struct {
-	http.ResponseWriter
-}
-
-func (w *fourOhFourConsumerWriter) WriteHeader(status int) {
-	if status == http.StatusNotFound {
-		w.ResponseWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
-	}
-	w.ResponseWriter.WriteHeader(status)
-	if status == http.StatusNotFound {
-		ExecuteTemplate(w.ResponseWriter, "page_404", nil)
-	}
-}
-
-func (w *fourOhFourConsumerWriter) Write(p []byte) (int, error) {
-	if bytes.Equal(p, []byte("404 page not found\n")) {
-		return len(p), nil
-	} else {
-		return w.ResponseWriter.Write(p)
-	}
-}
-
-type fourOhFourConsumerHandler struct {
-	http.Handler
-}
-
-func (h *fourOhFourConsumerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.Handler.ServeHTTP(&fourOhFourConsumerWriter{ResponseWriter: w}, r)
-}
-
 func init() {
 	arguments.register()
 	arguments.parse()
@@ -264,10 +234,6 @@ func main() {
 	InitTemplates(*arguments.rebuild)
 
 	router = mux.NewRouter()
-	router.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-		ExecuteTemplate(w, "page_404", &RenderContext{nil, r})
-	})
 
 	if getRouter := router.Methods("GET").Subrouter(); getRouter != nil {
 		getRouter.HandleFunc("/paste/{id}", RequiredModelObjectHandler(lookupPasteWithRequest, RenderTemplateForModel("paste_show"))).Name("paste_show")
@@ -281,12 +247,12 @@ func main() {
 		postRouter.HandleFunc("/paste/{id}/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
 		postRouter.HandleFunc("/paste/new", http.HandlerFunc(pasteCreate))
 	}
-	router.PathPrefix("/").Handler(&fourOhFourConsumerHandler{Handler: http.FileServer(http.Dir("./public"))})
+	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./public")))
 
 	var addr string = *arguments.bind + ":" + *arguments.port
 	server := &http.Server{
 		Addr:    addr,
-		Handler: router,
+		Handler: &fourOhFourConsumerHandler{router},
 	}
 	server.ListenAndServe()
 }
