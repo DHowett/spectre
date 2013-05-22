@@ -118,28 +118,24 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 
 func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
-	oldId := p.ID
+	oldId := p.ID.String()
 	p.Destroy()
 
 	session, _ := sessionStore.Get(r, "session")
-	pastes, ok := session.Values["pastes"].([]string)
 
-	presence := make(map[string]bool)
-	if ok {
-		for _, v := range pastes {
-			presence[v] = true
+	if session_pastes, ok := session.Values["pastes"].([]string); ok {
+		pastes := make([]string, len(session_pastes)-1)
+		n := 0
+		for _, v := range session_pastes {
+			if v == oldId {
+				continue
+			}
+			pastes[n] = v
+			n++
 		}
+		session.Values["pastes"] = pastes
+		session.Save(r, w)
 	}
-	delete(presence, oldId.String())
-	pastes = make([]string, len(presence))
-	i := 0
-	for k, _ := range presence {
-		pastes[i] = k
-		i++
-	}
-
-	session.Values["pastes"] = pastes
-	session.Save(r, w)
 
 	w.Header().Set("Location", "/")
 	w.WriteHeader(http.StatusFound)
