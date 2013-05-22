@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 )
 
 type PasteAccessDeniedError struct {
@@ -29,6 +30,12 @@ func (e PasteAccessDeniedError) StatusCode() int {
 
 func (e PasteNotFoundError) StatusCode() int {
 	return http.StatusNotFound
+}
+
+type GenericStringError string
+
+func (e GenericStringError) Error() string {
+	return string(e)
 }
 
 func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
@@ -68,6 +75,10 @@ func requiresEditPermission(fn ModelRenderFunc) ModelRenderFunc {
 func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 	body := r.FormValue("text")
+	if len(strings.TrimSpace(body)) == 0 {
+		panic(GenericStringError("Hey, put some text in that paste."))
+	}
+
 	p.Body = body
 	p.Language = r.FormValue("lang")
 	if p.Language == "_auto" {
@@ -80,6 +91,12 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 }
 
 func pasteCreate(w http.ResponseWriter, r *http.Request) {
+	body := r.FormValue("text")
+	if len(strings.TrimSpace(body)) == 0 {
+		RenderError(GenericStringError("Hey, put some text in that paste."), 200, w)
+		return
+	}
+
 	p, err := pasteStore.New()
 	if err != nil {
 		panic(err)
