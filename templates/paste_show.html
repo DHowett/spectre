@@ -3,7 +3,7 @@
 <h3>Paste {{.Obj.ID}} <small>{{with langByLexer .Obj.Language}}{{.Title}}{{else}}({{.Obj.Language}}){{end}}</small> <small><a href="{{pasteURL "raw" .Obj}}">(view raw)</a></small></h3>
 <div class="code input-block-level">{{render .Obj}}</div>
 {{if editAllowed .}}<div class="pull-right">
-<a href="{{pasteURL "edit" .Obj}}" class="btn btn-large">Edit</a>
+<a href="{{pasteURL "edit" .Obj}}" class="btn">Edit</a>
 </div>{{end}}
 {{template "footer" .}}
 {{end}}
