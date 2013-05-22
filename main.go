@@ -284,7 +284,7 @@ func main() {
 		postRouter.HandleFunc("/paste/{id}/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
 		postRouter.HandleFunc("/paste/new", http.HandlerFunc(pasteCreate))
 	}
-	router.PathPrefix("/assets").Handler(http.StripPrefix("/assets/", &fourOhFourConsumerHandler{Handler: http.FileServer(http.Dir("./assets"))}))
+	router.PathPrefix("/").Handler(&fourOhFourConsumerHandler{Handler: http.FileServer(http.Dir("./public"))})
 
 	var addr string = *arguments.bind + ":" + *arguments.port
 	server := &http.Server{
