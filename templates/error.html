@@ -1,8 +1,9 @@
 {{define "page_error"}}
 {{template "header" .}}
 <div class="alert alert-error alert-block">
-{{.Obj.Error}}<br><br>
-<a href="/">Go to the homepage and try again.</a>
+	<strong>Something's Not Quite Right :(</strong><br>
+	{{.Obj.Error}}<br>
+	<a href="/">Go to the homepage and try again.</a>
 </div>
 {{template "footer" .}}
 {{end}}
@@ -12,7 +13,7 @@
 <div class="alert alert-error alert-block">
 	<strong>404 - File Not Found :(</strong><br>
 	The file you were looking for{{if .Request}}, "{{.Request.URL.Path}}",{{end}} could not be found.<br>
-<a href="/">Go to the homepage and try again.</a>
+	<a href="/">Go to the homepage and try again.</a>
 </div>
 {{template "footer" .}}
 {{end}}
