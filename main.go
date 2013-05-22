@@ -188,6 +188,36 @@ func (a *args) parse() {
 
 var arguments = &args{}
 
+type fourOhFourConsumerWriter struct {
+	http.ResponseWriter
+}
+
+func (w *fourOhFourConsumerWriter) WriteHeader(status int) {
+	if status == http.StatusNotFound {
+		w.ResponseWriter.Header().Set("Content-Type", "text/html; charset=utf-8")
+	}
+	w.ResponseWriter.WriteHeader(status)
+	if status == http.StatusNotFound {
+		ExecuteTemplate(w.ResponseWriter, "page_404", nil)
+	}
+}
+
+func (w *fourOhFourConsumerWriter) Write(p []byte) (int, error) {
+	if bytes.Equal(p, []byte("404 page not found\n")) {
+		return len(p), nil
+	} else {
+		return w.ResponseWriter.Write(p)
+	}
+}
+
+type fourOhFourConsumerHandler struct {
+	http.Handler
+}
+
+func (h *fourOhFourConsumerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.Handler.ServeHTTP(&fourOhFourConsumerWriter{ResponseWriter: w}, r)
+}
+
 func init() {
 	arguments.register()
 	arguments.parse()
@@ -237,7 +267,7 @@ func main() {
 		postRouter.HandleFunc("/paste/{id}/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
 		postRouter.HandleFunc("/paste/new", http.HandlerFunc(pasteCreate))
 	}
-	router.PathPrefix("/assets").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("./assets"))))
+	router.PathPrefix("/assets").Handler(http.StripPrefix("/assets/", &fourOhFourConsumerHandler{Handler: http.FileServer(http.Dir("./assets"))}))
 
 	var addr string = *arguments.bind + ":" + *arguments.port
 	server := &http.Server{
