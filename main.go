@@ -93,7 +93,8 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	body := r.FormValue("text")
 	if len(strings.TrimSpace(body)) == 0 {
-		RenderError(GenericStringError("Hey, put some text in that paste."), 200, w)
+		// 400 here, 200 above (one is displayed to the user, one could be an API response.)
+		RenderError(GenericStringError("Hey, put some text in that paste."), 400, w)
 		return
 	}
 
