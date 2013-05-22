@@ -1,3 +1,7 @@
+body {
+	margin-bottom: 1em;
+}
+
 .code {
 	font-family: 'Envy Code R', 'monospace';
 	font-size: 12pt;
@@ -42,12 +46,29 @@ form {
 	margin-bottom: 0;
 }
 
-select#langbox {
+.dropdown {
 	width: 250px;
 }
 
 @media (max-width: 767px) {
 	.code {
 		font-size: 10pt !important;
+	}
+	.pull-right {
+		display: block;
+		float: none;
+	}
+	.dropdown, .btn {
+		display: block;
+		float: none;
+		width: 100% !important;
+		margin-left: 0;
+		margin-top: .5em;
+		-webkit-box-sizing: border-box;
+		-moz-box-sizing: border-box;
+		box-sizing: border-box;
+	}
+	.dropdown.select2-offscreen {
+		width: 1px !important;
 	}
 }
