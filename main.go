@@ -223,7 +223,7 @@ func init() {
 	}
 	sessionStore = sessions.NewFilesystemStore("./sessions", sessionKey)
 	sessionStore.Options.Path = "/"
-	sessionStore.Options.MaxAge = 0
+	sessionStore.Options.MaxAge = 86400 * 365
 
 	os.Mkdir("./pastes", 0700)
 	pasteStore = NewFilesystemPasteStore("./pastes")
