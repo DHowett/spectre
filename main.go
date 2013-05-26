@@ -182,6 +182,11 @@ func renderPaste(p *Paste) template.HTML {
 	}
 }
 
+func pasteDestroyCallback(p *Paste) {
+	// Clear the cached render when a paste is destroyed
+	delete(renderedPastes, p.ID)
+}
+
 var pasteStore *FilesystemPasteStore
 var sessionStore *sessions.FilesystemStore
 var router *mux.Router
@@ -233,6 +238,7 @@ func init() {
 
 	os.Mkdir("./pastes", 0700)
 	pasteStore = NewFilesystemPasteStore("./pastes")
+	pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 }
 
 func main() {
