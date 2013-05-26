@@ -32,6 +32,7 @@ var languages []Language = []Language{
 	{"perl", "Perl"},
 	{"go", "Go"},
 	{"html", "HTML"},
+	{"ansi", "ANSI"},
 }
 
 func Languages() []Language {
@@ -68,6 +69,10 @@ func init() {
 	langRenderers = make(map[string]LanguageRenderer)
 	langRenderers["text"] = LanguageRenderFunc(func(text *string, language string) (string, error) {
 		return template.HTMLEscapeString(*text), nil
+	})
+
+	langRenderers["ansi"] = LanguageRenderFunc(func(text *string, language string) (string, error) {
+		return ANSI(text)
 	})
 
 	langRenderers["_default"] = LanguageRenderFunc(Pygmentize)
