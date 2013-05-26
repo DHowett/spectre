@@ -27,7 +27,11 @@ var languages []Language = []Language{
 	{"logos", "Logos + Objective-C"},
 	{"objective-c", "Objective-C"},
 	{"c", "C"},
+	{"c++", "C++"},
 	{"irc", "IRC Log"},
+	{"perl", "Perl"},
+	{"go", "Go"},
+	{"html", "HTML"},
 }
 
 func Languages() []Language {
