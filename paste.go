@@ -108,7 +108,7 @@ func generatePasteID() (PasteID, error) {
 		return "", err
 	}
 
-	return PasteIDFromString(base32.NewEncoding("abcdefghijklmnopqrstuvwxyz1234567").EncodeToString(uuid)[0:5]), nil
+	return PasteIDFromString(base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789").EncodeToString(uuid)[0:5]), nil
 }
 
 func (store *FilesystemPasteStore) filenameForID(id PasteID) string {
