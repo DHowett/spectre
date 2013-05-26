@@ -218,8 +218,9 @@ func init() {
 	RegisterTemplateFunction("pasteBody", func(p *Paste) string {
 		reader, _ := p.Reader()
 		defer reader.Close()
-		s, _ := RenderForLanguage(reader, "text")
-		return s
+		b := &bytes.Buffer{}
+		io.Copy(b, reader)
+		return b.String()
 	})
 
 	os.Mkdir("./sessions", 0700)
