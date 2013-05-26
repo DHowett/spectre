@@ -159,17 +159,14 @@ type RenderedPaste struct {
 var renderedPastes = make(map[PasteID]*RenderedPaste)
 
 func renderPaste(p *Paste) template.HTML {
-	if p.Language == "text" {
-		return template.HTML(template.HTMLEscapeString(p.Body))
-	}
-
 	if cached, ok := renderedPastes[p.ID]; !ok {
-		pygmentized, err := Pygmentize(&p.Body, p.Language)
+		out, err := RenderForLanguage(&p.Body, p.Language)
+
 		if err != nil {
-			return template.HTML("There was an error rendering this paste.<br />" + template.HTMLEscapeString(pygmentized))
+			return template.HTML("There was an error rendering this paste.<br />" + template.HTMLEscapeString(out))
 		}
 
-		rendered := template.HTML(pygmentized)
+		rendered := template.HTML(out)
 		renderedPastes[p.ID] = &RenderedPaste{body: rendered}
 		return rendered
 	} else {

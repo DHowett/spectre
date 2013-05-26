@@ -1,6 +1,21 @@
 package main
 
+import (
+	"html/template"
+)
+
 var langMap map[string]*Language
+var langRenderers map[string]LanguageRenderer
+
+type LanguageRenderer interface {
+	Render(*string, string) (string, error)
+}
+
+type LanguageRenderFunc func(*string, string) (string, error)
+
+func (fn LanguageRenderFunc) Render(text *string, language string) (string, error) {
+	return fn(text, language)
+}
 
 type Language struct {
 	Lexer, Title string
@@ -27,6 +42,16 @@ func LanguageByLexer(name string) *Language {
 	return v
 }
 
+func RenderForLanguage(text *string, language string) (string, error) {
+	var renderer LanguageRenderer
+	var ok bool
+	if renderer, ok = langRenderers[language]; !ok {
+		renderer = langRenderers["_default"]
+	}
+
+	return renderer.Render(text, language)
+}
+
 func init() {
 	langMap = make(map[string]*Language)
 	for i, v := range languages {
@@ -35,4 +60,11 @@ func init() {
 
 	RegisterTemplateFunction("langs", Languages)
 	RegisterTemplateFunction("langByLexer", LanguageByLexer)
+
+	langRenderers = make(map[string]LanguageRenderer)
+	langRenderers["text"] = LanguageRenderFunc(func(text *string, language string) (string, error) {
+		return template.HTMLEscapeString(*text), nil
+	})
+
+	langRenderers["_default"] = LanguageRenderFunc(Pygmentize)
 }
