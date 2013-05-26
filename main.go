@@ -12,6 +12,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 )
 
 type PasteAccessDeniedError struct {
@@ -156,13 +157,15 @@ func pasteURL(routeType string, p *Paste) string {
 }
 
 type RenderedPaste struct {
-	body template.HTML
+	body       template.HTML
+	renderTime time.Time
 }
 
 var renderedPastes = make(map[PasteID]*RenderedPaste)
 
 func renderPaste(p *Paste) template.HTML {
-	if cached, ok := renderedPastes[p.ID]; !ok {
+	cached, ok := renderedPastes[p.ID]
+	if !ok || cached.renderTime.Before(p.LastModified()) {
 		reader, err := p.Reader()
 		defer reader.Close()
 		out, err := RenderForLanguage(reader, p.Language)
@@ -172,16 +175,11 @@ func renderPaste(p *Paste) template.HTML {
 		}
 
 		rendered := template.HTML(out)
-		renderedPastes[p.ID] = &RenderedPaste{body: rendered}
+		renderedPastes[p.ID] = &RenderedPaste{body: rendered, renderTime: time.Now()}
 		return rendered
 	} else {
 		return cached.body
 	}
-}
-
-func pasteMutationCallback(p *Paste) {
-	// Clear the cached render when a  paste changes
-	delete(renderedPastes, p.ID)
 }
 
 var pasteStore *FilesystemPasteStore
@@ -235,8 +233,6 @@ func init() {
 
 	os.Mkdir("./pastes", 0700)
 	pasteStore = NewFilesystemPasteStore("./pastes")
-	pasteStore.PasteUpdateCallback = PasteCallback(pasteMutationCallback)
-	pasteStore.PasteUpdateCallback = PasteCallback(pasteMutationCallback)
 }
 
 func main() {

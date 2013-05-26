@@ -61,7 +61,7 @@ type Paste struct {
 	ID       PasteID
 	Language string
 	store    PasteStore
-	mtime    *time.Time
+	mtime    time.Time
 }
 
 func (p *Paste) Save() error {
@@ -78,6 +78,10 @@ func (p *Paste) Reader() (*PasteReader, error) {
 
 func (p *Paste) Writer() (*PasteWriter, error) {
 	return p.store.writeStream(p)
+}
+
+func (p *Paste) LastModified() time.Time {
+	return p.mtime
 }
 
 type PasteCallback func(*Paste)
@@ -136,13 +140,13 @@ func getMetadata(fn string, name string, dflt string) string {
 
 func (store *FilesystemPasteStore) Get(id PasteID) (p *Paste, err error) {
 	filename := store.filenameForID(id)
-	_, err = os.Stat(filename)
+	stat, err := os.Stat(filename)
 	if err != nil {
 		err = PasteNotFoundError{ID: id}
 		return
 	}
 
-	p = &Paste{ID: id, store: store}
+	p = &Paste{ID: id, store: store, mtime: stat.ModTime()}
 	p.Language = getMetadata(filename, "language", "text")
 
 	store.PasteUpdateCallback(p)
