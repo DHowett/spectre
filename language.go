@@ -1,20 +1,21 @@
 package main
 
 import (
-	"html/template"
+	"io"
+	"bytes"
 )
 
 var langMap map[string]*Language
 var langRenderers map[string]LanguageRenderer
 
 type LanguageRenderer interface {
-	Render(*string, string) (string, error)
+	Render(io.Reader, string) (string, error)
 }
 
-type LanguageRenderFunc func(*string, string) (string, error)
+type LanguageRenderFunc func(io.Reader, string) (string, error)
 
-func (fn LanguageRenderFunc) Render(text *string, language string) (string, error) {
-	return fn(text, language)
+func (fn LanguageRenderFunc) Render(stream io.Reader, language string) (string, error) {
+	return fn(stream, language)
 }
 
 type Language struct {
@@ -47,14 +48,14 @@ func LanguageByLexer(name string) *Language {
 	return v
 }
 
-func RenderForLanguage(text *string, language string) (string, error) {
+func RenderForLanguage(stream io.Reader, language string) (string, error) {
 	var renderer LanguageRenderer
 	var ok bool
 	if renderer, ok = langRenderers[language]; !ok {
 		renderer = langRenderers["_default"]
 	}
 
-	return renderer.Render(text, language)
+	return renderer.Render(stream, language)
 }
 
 func init() {
@@ -67,12 +68,14 @@ func init() {
 	RegisterTemplateFunction("langByLexer", LanguageByLexer)
 
 	langRenderers = make(map[string]LanguageRenderer)
-	langRenderers["text"] = LanguageRenderFunc(func(text *string, language string) (string, error) {
-		return template.HTMLEscapeString(*text), nil
+	langRenderers["text"] = LanguageRenderFunc(func(stream io.Reader, language string) (string, error) {
+		buf := &bytes.Buffer{}
+		io.Copy(buf, stream)
+		return template.HTMLEscapeString(buf.String()), nil
 	})
 
-	langRenderers["ansi"] = LanguageRenderFunc(func(text *string, language string) (string, error) {
-		return ANSI(text)
+	langRenderers["ansi"] = LanguageRenderFunc(func(stream io.Reader, language string) (string, error) {
+		return ANSI(stream)
 	})
 
 	langRenderers["_default"] = LanguageRenderFunc(Pygmentize)

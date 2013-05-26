@@ -2,7 +2,7 @@
 {{template "header" .}}
 <h3>Paste {{.Obj.ID}}</h3>
 <form action="{{pasteURL "edit" .Obj}}" method="post">
-{{template "pastebox" .Obj.Body}}
+{{template "pastebox" (pasteBody .Obj)}}
 {{template "submit" .Obj}}
 <a href="{{pasteURL "delete" .Obj}}" class="btn btn-danger">Delete</a>
 </form>

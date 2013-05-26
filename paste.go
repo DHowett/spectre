@@ -1,14 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/base32"
 	"github.com/DHowett/go-xattr"
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -17,6 +15,9 @@ type PasteStore interface {
 	Get(PasteID) (*Paste, error)
 	Save(*Paste) error
 	Destroy(*Paste) error
+
+	readStream(*Paste) (*PasteReader, error)
+	writeStream(*Paste) (*PasteWriter, error)
 }
 
 type PasteID string
@@ -37,9 +38,28 @@ func (e PasteNotFoundError) Error() string {
 	return "Paste " + e.ID.String() + " was not found."
 }
 
+type PasteReader struct {
+	io.ReadCloser
+	paste *Paste
+}
+
+func (pr *PasteReader) Close() error {
+	pr.paste.Save()
+	return pr.ReadCloser.Close()
+}
+
+type PasteWriter struct {
+	io.WriteCloser
+	paste *Paste
+}
+
+func (pr *PasteWriter) Close() error {
+	pr.paste.Save()
+	return pr.WriteCloser.Close()
+}
+
 type Paste struct {
 	ID       PasteID
-	Body     string
 	Language string
 	store    PasteStore
 	mtime    *time.Time
@@ -51,6 +71,14 @@ func (p *Paste) Save() error {
 
 func (p *Paste) Destroy() error {
 	return p.store.Destroy(p)
+}
+
+func (p *Paste) Reader() (*PasteReader, error) {
+	return p.store.readStream(p)
+}
+
+func (p *Paste) Writer() (*PasteWriter, error) {
+	return p.store.writeStream(p)
 }
 
 type PasteCallback func(*Paste)
@@ -94,12 +122,12 @@ func (store *FilesystemPasteStore) New() (p *Paste, err error) {
 	return
 }
 
-func putMetadata(f *os.File, name string, value string) error {
-	return xattr.Setxattr(f.Name(), "user.paste."+name, []byte(value), 0, 0)
+func putMetadata(fn string, name string, value string) error {
+	return xattr.Setxattr(fn, "user.paste."+name, []byte(value), 0, 0)
 }
 
-func getMetadata(f *os.File, name string, dflt string) string {
-	bytes, err := xattr.Getxattr(f.Name(), "user.paste."+name, 0, 0)
+func getMetadata(fn string, name string, dflt string) string {
+	bytes, err := xattr.Getxattr(fn, "user.paste."+name, 0, 0)
 	if err != nil {
 		return dflt
 	}
@@ -108,34 +136,23 @@ func getMetadata(f *os.File, name string, dflt string) string {
 }
 
 func (store *FilesystemPasteStore) Get(id PasteID) (p *Paste, err error) {
-	file, err := os.Open(store.filenameForID(id))
+	filename := store.filenameForID(id)
+	_, err = os.Stat(filename)
 	if err != nil {
 		err = PasteNotFoundError{ID: id}
 		return
 	}
-	buf := bytes.Buffer{}
-	io.Copy(&buf, file)
 
 	p = &Paste{ID: id, store: store}
-	p.Body = buf.String()
-	p.Language = getMetadata(file, "language", "text")
-
-	file.Close()
+	p.Language = getMetadata(filename, "language", "text")
 
 	store.PasteUpdateCallback(p)
 	return
 }
 
 func (store *FilesystemPasteStore) Save(p *Paste) error {
-	file, err := os.Create(store.filenameForID(p.ID))
-	if err != nil {
-		return err
-	}
-	sreader := strings.NewReader(p.Body)
-	io.Copy(file, sreader)
-	file.Close()
-
-	if err := putMetadata(file, "language", p.Language); err != nil {
+	filename := store.filenameForID(p.ID)
+	if err := putMetadata(filename, "language", p.Language); err != nil {
 		return err
 	}
 
@@ -151,4 +168,26 @@ func (store *FilesystemPasteStore) Destroy(p *Paste) error {
 
 	store.PasteDestroyCallback(p)
 	return nil
+}
+
+func (store *FilesystemPasteStore) readStream(p *Paste) (*PasteReader, error) {
+	filename := store.filenameForID(p.ID)
+	var r io.ReadCloser
+	var err error
+	if r, err = os.Open(filename); err != nil {
+		return nil, err
+	}
+
+	return &PasteReader{ReadCloser: r, paste: p}, nil
+}
+
+func (store *FilesystemPasteStore) writeStream(p *Paste) (*PasteWriter, error) {
+	filename := store.filenameForID(p.ID)
+	var w io.WriteCloser
+	var err error
+	if w, err = os.Create(filename); err != nil {
+		return nil, err
+	}
+
+	return &PasteWriter{WriteCloser: w, paste: p}, nil
 }

@@ -41,7 +41,9 @@ func (e GenericStringError) Error() string {
 func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(p.Body))
+	reader, _ := p.Reader()
+	defer reader.Close()
+	io.Copy(w, reader)
 }
 
 func isEditAllowed(p *Paste, r *http.Request) bool {
@@ -79,12 +81,13 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 		panic(GenericStringError("Hey, put some text in that paste."))
 	}
 
-	p.Body = body
+	pw, _ := p.Writer()
+	pw.Write([]byte(body))
 	p.Language = r.FormValue("lang")
 	if p.Language == "_auto" {
 		p.Language, _ = PygmentsGuessLexer(&body)
 	}
-	p.Save()
+	pw.Close() // Saves p
 
 	w.Header().Set("Location", pasteURL("show", p))
 	w.WriteHeader(http.StatusSeeOther)
@@ -160,7 +163,9 @@ var renderedPastes = make(map[PasteID]*RenderedPaste)
 
 func renderPaste(p *Paste) template.HTML {
 	if cached, ok := renderedPastes[p.ID]; !ok {
-		out, err := RenderForLanguage(&p.Body, p.Language)
+		reader, err := p.Reader()
+		defer reader.Close()
+		out, err := RenderForLanguage(reader, p.Language)
 
 		if err != nil {
 			return template.HTML("There was an error rendering this paste.<br />" + template.HTMLEscapeString(out))
@@ -207,6 +212,12 @@ func init() {
 	RegisterTemplateFunction("editAllowed", func(ri *RenderContext) bool { return isEditAllowed(ri.Obj.(*Paste), ri.Request) })
 	RegisterTemplateFunction("render", renderPaste)
 	RegisterTemplateFunction("pasteURL", pasteURL)
+	RegisterTemplateFunction("pasteBody", func(p *Paste) string {
+		reader, _ := p.Reader()
+		defer reader.Close()
+		s, _ := RenderForLanguage(reader, "text")
+		return s
+	})
 
 	os.Mkdir("./sessions", 0700)
 	var sessionKey []byte = nil

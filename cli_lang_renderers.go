@@ -2,34 +2,35 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"os/exec"
 	"strings"
 )
 
 const pygmentizePath string = "./pygments/pygmentize"
 
-func execWithData(data *string, cmd string, args ...string) (output string, err error) {
+func execWithStream(stream io.Reader, cmd string, args ...string) (output string, err error) {
 	var outbuf, errbuf bytes.Buffer
 	pygments := exec.Command(cmd, args...)
-	pygments.Stdin = strings.NewReader(*data)
+	pygments.Stdin = stream
 	pygments.Stdout = &outbuf
 	pygments.Stderr = &errbuf
 	err = pygments.Run()
 	output = strings.TrimSpace(outbuf.String())
-	if(err != nil) {
+	if err != nil {
 		output = strings.TrimSpace(errbuf.String())
 	}
 	return
 }
 
 func PygmentsGuessLexer(data *string) (string, error) {
-	return execWithData(data, pygmentizePath, "-G")
+	return execWithStream(strings.NewReader(*data), pygmentizePath, "-G")
 }
 
-func Pygmentize(data *string, lexer string) (string, error) {
-	return execWithData(data, pygmentizePath, "-f", "html", "-l", lexer, "-O", "nowrap=True,encoding=utf-8")
+func Pygmentize(stream io.Reader, lexer string) (string, error) {
+	return execWithStream(stream, pygmentizePath, "-f", "html", "-l", lexer, "-O", "nowrap=True,encoding=utf-8")
 }
 
-func ANSI(data *string) (string, error) {
-	return execWithData(data, "./ansi2html", "--naked")
+func ANSI(stream io.Reader) (string, error) {
+	return execWithStream(stream, "./ansi2html", "--naked")
 }
