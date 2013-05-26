@@ -44,7 +44,6 @@ type PasteReader struct {
 }
 
 func (pr *PasteReader) Close() error {
-	pr.paste.Save()
 	return pr.ReadCloser.Close()
 }
 
