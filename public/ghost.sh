@@ -3,7 +3,7 @@ if [[ -z $1 ]]; then
 	echo "Syntax: $0 <filename> [lang]" >&2
 	exit 1
 fi
-lang=_auto
+lang=text
 if [[ ! -z $2 ]]; then
 	lang=$2
 fi
