@@ -41,7 +41,7 @@ func (e GenericStringError) Error() string {
 
 func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
-	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	reader, _ := p.Reader()
 	defer reader.Close()
 	io.Copy(w, reader)
