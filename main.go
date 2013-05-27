@@ -85,9 +85,6 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 	pw, _ := p.Writer()
 	pw.Write([]byte(body))
 	p.Language = r.FormValue("lang")
-	if p.Language == "_auto" {
-		p.Language, _ = PygmentsGuessLexer(&body)
-	}
 	pw.Close() // Saves p
 
 	w.Header().Set("Location", pasteURL("show", p))

@@ -24,7 +24,6 @@ type Language struct {
 }
 
 var languages []Language = []Language{
-	{"_auto", "Automatically Detect"},
 	{"text", "Plain Text"},
 	{"logos", "Logos + Objective-C"},
 	{"objective-c", "Objective-C"},

@@ -23,10 +23,6 @@ func execWithStream(stream io.Reader, cmd string, args ...string) (output string
 	return
 }
 
-func PygmentsGuessLexer(data *string) (string, error) {
-	return execWithStream(strings.NewReader(*data), pygmentizePath, "-G")
-}
-
 func Pygmentize(stream io.Reader, lexer string) (string, error) {
 	return execWithStream(stream, pygmentizePath, "-f", "html", "-l", lexer, "-O", "nowrap=True,encoding=utf-8")
 }

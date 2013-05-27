@@ -34,7 +34,7 @@
 
 {{define "pastebox"}}<textarea name="text" class="input-block-level code" rows="20">{{if .}}{{.}}{{end}}</textarea>{{end}}
 
-{{define "langbox"}}{{ $lang := or .Language "_auto" }}{{if langByLexer $lang | not}}{{$lang := "_auto"}}{{end}}<select class="dropdown" id="langbox" name="lang">
+{{define "langbox"}}{{ $lang := or .Language "text" }}{{if langByLexer $lang | not}}{{$lang := "text"}}{{end}}<select class="dropdown" id="langbox" name="lang">
 {{range $l := langs}}<option value="{{$l.Lexer}}"{{if .}}{{if equal $lang $l.Lexer}} selected{{end}}{{end}}>{{$l.Title}}</option>{{end}}
 </select><script>$(document).ready(function() { $("#langbox").select2(); });</script>{{end}}
 
