@@ -164,6 +164,13 @@ func pasteURL(routeType string, p *Paste) string {
 	return url.String()
 }
 
+type RedirectHandler string
+
+func (h RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Location", string(h))
+	w.WriteHeader(http.StatusFound)
+}
+
 type RenderedPaste struct {
 	body       template.HTML
 	renderTime time.Time
@@ -259,10 +266,13 @@ func main() {
 	router = mux.NewRouter()
 
 	if getRouter := router.Methods("GET").Subrouter(); getRouter != nil {
+		getRouter.Handle("/paste/new", RedirectHandler("/"))
 		getRouter.HandleFunc("/paste/{id}", RequiredModelObjectHandler(lookupPasteWithRequest, RenderTemplateForModel("paste_show"))).Name("paste_show")
 		getRouter.HandleFunc("/paste/{id}/raw", RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteRawHandler))).Name("paste_raw")
 		getRouter.HandleFunc("/paste/{id}/edit", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_edit")))).Name("paste_edit")
 		getRouter.HandleFunc("/paste/{id}/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_delete_confirm")))).Name("paste_delete")
+		getRouter.Handle("/paste/", RedirectHandler("/"))
+		getRouter.Handle("/paste", RedirectHandler("/"))
 		getRouter.HandleFunc("/", RenderTemplateHandler("index"))
 	}
 	if postRouter := router.Methods("POST").Subrouter(); postRouter != nil {
