@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -199,11 +200,12 @@ var sessionStore *sessions.FilesystemStore
 var router *mux.Router
 
 type args struct {
-	port, bind *string
-	rebuild    *bool
+	root, port, bind *string
+	rebuild          *bool
 }
 
 func (a *args) register() {
+	a.root = flag.String("root", "./", "path to generated file storage")
 	a.port, a.bind = flag.String("port", "8080", "HTTP port"), flag.String("bind", "0.0.0.0", "bind address")
 	a.rebuild = flag.Bool("rebuild", false, "rebuild all templates for each request")
 }
@@ -230,9 +232,10 @@ func init() {
 		return b.String()
 	})
 
-	os.Mkdir("./sessions", 0700)
+	sesdir := filepath.Join(*arguments.root, "sessions")
+	os.Mkdir(sesdir, 0700)
 	var sessionKey []byte = nil
-	if sessionKeyFile, err := os.Open("session.key"); err == nil {
+	if sessionKeyFile, err := os.Open(filepath.Join(*arguments.root, "session.key")); err == nil {
 		buf := &bytes.Buffer{}
 		io.Copy(buf, sessionKeyFile)
 		sessionKey = buf.Bytes()
@@ -240,12 +243,13 @@ func init() {
 	} else {
 		log.Fatalln("session.key not found. make one with seskey.go?")
 	}
-	sessionStore = sessions.NewFilesystemStore("./sessions", sessionKey)
+	sessionStore = sessions.NewFilesystemStore(sesdir, sessionKey)
 	sessionStore.Options.Path = "/"
 	sessionStore.Options.MaxAge = 86400 * 365
 
-	os.Mkdir("./pastes", 0700)
-	pasteStore = NewFilesystemPasteStore("./pastes")
+	pastedir := filepath.Join(*arguments.root, "pastes")
+	os.Mkdir(pastedir, 0700)
+	pasteStore = NewFilesystemPasteStore(pastedir)
 	pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 }
 
