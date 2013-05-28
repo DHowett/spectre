@@ -41,8 +41,9 @@ func (e GenericStringError) Error() string {
 }
 
 func sessionOk(r *http.Request) (b bool) {
-	ua := r.Header.Get("User-Agent")
-	b = !strings.Contains(ua, "curl")
+	//ua := r.Header.Get("User-Agent")
+	b = true
+	//b = !strings.Contains(ua, "curl")
 	return
 }
 
