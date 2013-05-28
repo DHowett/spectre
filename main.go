@@ -39,6 +39,12 @@ func (e GenericStringError) Error() string {
 	return string(e)
 }
 
+func sessionOk(r *http.Request) (b bool) {
+	ua := r.Header.Get("User-Agent")
+	b = !strings.Contains(ua, "curl")
+	return
+}
+
 func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -104,15 +110,17 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	session, _ := sessionStore.Get(r, "session")
-	pastes, ok := session.Values["pastes"].([]string)
-	if !ok {
-		pastes = []string{}
-	}
+	if sessionOk(r) {
+		session, _ := sessionStore.Get(r, "session")
+		pastes, ok := session.Values["pastes"].([]string)
+		if !ok {
+			pastes = []string{}
+		}
 
-	pastes = append(pastes, p.ID.String())
-	session.Values["pastes"] = pastes
-	session.Save(r, w)
+		pastes = append(pastes, p.ID.String())
+		session.Values["pastes"] = pastes
+		session.Save(r, w)
+	}
 
 	pasteUpdate(p, w, r)
 }
