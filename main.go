@@ -85,7 +85,9 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 	body := r.FormValue("text")
 	if len(strings.TrimSpace(body)) == 0 {
-		panic(GenericStringError("Hey, put some text in that paste."))
+		w.Header().Set("Location", pasteURL("delete", p))
+		w.WriteHeader(http.StatusFound)
+		return
 	}
 
 	pw, _ := p.Writer()
