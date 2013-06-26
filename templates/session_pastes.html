@@ -1,0 +1,12 @@
+{{define "page_session_pastes"}}
+{{template "header" .}}
+<div class="well" style="padding: 8px 0px;">
+<ul class="nav nav-list">
+<li class="nav-header">All Pastes owned by You ({{len .Obj}})</li>
+{{range .Obj}}
+<li><a href="/paste/{{.}}">{{.}}</a></li>
+{{end}}
+</ul>
+</div>
+{{template "footer" .}}
+{{end}}

@@ -165,6 +165,31 @@ func pasteURL(routeType string, p *Paste) string {
 	return url.String()
 }
 
+func sessionHandler(w http.ResponseWriter, r *http.Request) {
+	var pastes []string
+	session, _ := sessionStore.Get(r, "session")
+	if session_pastes, ok := session.Values["pastes"].([]string); ok {
+		p := make([]string, len(session_pastes))
+		n := 0
+		for _, v := range session_pastes {
+			if _, err := os.Stat(filepath.Join(*arguments.root, "pastes", v)); !os.IsNotExist(err) {
+				p[n] = v
+				n++
+			}
+		}
+		pastes = p[:n]
+	} else {
+		pastes = []string{}
+	}
+
+	if strings.HasSuffix(r.URL.Path, "/raw") {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write([]byte(strings.Join(pastes, " ")))
+	} else {
+		ExecuteTemplate(w, "page_session_pastes", &RenderContext{pastes, r})
+	}
+}
+
 type RedirectHandler string
 
 func (h RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -274,6 +299,8 @@ func main() {
 		getRouter.HandleFunc("/paste/{id}/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_delete_confirm")))).Name("paste_delete")
 		getRouter.Handle("/paste/", RedirectHandler("/"))
 		getRouter.Handle("/paste", RedirectHandler("/"))
+		getRouter.HandleFunc("/session", http.HandlerFunc(sessionHandler))
+		getRouter.HandleFunc("/session/raw", http.HandlerFunc(sessionHandler))
 		getRouter.HandleFunc("/", RenderTemplateHandler("index"))
 	}
 	if postRouter := router.Methods("POST").Subrouter(); postRouter != nil {
