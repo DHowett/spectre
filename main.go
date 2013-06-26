@@ -94,7 +94,9 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 
 	pw, _ := p.Writer()
 	pw.Write([]byte(body))
-	p.Language = r.FormValue("lang")
+	if r.FormValue("lang") != "" {
+		p.Language = r.FormValue("lang")
+	}
 	pw.Close() // Saves p
 
 	w.Header().Set("Location", pasteURL("show", p))
