@@ -2,7 +2,8 @@
 function usage() {
 	prog=$(basename "$0")
 	echo "Syntax: $prog <filename> [language]" >&2
-	echo "        $prog -e <paste> <filename> [language]		- Update <paste>" >&2
+	echo "        $prog -u <paste> <filename> [language]		- Update <paste>" >&2
+	echo "        $prog -e <paste> [language]			- Edit <paste> in \$EDITOR (or vi.)" >&2
 	echo "        $prog -d <paste>				- Delete <paste>" >&2
 	echo "        $prog -s <paste>				- Show <paste>" >&2
 	echo "        $prog -l					- List pastes" >&2
@@ -24,7 +25,7 @@ fi
 	[[ $code -eq 200 ]] && echo "There's a new version of ghost.sh available at http://ghostbin.com/ghost.sh" >&2;
 )
 
-while getopts "hls:e:d:" o; do
+while getopts "hls:u:e:d:" o; do
 	case $o in
 		h)
 			usage
@@ -35,6 +36,10 @@ while getopts "hls:e:d:" o; do
 			;;
 		s)
 			mode="show"
+			paste=$OPTARG
+			;;
+		u)
+			mode="update"
 			paste=$OPTARG
 			;;
 		e)
@@ -54,6 +59,12 @@ done
 
 shift $((OPTIND-1))
 
+filename="$1"
+lang="text"
+if [[ ! -z $2 ]]; then
+	lang=$2
+fi
+
 if [[ "${mode}" == "delete" ]]; then
 	IFS='|' read -r code < <(curl -c "${rcdir}/cookie.jar" -b "${rcdir}/cookie.jar" -fs -w '%{http_code}' --data-urlencode "(no body)" http://ghostbin.com/paste/${paste}/delete)
 	if [[ $code -ne 200 && $code -ne 303 && $code -ne 302 ]]; then
@@ -62,6 +73,11 @@ if [[ "${mode}" == "delete" ]]; then
 	fi
 	echo "Deleted $paste"
 	exit
+elif [[ "${mode}" == "edit" ]]; then
+	filename=$(mktemp /tmp/ghost.XXXXXX)
+	lang=$1
+	curl -c "${rcdir}/cookie.jar" -b "${rcdir}/cookie.jar" -fs http://ghostbin.com/paste/${paste}/raw > "${filename}"
+	${EDITOR:-vi} "${filename}"
 elif [[ "${mode}" == "show" ]]; then
 	curl -c "${rcdir}/cookie.jar" -b "${rcdir}/cookie.jar" -fs http://ghostbin.com/paste/${paste}/raw
 	exit
@@ -73,19 +89,19 @@ elif [[ "${mode}" == "list" ]]; then
 	exit
 fi
 
+if [[ -z "${filename}" ]]; then
+	usage
+	exit 1
+fi
+
 pboard=
 [[ -z "${pboard}" ]] && type pbcopy &> /dev/null && pboard=pbcopy
 [[ -z "${pboard}" ]] && type xclip &> /dev/null && [[ -n "${DISPLAY}" ]] && pboard=xclip
 
-lang=text
-if [[ ! -z $2 ]]; then
-	lang=$2
-fi
-
 url="http://ghostbin.com/paste/new"
-[[ "${mode}" == "edit" ]] && url="http://ghostbin.com/paste/${paste}/edit"
+[[ "${mode}" == "edit" || "${mode}" == "update" ]] && url="http://ghostbin.com/paste/${paste}/edit"
 
-IFS='|' read -r code url < <(curl -c "${rcdir}/cookie.jar" -b "${rcdir}/cookie.jar" -fs -w '%{http_code}|%{redirect_url}' --data-urlencode text@"$1" --data-urlencode lang="$lang" "${url}" | sed -e 's/HTTP/http/g')
+IFS='|' read -r code url < <(curl -c "${rcdir}/cookie.jar" -b "${rcdir}/cookie.jar" -fs -w '%{http_code}|%{redirect_url}' --data-urlencode text@"$filename" ${lang:+--data-urlencode} ${lang:+lang="$lang"} "${url}" | sed -e 's/HTTP/http/g')
 if [[ $code -ne 200 && $code -ne 303 && $code -ne 302 ]]; then
 	echo "Rejected: $code" >&2
 	exit 1
