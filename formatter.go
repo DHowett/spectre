@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"github.com/kylelemons/go-gypsy/yaml"
 	"html/template"
 	"io"
 )
@@ -10,14 +9,15 @@ import (
 type FormatFunc func(io.Reader, ...string) (string, error)
 
 type Formatter struct {
-	name string
+	Name string
+	Func string
+	Args []string
 	fn   FormatFunc
-	args []string
 }
 
 func (f *Formatter) Format(stream io.Reader, lang string) (string, error) {
-	myargs := make([]string, len(f.args))
-	for i, v := range f.args {
+	myargs := make([]string, len(f.Args))
+	for i, v := range f.Args {
 		n := v
 		if n == "%LANG%" {
 			n = lang
@@ -52,29 +52,12 @@ func FormatPaste(p *Paste) (string, error) {
 }
 
 func init() {
-	yml := yaml.ConfigFile("formatters.yml")
-	formatters = make(map[string]*Formatter)
-	yformatters, _ := yaml.Child(yml.Root, ".formatters")
-	for _, node := range yformatters.(yaml.List) {
-		nmap, _ := node.(yaml.Map)
-		name := nmap["name"].(yaml.Scalar).String()
-		formatfn := nmap["func"].(yaml.Scalar).String()
-		yargs, ok := nmap["args"].(yaml.List)
-		if !ok {
-			yargs = nil
-		}
+	var f []*Formatter
+	YAMLUnmarshalFile("formatters.yml", &f)
 
-		args := make([]string, len(yargs))
-		for i, v := range yargs {
-			args[i] = v.(yaml.Scalar).String()
-		}
-
-		f := &Formatter{
-			name: name,
-			fn:   formatFunctions[formatfn],
-			args: args,
-		}
-
-		formatters[name] = f
+	formatters = make(map[string]*Formatter, len(f))
+	for _, v := range f {
+		formatters[v.Name] = v
+		v.fn = formatFunctions[v.Func]
 	}
 }

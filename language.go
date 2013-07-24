@@ -1,46 +1,18 @@
 package main
 
-import (
-	"bytes"
-	"html/template"
-	"io"
-)
+type Language struct {
+	Title, Name, Formatter string
+	Names                  []string
+}
 
 var langMap map[string]*Language
-var langRenderers map[string]LanguageRenderer
+var languages []*Language
 
-type LanguageRenderer interface {
-	Render(io.Reader, string) (string, error)
-}
-
-type LanguageRenderFunc func(io.Reader, string) (string, error)
-
-func (fn LanguageRenderFunc) Render(stream io.Reader, language string) (string, error) {
-	return fn(stream, language)
-}
-
-type Language struct {
-	Lexer, Title string
-}
-
-var languages []Language = []Language{
-	{"text", "Plain Text"},
-	{"logos", "Logos + Objective-C"},
-	{"objective-c", "Objective-C"},
-	{"c", "C"},
-	{"c++", "C++"},
-	{"irc", "IRC Log"},
-	{"perl", "Perl"},
-	{"go", "Go"},
-	{"html", "HTML"},
-	{"ansi", "ANSI"},
-}
-
-func Languages() []Language {
+func Languages() []*Language {
 	return languages
 }
 
-func LanguageByLexer(name string) *Language {
+func LanguageNamed(name string) *Language {
 	v, ok := langMap[name]
 	if !ok {
 		return nil
@@ -48,35 +20,17 @@ func LanguageByLexer(name string) *Language {
 	return v
 }
 
-func RenderForLanguage(stream io.Reader, language string) (string, error) {
-	var renderer LanguageRenderer
-	var ok bool
-	if renderer, ok = langRenderers[language]; !ok {
-		renderer = langRenderers["_default"]
-	}
-
-	return renderer.Render(stream, language)
-}
-
 func init() {
+	YAMLUnmarshalFile("languages.yml", &languages)
+
 	langMap = make(map[string]*Language)
-	for i, v := range languages {
-		langMap[v.Lexer] = &languages[i]
+	for _, v := range languages {
+		langMap[v.Name] = v
+		for _, langname := range v.Names {
+			langMap[langname] = v
+		}
 	}
 
 	RegisterTemplateFunction("langs", Languages)
-	RegisterTemplateFunction("langByLexer", LanguageByLexer)
-
-	langRenderers = make(map[string]LanguageRenderer)
-	langRenderers["text"] = LanguageRenderFunc(func(stream io.Reader, language string) (string, error) {
-		buf := &bytes.Buffer{}
-		io.Copy(buf, stream)
-		return template.HTMLEscapeString(buf.String()), nil
-	})
-
-	langRenderers["ansi"] = LanguageRenderFunc(func(stream io.Reader, language string) (string, error) {
-		return ANSI(stream)
-	})
-
-	langRenderers["_default"] = LanguageRenderFunc(Pygmentize)
+	RegisterTemplateFunction("langByLexer", LanguageNamed)
 }

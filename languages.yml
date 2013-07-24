@@ -1,0 +1,22 @@
+- name: text
+  title: Plain Text
+  formatter: text
+- name: logos
+  title: Logos + Objective-C
+- name: objective-c
+  title: Objective-C
+- name: c
+  title: C
+- name: c++
+  title: C++
+- name: irc
+  title: IRC Log
+- name: perl
+  title: Perl
+- name: go
+  title: Go
+- name: html
+  title: HTML
+- name: ansi
+  title: ANSI
+  formatter: ansi
