@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"launchpad.net/goyaml"
 	"os"
 )
@@ -17,7 +18,7 @@ func YAMLUnmarshalFile(filename string, i interface{}) error {
 	}
 
 	yml := make([]byte, fi.Size())
-	yamlFile.Read(yml)
+	io.ReadFull(yamlFile, yml)
 	yamlFile.Close()
 	err = goyaml.Unmarshal(yml, i)
 	if err != nil {
