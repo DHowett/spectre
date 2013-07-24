@@ -209,9 +209,7 @@ var renderedPastes = make(map[PasteID]*RenderedPaste)
 func renderPaste(p *Paste) template.HTML {
 	cached, ok := renderedPastes[p.ID]
 	if !ok || cached.renderTime.Before(p.LastModified()) {
-		reader, err := p.Reader()
-		defer reader.Close()
-		out, err := RenderForLanguage(reader, p.Language)
+		out, err := FormatPaste(p)
 
 		if err != nil {
 			return template.HTML("There was an error rendering this paste.<br />" + template.HTMLEscapeString(out))

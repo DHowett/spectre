@@ -9,9 +9,9 @@ import (
 
 const pygmentizePath string = "./pygments/pygmentize"
 
-func execWithStream(stream io.Reader, cmd string, args ...string) (output string, err error) {
+func execWithStream(stream io.Reader, args ...string) (output string, err error) {
 	var outbuf, errbuf bytes.Buffer
-	pygments := exec.Command(cmd, args...)
+	pygments := exec.Command(args[0], args[1:]...)
 	pygments.Stdin = stream
 	pygments.Stdout = &outbuf
 	pygments.Stderr = &errbuf
