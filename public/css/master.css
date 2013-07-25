@@ -76,6 +76,12 @@ form {
 	margin-bottom: 0;
 }
 
+.icon-large:before {
+	/* Copied from font-awesome.css */
+	vertical-align: -10%;
+	font-size: 1.3333333333333333em;
+}
+
 .dropdown {
 	width: 250px;
 	margin-right: 4px;
