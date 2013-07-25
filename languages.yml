@@ -1,688 +1,692 @@
-common:
-- name: text
-  title: Plain Text
-  formatter: text
-- name: logos
-  title: Logos + Objective-C
-- name: objective-c
-  names: [objectivec, obj-c, objc]
-  title: Objective-C
-- name: objective-c++
-  names: [objectivec++, obj-c++, objc++]
-  title: Objective-C++
-- name: c
-  title: C
-- name: cpp
-  names: [c++]
-  title: C++
-- name: irc
-  title: IRC Log
-- name: perl
-  names: [pl]
-  title: Perl
-- name: go
-  title: Go
-other:
-- name: ansi
-  title: ANSI
-  formatter: ansi
-- name: markdown
-  title: Markdown
-  formatter: markdown
-- name: tex
-  names: [latex]
-  title: TeX
-- name: python
-  names: [py, sage]
-  title: Python
-- name: pycon
-  title: Python console session
-- name: pytb
-  title: Python Traceback
-- name: python3
-  names: [py3]
-  title: Python 3
-- name: py3tb
-  title: Python 3.0 Traceback
-- name: rb
-  names: [ruby, duby]
-  title: Ruby
-- name: rbcon
-  names: [irb]
-  title: Ruby irb session
-- name: lua
-  title: Lua
-- name: moon
-  names: [moonscript]
-  title: MoonScript
-- name: croc
-  title: Croc
-- name: minid
-  title: MiniD
-- name: io
-  title: Io
-- name: tcl
-  title: Tcl
-- name: factor
-  title: Factor
-- name: fancy
-  names: [fy]
-  title: Fancy
-- name: dg
-  title: dg
-- name: gas
-  title: GAS
-- name: objdump
-  title: objdump
-- name: d-objdump
-  title: d-objdump
-- name: cpp-objdump
-  names: [c++-objdumb, cxx-objdump]
-  title: cpp-objdump
-- name: c-objdump
-  title: c-objdump
-- name: llvm
-  title: LLVM
-- name: nasm
-  title: NASM
-- name: ca65
-  title: ca65
-- name: d
-  title: D
-- name: delphi
-  names: [pas, pascal, objectpascal]
-  title: Delphi
-- name: ec
-  title: eC
-- name: dylan
-  title: Dylan
-- name: fortran
-  title: Fortran
-- name: glsl
-  title: GLSL
-- name: prolog
-  title: Prolog
-- name: cython
-  names: [pyx]
-  title: Cython
-- name: vala
-  names: [vapi]
-  title: Vala
-- name: ooc
-  title: Ooc
-- name: felix
-  names: [flx]
-  title: Felix
-- name: ada
-  names: [ada95ada2005]
-  title: Ada
-- name: modula2
-  names: [m2]
-  title: Modula-2
-- name: blitzmax
-  names: [bmax]
-  title: BlitzMax
-- name: nimrod
-  names: [nim]
-  title: Nimrod
-- name: fan
-  title: Fantom
-- name: rust
-  title: Rust
-- name: cuda
-  names: [cu]
-  title: CUDA
-- name: monkey
-  title: Monkey
-- name: dylan-lid
-  names: [lid]
-  title: DylanLID
-- name: dylan-console
-  names: [dylan-repl]
-  title: Dylan session
-- name: cobol
-  title: COBOL
-- name: cobolfree
-  title: COBOLFree
-- name: smali
-  title: Smali
-- name: csharp
-  names: [c#]
-  title: C#
-- name: nemerle
-  title: Nemerle
-- name: boo
-  title: Boo
-- name: vb.net
-  names: [vbnet]
-  title: VB.net
-- name: aspx-cs
-  title: aspx-cs
-- name: aspx-vb
-  title: aspx-vb
-- name: fsharp
-  title: FSharp
-- name: Clipper
-  names: [XBase]
-  title: FoxPro
-- name: racket
-  names: [rkt]
-  title: Racket
-- name: scheme
-  names: [scm]
-  title: Scheme
-- name: common-lisp
-  names: [cl]
-  title: Common Lisp
-- name: haskell
-  names: [hs]
-  title: Haskell
-- name: lhs
-  names: [literate-haskell]
-  title: Literate Haskell
-- name: sml
-  title: Standard ML
-- name: ocaml
-  title: OCaml
-- name: erlang
-  title: Erlang
-- name: erl
-  title: Erlang erl session
-- name: opa
-  title: Opa
-- name: coq
-  title: Coq
-- name: newlisp
-  title: NewLisp
-- name: elixir
-  names: [ex, exs]
-  title: Elixir
-- name: iex
-  title: Elixir iex session
-- name: koka
-  title: Koka
-- name: verilog
-  names: [v]
-  title: verilog
-- name: systemverilog
-  names: [sv]
-  title: systemverilog
-- name: vhdl
-  title: vhdl
-- name: java
-  title: Java
-- name: scala
-  title: Scala
-- name: gosu
-  title: Gosu
-- name: gst
-  title: Gosu Template
-- name: groovy
-  title: Groovy
-- name: ioke
-  names: [ik]
-  title: Ioke
-- name: clojure
-  names: [clj]
-  title: Clojure
-- name: kotlin
-  title: Kotlin
-- name: xtend
-  title: Xtend
-- name: aspectj
-  title: AspectJ
-- name: ceylon
-  title: Ceylon
-- name: julia
-  names: [jl]
-  title: Julia
-- name: jlcon
-  title: Julia console
-- name: mupad
-  title: MuPAD
-- name: matlab
-  title: Matlab
-- name: matlabsession
-  title: Matlab session
-- name: octave
-  title: Octave
-- name: scilab
-  title: Scilab
-- name: numpy
-  title: NumPy
-- name: rconsole
-  names: [rout]
-  title: RConsole
-- name: splus
-  names: [s, r]
-  title: S
-- name: jags
-  title: JAGS
-- name: bugs
-  names: [winbugs, openbugs]
-  title: BUGS
-- name: stan
-  title: Stan
-- name: idl
-  title: IDL
-- name: rd
-  title: Rd
-- name: brainfuck
-  names: [bf]
-  title: Brainfuck
-- name: befunge
-  title: Befunge
-- name: redcode
-  title: Redcode
-- name: moocode
-  title: MOOCode
-- name: smalltalk
-  names: [squeak]
-  title: Smalltalk
-- name: logtalk
-  title: Logtalk
-- name: gnuplot
-  title: Gnuplot
-- name: pov
-  title: POVRay
-- name: applescript
-  title: AppleScript
-- name: modelica
-  title: Modelica
-- name: rebol
-  title: REBOL
-- name: abap
-  title: ABAP
-- name: newspeak
-  title: Newspeak
-- name: Cucumber
-  names: [cucumber, Gherkin, gherkin]
-  title: Gherkin
-- name: asy
-  names: [asymptote]
-  title: Asymptote
-- name: postscript
-  title: PostScript
-- name: ahk
-  title: autohotkey
-- name: gooddata-cl
-  title: GoodData-CL
-- name: maql
-  title: MAQL
-- name: protobuf
-  title: Protocol Buffer
-- name: hybris
-  names: [hy]
-  title: Hybris
-- name: awk
-  names: [gawk, mawk, nawk]
-  title: Awk
-- name: cfengine3
-  names: [cf3]
-  title: CFEngine3
-- name: snobol
-  title: Snobol
-- name: ecl
-  title: ECL
-- name: urbiscript
-  title: UrbiScript
-- name: openedge
-  names: [abl, progress]
-  title: OpenEdge ABL
-- name: bro
-  title: Bro
-- name: mscgen
-  names: [msc]
-  title: Mscgen
-- name: kconfig
-  names: [menuconfig, linux-config, kernel-config]
-  title: Kconfig
-- name: vgl
-  title: VGL
-- name: sp
-  title: SourcePawn
-- name: RobotFramework
-  names: [robotframework]
-  title: RobotFramework
-- name: puppet
-  title: Puppet
-- name: nsis
-  names: [nsi, nsh]
-  title: NSIS
-- name: spec
-  title: RPMSpec
-- name: cbmbas
-  title: CBM BASIC V2
-- name: autoit
-  names: [Autoit]
-  title: AutoIt
-- name: ragel
-  title: Ragel
-- name: ragel-em
-  title: Embedded Ragel
-- name: ragel-c
-  title: Ragel in C Host
-- name: ragel-d
-  title: Ragel in D Host
-- name: ragel-cpp
-  title: Ragel in CPP Host
-- name: ragel-objc
-  title: Ragel in Objective C Host
-- name: ragel-ruby
-  names: [ragel-rb]
-  title: Ragel in Ruby Host
-- name: ragel-java
-  title: Ragel in Java Host
-- name: antlr
-  title: ANTLR
-- name: antlr-python
-  title: ANTLR With Python Target
-- name: antlr-perl
-  title: ANTLR With Perl Target
-- name: antlr-ruby
-  names: [antlr-rb]
-  title: ANTLR With Ruby Target
-- name: antlr-cpp
-  title: ANTLR With CPP Target
-- name: antlr-csharp
-  names: [antlr-c#]
-  title: ANTLR With C# Target
-- name: antlr-objc
-  title: ANTLR With ObjectiveC Target
-- name: antlr-java
-  title: ANTLR With Java Target
-- name: antlr-as
-  names: [antlr-actionscript]
-  title: ANTLR With ActionScript Target
-- name: treetop
-  title: Treetop
-- name: bash
-  names: [sh, ksh]
-  title: Bash
-- name: console
-  title: Bash Session
-- name: tcsh
-  names: [csh]
-  title: Tcsh
-- name: bat
-  title: Batchfile
-- name: powershell
-  names: [posh, ps1]
-  title: PowerShell
-- name: shell-session
-  title: Shell Session
-- name: postgresql
-  names: [postgres]
-  title: PostgreSQL SQL dialect
-- name: plpgsql
-  title: PL/pgSQL
-- name: psql
-  names: [postgresql-console, postgres-console]
-  title: PostgreSQL console (psql)
-- name: sql
-  title: SQL
-- name: mysql
-  title: MySQL
-- name: sqlite3
-  title: sqlite3con
-- name: html+php
-  title: HTML+PHP
-- name: xml+php
-  title: XML+PHP
-- name: css+php
-  title: CSS+PHP
-- name: js+php
-  names: [javascript+php]
-  title: JavaScript+PHP
-- name: erb
-  title: ERB
-- name: rhtml
-  names: [html+erb, html+ruby]
-  title: RHTML
-- name: xml+erb
-  names: [xml+ruby]
-  title: XML+Ruby
-- name: css+erb
-  names: [css+ruby]
-  title: CSS+Ruby
-- name: js+erb
-  names: [javascript+erb, js+ruby, javascript+ruby]
-  title: JavaScript+Ruby
-- name: smarty
-  title: Smarty
-- name: html+smarty
-  title: HTML+Smarty
-- name: xml+smarty
-  title: XML+Smarty
-- name: css+smarty
-  title: CSS+Smarty
-- name: js+smarty
-  names: [javascript+smarty]
-  title: JavaScript+Smarty
-- name: django
-  names: [jinja]
-  title: Django/Jinja
-- name: html+django
-  names: [html+jinja]
-  title: HTML+Django/Jinja
-- name: css+django
-  names: [css+jinja]
-  title: CSS+Django/Jinja
-- name: xml+django
-  names: [xml+jinja]
-  title: XML+Django/Jinja
-- name: js+django
-  names: [javascript+django, js+jinja, javascript+jinja]
-  title: JavaScript+Django/Jinja
-- name: genshi
-  names: [kid, xml+genshi, xml+kid]
-  title: Genshi
-- name: html+genshi
-  names: [html+kid]
-  title: HTML+Genshi
-- name: genshitext
-  title: Genshi Text
-- name: css+genshitext
-  names: [css+genshi]
-  title: CSS+Genshi Text
-- name: js+genshitext
-  names: [js+genshi, javascript+genshitext, javascript+genshi]
-  title: JavaScript+Genshi Text
-- name: myghty
-  title: Myghty
-- name: html+myghty
-  title: HTML+Myghty
-- name: xml+myghty
-  title: XML+Myghty
-- name: css+myghty
-  title: CSS+Myghty
-- name: js+myghty
-  names: [javascript+myghty]
-  title: JavaScript+Myghty
-- name: mason
-  title: Mason
-- name: mako
-  title: Mako
-- name: html+mako
-  title: HTML+Mako
-- name: xml+mako
-  title: XML+Mako
-- name: js+mako
-  names: [javascript+mako]
-  title: JavaScript+Mako
-- name: css+mako
-  title: CSS+Mako
-- name: jsp
-  title: Java Server Page
-- name: cheetah
-  names: [spitfire]
-  title: Cheetah
-- name: html+cheetah
-  names: [html+spitfire]
-  title: HTML+Cheetah
-- name: xml+cheetah
-  names: [xml+spitfire]
-  title: XML+Cheetah
-- name: js+cheetah
-  names: [javascript+cheetah, js+spitfire, javascript+spitfire]
-  title: JavaScript+Cheetah
-- name: evoque
-  title: Evoque
-- name: html+evoque
-  title: HTML+Evoque
-- name: xml+evoque
-  title: XML+Evoque
-- name: cfs
-  title: cfstatement
-- name: cfm
-  title: Coldfusion HTML
-- name: velocity
-  title: Velocity
-- name: html+velocity
-  title: HTML+Velocity
-- name: xml+velocity
-  title: XML+Velocity
-- name: ssp
-  title: Scalate Server Page
-- name: tea
-  title: Tea
-- name: html+lasso
-  title: HTML+Lasso
-- name: xml+lasso
-  title: XML+Lasso
-- name: css+lasso
-  title: CSS+Lasso
-- name: js+lasso
-  names: [javascript+lasso]
-  title: JavaScript+Lasso
-- name: ini
-  names: [cfg]
-  title: INI
-- name: properties
-  title: Properties
-- name: sourceslist
-  names: [sources.list]
-  title: Debian Sourcelist
-- name: basemake
-  title: Base Makefile
-- name: make
-  names: [makefile, mf, bsdmake]
-  title: Makefile
-- name: diff
-  names: [udiff]
-  title: Diff
-- name: irc
-  title: IRC logs
-- name: groff
-  names: [nroff, man]
-  title: Groff
-- name: apacheconf
-  names: [aconf, apache]
-  title: ApacheConf
-- name: bbcode
-  title: BBCode
-- name: trac-wiki
-  names: [moin]
-  title: MoinMoin/Trac Wiki markup
-- name: rst
-  names: [rest, restructuredtext]
-  title: reStructuredText
-- name: vim
-  title: VimL
-- name: pot
-  names: [po]
-  title: Gettext Catalog
-- name: squidconf
-  names: [squid.conf, squid]
-  title: SquidConf
-- name: control
-  title: Debian Control file
-- name: dpatch
-  title: Darcs Patch
-- name: yaml
-  title: YAML
-- name: lighty
-  names: [lighttpd]
-  title: Lighttpd configuration file
-- name: nginx
-  title: Nginx configuration file
-- name: cmake
-  title: CMake
-- name: http
-  title: HTTP
-- name: pypylog
-  names: [pypy]
-  title: PyPy Log
-- name: registry
-  title: reg
-- name: haxeml
-  names: [hxml]
-  title: Hxml
-- name: html
-  title: HTML
-- name: xml
-  title: XML
-- name: js
-  names: [javascript]
-  title: JavaScript
-- name: json
-  title: JSON
-- name: css
-  title: CSS
-- name: php
-  names: [php3, php4, php5]
-  title: PHP
-- name: as
-  names: [actionscript]
-  title: ActionScript
-- name: xslt
-  title: XSLT
-- name: as3
-  names: [actionscript3]
-  title: ActionScript 3
-- name: mxml
-  title: MXML
-- name: hx
-  names: [haXe]
-  title: haXe
-- name: haml
-  names: [HAML]
-  title: Haml
-- name: sass
-  names: [SASS]
-  title: Sass
-- name: scss
-  title: SCSS
-- name: objective-j
-  names: [objectivej, obj-j, objj]
-  title: Objective-J
-- name: coffee-script
-  names: [coffeescript]
-  title: CoffeeScript
-- name: live-script
-  names: [livescript]
-  title: LiveScript
-- name: duel
-  names: [Duel Engine, Duel View, JBST, jbst, JsonML+BST]
-  title: Duel
-- name: scaml
-  names: [SCAML]
-  title: Scaml
-- name: jade
-  names: [JADE]
-  title: Jade
-- name: xquery
-  names: [xqy, xq, xql, xqm]
-  title: XQuery
-- name: dtd
-  title: DTD
-- name: dart
-  title: Dart
-- name: lasso
-  names: [lassoscript]
-  title: Lasso
-- name: qml
-  names: [Qt Meta Language, Qt modeling Language]
-  title: QML
-- name: ts
-  title: TypeScript
+- title: Text
+  languages:
+  - name: text
+    title: Plain Text
+    formatter: text
+  - name: ansi
+    title: ANSI
+    formatter: ansi
+  - name: markdown
+    title: Markdown
+    formatter: markdown
+- title: Common Programming Languages
+  languages:
+  - name: logos
+    title: Logos + Objective-C
+  - name: objective-c
+    names: [objectivec, obj-c, objc]
+    title: Objective-C
+  - name: objective-c++
+    names: [objectivec++, obj-c++, objc++]
+    title: Objective-C++
+  - name: c
+    title: C
+  - name: cpp
+    names: [c++]
+    title: C++
+  - name: irc
+    title: IRC Log
+  - name: perl
+    names: [pl]
+    title: Perl
+  - name: go
+    title: Go
+- title: Other Programming Languages
+  languages:
+  - name: tex
+    names: [latex]
+    title: TeX
+  - name: python
+    names: [py, sage]
+    title: Python
+  - name: pycon
+    title: Python console session
+  - name: pytb
+    title: Python Traceback
+  - name: python3
+    names: [py3]
+    title: Python 3
+  - name: py3tb
+    title: Python 3.0 Traceback
+  - name: rb
+    names: [ruby, duby]
+    title: Ruby
+  - name: rbcon
+    names: [irb]
+    title: Ruby irb session
+  - name: lua
+    title: Lua
+  - name: moon
+    names: [moonscript]
+    title: MoonScript
+  - name: croc
+    title: Croc
+  - name: minid
+    title: MiniD
+  - name: io
+    title: Io
+  - name: tcl
+    title: Tcl
+  - name: factor
+    title: Factor
+  - name: fancy
+    names: [fy]
+    title: Fancy
+  - name: dg
+    title: dg
+  - name: gas
+    title: GAS
+  - name: objdump
+    title: objdump
+  - name: d-objdump
+    title: d-objdump
+  - name: cpp-objdump
+    names: [c++-objdumb, cxx-objdump]
+    title: cpp-objdump
+  - name: c-objdump
+    title: c-objdump
+  - name: llvm
+    title: LLVM
+  - name: nasm
+    title: NASM
+  - name: ca65
+    title: ca65
+  - name: d
+    title: D
+  - name: delphi
+    names: [pas, pascal, objectpascal]
+    title: Delphi
+  - name: ec
+    title: eC
+  - name: dylan
+    title: Dylan
+  - name: fortran
+    title: Fortran
+  - name: glsl
+    title: GLSL
+  - name: prolog
+    title: Prolog
+  - name: cython
+    names: [pyx]
+    title: Cython
+  - name: vala
+    names: [vapi]
+    title: Vala
+  - name: ooc
+    title: Ooc
+  - name: felix
+    names: [flx]
+    title: Felix
+  - name: ada
+    names: [ada95ada2005]
+    title: Ada
+  - name: modula2
+    names: [m2]
+    title: Modula-2
+  - name: blitzmax
+    names: [bmax]
+    title: BlitzMax
+  - name: nimrod
+    names: [nim]
+    title: Nimrod
+  - name: fan
+    title: Fantom
+  - name: rust
+    title: Rust
+  - name: cuda
+    names: [cu]
+    title: CUDA
+  - name: monkey
+    title: Monkey
+  - name: dylan-lid
+    names: [lid]
+    title: DylanLID
+  - name: dylan-console
+    names: [dylan-repl]
+    title: Dylan session
+  - name: cobol
+    title: COBOL
+  - name: cobolfree
+    title: COBOLFree
+  - name: smali
+    title: Smali
+  - name: csharp
+    names: [c#]
+    title: C#
+  - name: nemerle
+    title: Nemerle
+  - name: boo
+    title: Boo
+  - name: vb.net
+    names: [vbnet]
+    title: VB.net
+  - name: aspx-cs
+    title: aspx-cs
+  - name: aspx-vb
+    title: aspx-vb
+  - name: fsharp
+    title: FSharp
+  - name: Clipper
+    names: [XBase]
+    title: FoxPro
+  - name: racket
+    names: [rkt]
+    title: Racket
+  - name: scheme
+    names: [scm]
+    title: Scheme
+  - name: common-lisp
+    names: [cl]
+    title: Common Lisp
+  - name: haskell
+    names: [hs]
+    title: Haskell
+  - name: lhs
+    names: [literate-haskell]
+    title: Literate Haskell
+  - name: sml
+    title: Standard ML
+  - name: ocaml
+    title: OCaml
+  - name: erlang
+    title: Erlang
+  - name: erl
+    title: Erlang erl session
+  - name: opa
+    title: Opa
+  - name: coq
+    title: Coq
+  - name: newlisp
+    title: NewLisp
+  - name: elixir
+    names: [ex, exs]
+    title: Elixir
+  - name: iex
+    title: Elixir iex session
+  - name: koka
+    title: Koka
+  - name: verilog
+    names: [v]
+    title: verilog
+  - name: systemverilog
+    names: [sv]
+    title: systemverilog
+  - name: vhdl
+    title: vhdl
+  - name: java
+    title: Java
+  - name: scala
+    title: Scala
+  - name: gosu
+    title: Gosu
+  - name: gst
+    title: Gosu Template
+  - name: groovy
+    title: Groovy
+  - name: ioke
+    names: [ik]
+    title: Ioke
+  - name: clojure
+    names: [clj]
+    title: Clojure
+  - name: kotlin
+    title: Kotlin
+  - name: xtend
+    title: Xtend
+  - name: aspectj
+    title: AspectJ
+  - name: ceylon
+    title: Ceylon
+  - name: julia
+    names: [jl]
+    title: Julia
+  - name: jlcon
+    title: Julia console
+  - name: mupad
+    title: MuPAD
+  - name: matlab
+    title: Matlab
+  - name: matlabsession
+    title: Matlab session
+  - name: octave
+    title: Octave
+  - name: scilab
+    title: Scilab
+  - name: numpy
+    title: NumPy
+  - name: rconsole
+    names: [rout]
+    title: RConsole
+  - name: splus
+    names: [s, r]
+    title: S
+  - name: jags
+    title: JAGS
+  - name: bugs
+    names: [winbugs, openbugs]
+    title: BUGS
+  - name: stan
+    title: Stan
+  - name: idl
+    title: IDL
+  - name: rd
+    title: Rd
+  - name: brainfuck
+    names: [bf]
+    title: Brainfuck
+  - name: befunge
+    title: Befunge
+  - name: redcode
+    title: Redcode
+  - name: moocode
+    title: MOOCode
+  - name: smalltalk
+    names: [squeak]
+    title: Smalltalk
+  - name: logtalk
+    title: Logtalk
+  - name: gnuplot
+    title: Gnuplot
+  - name: pov
+    title: POVRay
+  - name: applescript
+    title: AppleScript
+  - name: modelica
+    title: Modelica
+  - name: rebol
+    title: REBOL
+  - name: abap
+    title: ABAP
+  - name: newspeak
+    title: Newspeak
+  - name: Cucumber
+    names: [cucumber, Gherkin, gherkin]
+    title: Gherkin
+  - name: asy
+    names: [asymptote]
+    title: Asymptote
+  - name: postscript
+    title: PostScript
+  - name: ahk
+    title: autohotkey
+  - name: gooddata-cl
+    title: GoodData-CL
+  - name: maql
+    title: MAQL
+  - name: protobuf
+    title: Protocol Buffer
+  - name: hybris
+    names: [hy]
+    title: Hybris
+  - name: awk
+    names: [gawk, mawk, nawk]
+    title: Awk
+  - name: cfengine3
+    names: [cf3]
+    title: CFEngine3
+  - name: snobol
+    title: Snobol
+  - name: ecl
+    title: ECL
+  - name: urbiscript
+    title: UrbiScript
+  - name: openedge
+    names: [abl, progress]
+    title: OpenEdge ABL
+  - name: bro
+    title: Bro
+  - name: mscgen
+    names: [msc]
+    title: Mscgen
+  - name: kconfig
+    names: [menuconfig, linux-config, kernel-config]
+    title: Kconfig
+  - name: vgl
+    title: VGL
+  - name: sp
+    title: SourcePawn
+  - name: RobotFramework
+    names: [robotframework]
+    title: RobotFramework
+  - name: puppet
+    title: Puppet
+  - name: nsis
+    names: [nsi, nsh]
+    title: NSIS
+  - name: spec
+    title: RPMSpec
+  - name: cbmbas
+    title: CBM BASIC V2
+  - name: autoit
+    names: [Autoit]
+    title: AutoIt
+  - name: ragel
+    title: Ragel
+  - name: ragel-em
+    title: Embedded Ragel
+  - name: ragel-c
+    title: Ragel in C Host
+  - name: ragel-d
+    title: Ragel in D Host
+  - name: ragel-cpp
+    title: Ragel in CPP Host
+  - name: ragel-objc
+    title: Ragel in Objective C Host
+  - name: ragel-ruby
+    names: [ragel-rb]
+    title: Ragel in Ruby Host
+  - name: ragel-java
+    title: Ragel in Java Host
+  - name: antlr
+    title: ANTLR
+  - name: antlr-python
+    title: ANTLR With Python Target
+  - name: antlr-perl
+    title: ANTLR With Perl Target
+  - name: antlr-ruby
+    names: [antlr-rb]
+    title: ANTLR With Ruby Target
+  - name: antlr-cpp
+    title: ANTLR With CPP Target
+  - name: antlr-csharp
+    names: [antlr-c#]
+    title: ANTLR With C# Target
+  - name: antlr-objc
+    title: ANTLR With ObjectiveC Target
+  - name: antlr-java
+    title: ANTLR With Java Target
+  - name: antlr-as
+    names: [antlr-actionscript]
+    title: ANTLR With ActionScript Target
+  - name: treetop
+    title: Treetop
+  - name: bash
+    names: [sh, ksh]
+    title: Bash
+  - name: console
+    title: Bash Session
+  - name: tcsh
+    names: [csh]
+    title: Tcsh
+  - name: bat
+    title: Batchfile
+  - name: powershell
+    names: [posh, ps1]
+    title: PowerShell
+  - name: shell-session
+    title: Shell Session
+  - name: postgresql
+    names: [postgres]
+    title: PostgreSQL SQL dialect
+  - name: plpgsql
+    title: PL/pgSQL
+  - name: psql
+    names: [postgresql-console, postgres-console]
+    title: PostgreSQL console (psql)
+  - name: sql
+    title: SQL
+  - name: mysql
+    title: MySQL
+  - name: sqlite3
+    title: sqlite3con
+  - name: html+php
+    title: HTML+PHP
+  - name: xml+php
+    title: XML+PHP
+  - name: css+php
+    title: CSS+PHP
+  - name: js+php
+    names: [javascript+php]
+    title: JavaScript+PHP
+  - name: erb
+    title: ERB
+  - name: rhtml
+    names: [html+erb, html+ruby]
+    title: RHTML
+  - name: xml+erb
+    names: [xml+ruby]
+    title: XML+Ruby
+  - name: css+erb
+    names: [css+ruby]
+    title: CSS+Ruby
+  - name: js+erb
+    names: [javascript+erb, js+ruby, javascript+ruby]
+    title: JavaScript+Ruby
+  - name: smarty
+    title: Smarty
+  - name: html+smarty
+    title: HTML+Smarty
+  - name: xml+smarty
+    title: XML+Smarty
+  - name: css+smarty
+    title: CSS+Smarty
+  - name: js+smarty
+    names: [javascript+smarty]
+    title: JavaScript+Smarty
+  - name: django
+    names: [jinja]
+    title: Django/Jinja
+  - name: html+django
+    names: [html+jinja]
+    title: HTML+Django/Jinja
+  - name: css+django
+    names: [css+jinja]
+    title: CSS+Django/Jinja
+  - name: xml+django
+    names: [xml+jinja]
+    title: XML+Django/Jinja
+  - name: js+django
+    names: [javascript+django, js+jinja, javascript+jinja]
+    title: JavaScript+Django/Jinja
+  - name: genshi
+    names: [kid, xml+genshi, xml+kid]
+    title: Genshi
+  - name: html+genshi
+    names: [html+kid]
+    title: HTML+Genshi
+  - name: genshitext
+    title: Genshi Text
+  - name: css+genshitext
+    names: [css+genshi]
+    title: CSS+Genshi Text
+  - name: js+genshitext
+    names: [js+genshi, javascript+genshitext, javascript+genshi]
+    title: JavaScript+Genshi Text
+  - name: myghty
+    title: Myghty
+  - name: html+myghty
+    title: HTML+Myghty
+  - name: xml+myghty
+    title: XML+Myghty
+  - name: css+myghty
+    title: CSS+Myghty
+  - name: js+myghty
+    names: [javascript+myghty]
+    title: JavaScript+Myghty
+  - name: mason
+    title: Mason
+  - name: mako
+    title: Mako
+  - name: html+mako
+    title: HTML+Mako
+  - name: xml+mako
+    title: XML+Mako
+  - name: js+mako
+    names: [javascript+mako]
+    title: JavaScript+Mako
+  - name: css+mako
+    title: CSS+Mako
+  - name: jsp
+    title: Java Server Page
+  - name: cheetah
+    names: [spitfire]
+    title: Cheetah
+  - name: html+cheetah
+    names: [html+spitfire]
+    title: HTML+Cheetah
+  - name: xml+cheetah
+    names: [xml+spitfire]
+    title: XML+Cheetah
+  - name: js+cheetah
+    names: [javascript+cheetah, js+spitfire, javascript+spitfire]
+    title: JavaScript+Cheetah
+  - name: evoque
+    title: Evoque
+  - name: html+evoque
+    title: HTML+Evoque
+  - name: xml+evoque
+    title: XML+Evoque
+  - name: cfs
+    title: cfstatement
+  - name: cfm
+    title: Coldfusion HTML
+  - name: velocity
+    title: Velocity
+  - name: html+velocity
+    title: HTML+Velocity
+  - name: xml+velocity
+    title: XML+Velocity
+  - name: ssp
+    title: Scalate Server Page
+  - name: tea
+    title: Tea
+  - name: html+lasso
+    title: HTML+Lasso
+  - name: xml+lasso
+    title: XML+Lasso
+  - name: css+lasso
+    title: CSS+Lasso
+  - name: js+lasso
+    names: [javascript+lasso]
+    title: JavaScript+Lasso
+  - name: ini
+    names: [cfg]
+    title: INI
+  - name: properties
+    title: Properties
+  - name: sourceslist
+    names: [sources.list]
+    title: Debian Sourcelist
+  - name: basemake
+    title: Base Makefile
+  - name: make
+    names: [makefile, mf, bsdmake]
+    title: Makefile
+  - name: diff
+    names: [udiff]
+    title: Diff
+  - name: irc
+    title: IRC logs
+  - name: groff
+    names: [nroff, man]
+    title: Groff
+  - name: apacheconf
+    names: [aconf, apache]
+    title: ApacheConf
+  - name: bbcode
+    title: BBCode
+  - name: trac-wiki
+    names: [moin]
+    title: MoinMoin/Trac Wiki markup
+  - name: rst
+    names: [rest, restructuredtext]
+    title: reStructuredText
+  - name: vim
+    title: VimL
+  - name: pot
+    names: [po]
+    title: Gettext Catalog
+  - name: squidconf
+    names: [squid.conf, squid]
+    title: SquidConf
+  - name: control
+    title: Debian Control file
+  - name: dpatch
+    title: Darcs Patch
+  - name: yaml
+    title: YAML
+  - name: lighty
+    names: [lighttpd]
+    title: Lighttpd configuration file
+  - name: nginx
+    title: Nginx configuration file
+  - name: cmake
+    title: CMake
+  - name: http
+    title: HTTP
+  - name: pypylog
+    names: [pypy]
+    title: PyPy Log
+  - name: registry
+    title: reg
+  - name: haxeml
+    names: [hxml]
+    title: Hxml
+  - name: html
+    title: HTML
+  - name: xml
+    title: XML
+  - name: js
+    names: [javascript]
+    title: JavaScript
+  - name: json
+    title: JSON
+  - name: css
+    title: CSS
+  - name: php
+    names: [php3, php4, php5]
+    title: PHP
+  - name: as
+    names: [actionscript]
+    title: ActionScript
+  - name: xslt
+    title: XSLT
+  - name: as3
+    names: [actionscript3]
+    title: ActionScript 3
+  - name: mxml
+    title: MXML
+  - name: hx
+    names: [haXe]
+    title: haXe
+  - name: haml
+    names: [HAML]
+    title: Haml
+  - name: sass
+    names: [SASS]
+    title: Sass
+  - name: scss
+    title: SCSS
+  - name: objective-j
+    names: [objectivej, obj-j, objj]
+    title: Objective-J
+  - name: coffee-script
+    names: [coffeescript]
+    title: CoffeeScript
+  - name: live-script
+    names: [livescript]
+    title: LiveScript
+  - name: duel
+    names: [Duel Engine, Duel View, JBST, jbst, JsonML+BST]
+    title: Duel
+  - name: scaml
+    names: [SCAML]
+    title: Scaml
+  - name: jade
+    names: [JADE]
+    title: Jade
+  - name: xquery
+    names: [xqy, xq, xql, xqm]
+    title: XQuery
+  - name: dtd
+    title: DTD
+  - name: dart
+    title: Dart
+  - name: lasso
+    names: [lassoscript]
+    title: Lasso
+  - name: qml
+    names: [Qt Meta Language, Qt modeling Language]
+    title: QML
+  - name: ts
+    title: TypeScript

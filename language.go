@@ -47,44 +47,38 @@ func LanguageOptionListHTML() template.HTML {
 	}
 
 	var out string
-	out += "<optgroup label=\"Common Languages\">"
-	for _, l := range languageConfig.Common {
-		out += "<option value=\"" + l.Name + "\">" + l.Title + "</option>"
+	for _, group := range languageGroups {
+		out += "<optgroup label=\"" + group.Title + "\">"
+		for _, l := range group.Languages {
+			out += "<option value=\"" + l.Name + "\">" + l.Title + "</option>"
+		}
+		out += "</optgroup>"
 	}
-	out += "</optgroup><optgroup label=\"Other Languages\">"
-	for _, l := range languageConfig.Other {
-		out += "<option value=\"" + l.Name + "\">" + l.Title + "</option>"
-	}
-	out += "</optgroup>>"
 	languageOptionCache = out
 	return template.HTML(languageOptionCache)
 }
 
-var languageConfig struct {
-	Common LanguageList
-	Other  LanguageList
+var languageGroups []*struct {
+	Title     string
+	Languages LanguageList
 }
 
 func init() {
-	YAMLUnmarshalFile("languages.yml", &languageConfig)
+	err := YAMLUnmarshalFile("languages.yml", &languageGroups)
+	if err != nil {
+		panic(err)
+	}
 
 	langMap = make(map[string]*Language)
-	for _, v := range languageConfig.Common {
-		langMap[v.Name] = v
-		for _, langname := range v.Names {
-			langMap[langname] = v
+	for _, g := range languageGroups {
+		for _, v := range g.Languages {
+			langMap[v.Name] = v
+			for _, langname := range v.Names {
+				langMap[langname] = v
+			}
 		}
+		sort.Sort(g.Languages)
 	}
-
-	for _, v := range languageConfig.Other {
-		langMap[v.Name] = v
-		for _, langname := range v.Names {
-			langMap[langname] = v
-		}
-	}
-
-	sort.Sort(languageConfig.Common)
-	sort.Sort(languageConfig.Other)
 
 	RegisterTemplateFunction("langs", Languages)
 	RegisterTemplateFunction("langByLexer", LanguageNamed)
