@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"html/template"
 	"io"
+	"strings"
 )
 
 type FormatFunc func(io.Reader, ...string) (string, error)
@@ -30,7 +31,7 @@ func (f *Formatter) Format(stream io.Reader, lang string) (string, error) {
 func plainTextFormatter(stream io.Reader, args ...string) (string, error) {
 	buf := &bytes.Buffer{}
 	io.Copy(buf, stream)
-	return template.HTMLEscapeString(buf.String()), nil
+	return strings.Replace(template.HTMLEscapeString(buf.String()), "\n", "<br>", -1), nil
 }
 
 var formatters map[string]*Formatter
