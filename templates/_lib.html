@@ -34,6 +34,6 @@
 </html>
 {{end}}
 
-{{define "s2langbox"}}{{ $lang := or .Language "text" }}{{if langByLexer $lang | not}}{{$lang := "text"}}{{end}}<select class="dropdown" id="langbox" name="lang">
-{{range $l := langs}}<option value="{{$l.Name}}"{{if .}}{{if equal $lang $l.Name}} selected{{end}}{{end}}>{{$l.Title}}</option>{{end}}
+{{define "s2langbox"}}{{ $lang := or .Language "text" }}{{if langByLexer $lang | not}}{{$lang := "text"}}{{end}}<select class="dropdown" id="langbox" name="lang" data-selected="{{$lang}}">
+{{languageOptionListHTML}}
 </select>{{end}}

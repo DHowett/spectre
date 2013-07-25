@@ -3,7 +3,10 @@ $(function() {
 	var langbox = $("#langbox");
 	if(!controls) return;
 
-	if(langbox) langbox.select2();
+	if(langbox) {
+		langbox.select2();
+		langbox.select2("val", langbox.data("selected"));
+	}
 
 	var mql = window.matchMedia("screen and (max-width: 767px)");
 	var lastMqlMatch = undefined;

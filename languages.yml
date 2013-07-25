@@ -1,22 +1,25 @@
+common:
 - name: text
   title: Plain Text
   formatter: text
 - name: logos
   title: Logos + Objective-C
 - name: objective-c
+  names: [objectivec, obj-c, objc]
   title: Objective-C
 - name: c
   title: C
-- name: c++
+- name: cpp
+  names: [c++]
   title: C++
 - name: irc
   title: IRC Log
 - name: perl
+  names: [pl]
   title: Perl
 - name: go
   title: Go
-- name: html
-  title: HTML
+other:
 - name: ansi
   title: ANSI
   formatter: ansi
