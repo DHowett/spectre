@@ -1,7 +1,13 @@
 paste
+paste.linux
 session.key
 sessions/session_*
 pastes/*
 *.vim
 public/css/*.min.css
 public/js/*.min.js
+.deploy
+.dev
+pygments
+xattr
+restarter
