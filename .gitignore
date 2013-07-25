@@ -3,3 +3,5 @@ session.key
 sessions/session_*
 pastes/*
 *.vim
+public/css/*.min.css
+public/js/*.min.js

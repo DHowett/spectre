@@ -235,12 +235,14 @@ var router *mux.Router
 type args struct {
 	root, port, bind *string
 	rebuild          *bool
+	minified         *bool
 }
 
 func (a *args) register() {
 	a.root = flag.String("root", "./", "path to generated file storage")
 	a.port, a.bind = flag.String("port", "8080", "HTTP port"), flag.String("bind", "0.0.0.0", "bind address")
 	a.rebuild = flag.Bool("rebuild", false, "rebuild all templates for each request")
+	a.minified = flag.Bool("minified", false, "use min.js and min.css files (ala production mode)")
 }
 
 func (a *args) parse() {
