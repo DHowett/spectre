@@ -1,21 +1,22 @@
 {{define "page_paste_edit"}}
 {{template "header" .}}
 <form action="{{pasteURL "edit" .Obj}}" method="post">
-<div id="paste-controls" style="display: inline;">
-	{{template "s2langbox" .Obj}}
-	<button type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
-		<i class="hidden-phone icon-trash icon-large"></i>
-		<span class="visible-phone">Delete</span>
-	</button>
-	<button type="submit" class="btn btn-primary">
-		<i class="hidden-phone icon-save icon-large"></i>
-		<span class="visible-phone">Save</span>
-	</button>
-</div>
 <div class="paste input-block-level">
 <div class="paste-toolbox">
 	<span class="paste-title"><strong>Paste {{.Obj.ID}}</strong></span>
-	<div class="paste-toolbox-buttons pull-right hidden-phone" id="desktop-paste-control-container"></div>
+	<div class="paste-toolbox-buttons pull-right hidden-phone" id="desktop-paste-control-container">
+		<div id="paste-controls" style="display: inline;">
+			{{template "s2langbox" .Obj}}
+			<button type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
+				<i class="hidden-phone icon-trash icon-large"></i>
+				<span class="visible-phone">Delete</span>
+			</button>
+			<button type="submit" class="btn btn-primary">
+				<i class="hidden-phone icon-save icon-large"></i>
+				<span class="visible-phone">Save</span>
+			</button>
+		</div>
+	</div>
 </div>
 <textarea tabindex="1" class="input-block-level code" name="text" rows="20">{{pasteBody .Obj}}</textarea>
 </div>
