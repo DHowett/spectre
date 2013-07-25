@@ -1,9 +1,21 @@
 {{define "page_index"}}
 {{template "header" .}}
-<h3>New Paste</h3>
 <form action="/paste/new" method="post">
-{{template "pastebox"}}
-{{template "submit"}}
+<div id="paste-controls" style="display: inline;">
+	{{template "s2langbox"}}
+	<button type="submit" class="btn btn-primary">
+		<i class="hidden-phone icon-save icon-large"></i>
+		<span class="visible-phone">Paste!</span>
+	</button>
+</div>
+<div class="paste input-block-level">
+<div class="paste-toolbox">
+	<span class="paste-title"><strong>New Paste</strong></span>
+	<div class="paste-toolbox-buttons pull-right hidden-phone" id="desktop-paste-control-container"></div>
+</div>
+<textarea tabindex="1" class="input-block-level code" name="text" rows="20"></textarea>
+</div>
+<div class="visible-phone" id="phone-paste-control-container"></div>
 </form>
 {{template "footer" .}}
 {{end}}

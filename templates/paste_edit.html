@@ -1,10 +1,40 @@
 {{define "page_paste_edit"}}
 {{template "header" .}}
-<h3>Paste {{.Obj.ID}}</h3>
 <form action="{{pasteURL "edit" .Obj}}" method="post">
-{{template "pastebox" (pasteBody .Obj)}}
-{{template "submit" .Obj}}
-<a href="{{pasteURL "delete" .Obj}}" class="btn btn-danger">Delete</a>
+<div id="paste-controls" style="display: inline;">
+	{{template "s2langbox" .Obj}}
+	<button type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
+		<i class="hidden-phone icon-trash icon-large"></i>
+		<span class="visible-phone">Delete</span>
+	</button>
+	<button type="submit" class="btn btn-primary">
+		<i class="hidden-phone icon-save icon-large"></i>
+		<span class="visible-phone">Save</span>
+	</button>
+</div>
+<div class="paste input-block-level">
+<div class="paste-toolbox">
+	<span class="paste-title"><strong>Paste {{.Obj.ID}}</strong></span>
+	<div class="paste-toolbox-buttons pull-right hidden-phone" id="desktop-paste-control-container"></div>
+</div>
+<textarea tabindex="1" class="input-block-level code" name="text" rows="20">{{pasteBody .Obj}}</textarea>
+</div>
+<div class="visible-phone" id="phone-paste-control-container"></div>
 </form>
+<div id="deleteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<form name="deleteForm" action="{{pasteURL "delete" .Obj}}" method="post">
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+		<h3>Confirm Deletion</h3>
+	</div>
+	<div class="modal-body">
+		<p>Are you sure you want to delete paste {{.Obj.ID}}?</p>
+	</div>
+	<div class="modal-footer">
+		<button type="submit" class="btn btn-danger">Destroy! Annihilate!</button>
+		<button data-dismiss="modal" class="btn" aria-hidden="true">Nevermind</a>
+	</div>
+	</form>
+</div>
 {{template "footer" .}}
 {{end}}

@@ -2,44 +2,74 @@ body {
 	margin-bottom: 1em;
 }
 
-.code {
-	font-family: 'Envy Code R', 'monospace';
-	font-size: 12pt;
+textarea { min-height: 2em; resize: vertical; }
+
+.paste {
 	min-height: 40%;
 	background-color: #222;
 	color: #ebebeb;
-}
-
-div.code {
-	padding: 9.5px;
-	margin: 0px 0px 10px;
-	white-space: pre;
+	margin: 1em 0px 10px;
 	border: 1px solid rgba(0, 0, 0, 0.15);
 	border-radius: 4px;
-	overflow-x: auto;
-	text-overflow: clip;
 }
 
-div.code-miniature {
-	padding: 4px;
+.paste.paste-miniature {
+	min-height: 0;
 	margin: 0px 0px 5px;
+}
+
+.paste .code {
+	font-family: 'Envy Code R', 'monospace';
+	font-size: 12pt;
+	padding: 9.5px;
+}
+
+.paste.paste-miniature .code {
+	font-size: 8pt;
+	padding: 4px;
+}
+
+.paste div.code {
 	white-space: pre;
-	border: 1px solid rgba(0, 0, 0, 0.15);
-	border-radius: 4px;
 	overflow-x: auto;
 	text-overflow: clip;
-	font-size: 8pt;
-	font-family: 'Envy Code R', 'monospace';
-	background-color: #222;
-	color: #ebebeb;
+}
+
+.paste textarea.code {
+	/* Fix the text field's appearance */
+	background-color: inherit;
+	color: inherit;
+	border: none;
+	margin-bottom: 0px;
+}
+
+.paste textarea.code:focus, .paste textarea.code {
+	outline: none none !important;
+	box-shadow: none;
+	-webkit-appearance: none;
+}
+
+div.paste-toolbox {
+	padding: 6px;
+}
+
+span.paste-title {
+	font-size: 16pt;
+	color: white;
+	vertical-align: middle;
+}
+
+span.paste-title .paste-subtitle {
+	font-size: 10pt;
+	color: #999;
+}
+
+div.paste-toolbox .btn {
+	display: inline;
 }
 
 .well, .alert-block {
 	margin-top: 1em;
-}
-
-input, button, select, textarea, body {
-	font-family: "LatinModernSans10Regular", 'Helvetica', 'sans';
 }
 
 form {
@@ -48,6 +78,7 @@ form {
 
 .dropdown {
 	width: 250px;
+	margin-right: 4px;
 }
 
 @media (max-width: 767px) {
@@ -56,10 +87,21 @@ form {
 	}
 	.pull-right {
 		display: block;
-		float: none;
+		float: none !important;
 	}
-	.dropdown, .btn {
+	span.paste-title {
 		display: block;
+		text-align: center;
+	}
+	span.paste-title .paste-subtitle {
+		margin-top: .2em;
+		display: block;
+	}
+	.dropdown {
+		padding: 0px;
+	}
+	.dropdown, .btn-phone-expand, .visible-phone .btn {
+		display: block !important;
 		float: none;
 		width: 100% !important;
 		margin-left: 0;
