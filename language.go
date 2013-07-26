@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"html/template"
+	"io"
+	"os/exec"
 	"sort"
+	"strings"
 )
 
 type Language struct {
@@ -24,15 +28,8 @@ func (l LanguageList) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
 
-var langMap map[string]*Language
-var languages []*Language
-
-func Languages() []*Language {
-	return languages
-}
-
 func LanguageNamed(name string) *Language {
-	v, ok := langMap[name]
+	v, ok := languageConfig.languageMap[name]
 	if !ok {
 		return nil
 	}
@@ -47,7 +44,7 @@ func LanguageOptionListHTML() template.HTML {
 	}
 
 	var out string
-	for _, group := range languageGroups {
+	for _, group := range languageConfig.LanguageGroups {
 		out += "<optgroup label=\"" + group.Title + "\">"
 		for _, l := range group.Languages {
 			out += "<option value=\"" + l.Name + "\">" + l.Title + "</option>"
@@ -58,29 +55,99 @@ func LanguageOptionListHTML() template.HTML {
 	return template.HTML(languageOptionCache)
 }
 
-var languageGroups []*struct {
-	Title     string
-	Languages LanguageList
+var languageConfig struct {
+	LanguageGroups []*struct {
+		Title     string
+		Languages LanguageList
+	} `yaml:"languageGroups"`
+	Formatters map[string]*Formatter
+
+	languageMap map[string]*Language
 }
 
-func init() {
-	err := YAMLUnmarshalFile("languages.yml", &languageGroups)
+type FormatFunc func(io.Reader, ...string) (string, error)
+
+type Formatter struct {
+	Name string
+	Func string
+	Args []string
+	fn   FormatFunc
+}
+
+func (f *Formatter) Format(stream io.Reader, lang string) (string, error) {
+	myargs := make([]string, len(f.Args))
+	for i, v := range f.Args {
+		n := v
+		if n == "%LANG%" {
+			n = lang
+		}
+		myargs[i] = n
+	}
+	return f.fn(stream, myargs...)
+}
+
+func commandFormatter(stream io.Reader, args ...string) (output string, err error) {
+	var outbuf, errbuf bytes.Buffer
+	command := exec.Command(args[0], args[1:]...)
+	command.Stdin = stream
+	command.Stdout = &outbuf
+	command.Stderr = &errbuf
+	err = command.Run()
+	output = strings.TrimSpace(outbuf.String())
+	if err != nil {
+		output = strings.TrimSpace(errbuf.String())
+	}
+	return
+}
+
+func plainTextFormatter(stream io.Reader, args ...string) (string, error) {
+	buf := &bytes.Buffer{}
+	io.Copy(buf, stream)
+	return strings.Replace(template.HTMLEscapeString(buf.String()), "\n", "<br>", -1), nil
+}
+
+var formatFunctions map[string]FormatFunc = map[string]FormatFunc{
+	"commandFormatter": commandFormatter,
+	"plainText":        plainTextFormatter,
+}
+
+func FormatPaste(p *Paste) (string, error) {
+	var formatter *Formatter
+	var ok bool
+	if formatter, ok = languageConfig.Formatters[p.Language]; !ok {
+		formatter = languageConfig.Formatters["default"]
+	}
+
+	reader, _ := p.Reader()
+	defer reader.Close()
+	return formatter.Format(reader, p.Language)
+}
+
+func loadLanguageConfig() {
+	err := YAMLUnmarshalFile("languages.yml", &languageConfig)
 	if err != nil {
 		panic(err)
 	}
 
-	langMap = make(map[string]*Language)
-	for _, g := range languageGroups {
+	languageConfig.languageMap = make(map[string]*Language)
+	for _, g := range languageConfig.LanguageGroups {
 		for _, v := range g.Languages {
-			langMap[v.Name] = v
+			languageConfig.languageMap[v.Name] = v
 			for _, langname := range v.Names {
-				langMap[langname] = v
+				languageConfig.languageMap[langname] = v
 			}
 		}
 		sort.Sort(g.Languages)
 	}
 
-	RegisterTemplateFunction("langs", Languages)
+	for _, v := range languageConfig.Formatters {
+		v.fn = formatFunctions[v.Func]
+	}
+}
+
+func init() {
+	loadLanguageConfig()
+
 	RegisterTemplateFunction("langByLexer", LanguageNamed)
 	RegisterTemplateFunction("languageOptionListHTML", LanguageOptionListHTML)
 }

@@ -1,3 +1,31 @@
+formatters:
+  default:
+    name: default
+    func: commandFormatter
+    args:
+    - ./pygments/pygmentize
+    - "-f"
+    - html
+    - "-l"
+    - "%LANG%"
+    - "-O"
+    - "nowrap=True,encoding=utf-8"
+  text:
+    name: text
+    func: plainText
+  markdown:
+    name: markdown
+    func: commandFormatter
+    args:
+    - ./Markdown.pl
+    - "--html4tags"
+  ansi:
+    name: ansi
+    func: commandFormatter
+    args:
+    - ./ansi2html
+    - "--naked"
+languageGroups:
 - title: Text
   languages:
   - name: text
