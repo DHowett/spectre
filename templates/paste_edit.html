@@ -1,16 +1,21 @@
 {{define "page_paste_edit"}}
 {{template "header" .}}
-<form action="{{pasteURL "edit" .Obj}}" method="post">
+{{template "paste_edit_partial" .Obj}}
+{{template "footer" .}}
+{{end}}
+
+{{define "paste_edit_partial"}}
+<form action="{{if .}}{{pasteURL "edit" .}}{{else}}/paste/new{{end}}" method="post">
 <div class="paste input-block-level">
 <div class="paste-toolbox">
-	<span class="paste-title"><strong>Paste {{.Obj.ID}}</strong></span>
+	<span class="paste-title"><strong>{{if .}}Paste {{.ID}}{{else}}New Paste{{end}}</strong></span>
 	<div class="paste-toolbox-buttons pull-right hidden-phone" id="desktop-paste-control-container">
 		<div id="paste-controls" style="display: inline;">
-			{{template "s2langbox" .Obj}}
-			<button title="Delete" type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
+			{{template "s2langbox" .}}
+			{{if .}}<button title="Delete" type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
 				<i class="hidden-phone icon-trash icon-large"></i>
 				<span class="visible-phone">Delete</span>
-			</button>
+			</button>{{end}}
 			<button title="Save" type="submit" class="btn btn-primary">
 				<i class="hidden-phone icon-save icon-large"></i>
 				<span class="visible-phone">Save</span>
@@ -18,24 +23,23 @@
 		</div>
 	</div>
 </div>
-<textarea tabindex="1" class="input-block-level code" name="text" rows="20">{{pasteBody .Obj}}</textarea>
+<textarea tabindex="1" class="input-block-level code" name="text" rows="20">{{if .}}{{pasteBody .}}{{end}}</textarea>
 </div>
 <div class="visible-phone" id="phone-paste-control-container"></div>
 </form>
-<div id="deleteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
-	<form name="deleteForm" action="{{pasteURL "delete" .Obj}}" method="post">
+{{if .}}<div id="deleteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<form name="deleteForm" action="{{pasteURL "delete" .}}" method="post">
 	<div class="modal-header">
 		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
 		<h3>Confirm Deletion</h3>
 	</div>
 	<div class="modal-body">
-		<p>Are you sure you want to delete paste {{.Obj.ID}}?</p>
+		<p>Are you sure you want to delete paste {{.ID}}?</p>
 	</div>
 	<div class="modal-footer">
 		<button type="submit" class="btn btn-danger">Destroy! Annihilate!</button>
 		<button data-dismiss="modal" class="btn" aria-hidden="true">Nevermind</button>
 	</div>
 	</form>
-</div>
-{{template "footer" .}}
+</div>{{end}}
 {{end}}
