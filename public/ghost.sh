@@ -33,7 +33,7 @@ export CURL_CA_BUNDLE="${ca_bundle}"
 export -a curl_opts=("-c" "${rcdir}/cookie.jar" "-b" "${rcdir}/cookie.jar" "-f" "-s")
 
 force=0
-while getopts "FIUhls:u:e:d:" o; do
+while getopts "S:iFIUhls:u:e:d:" o; do
 	case $o in
 		h)
 			usage
@@ -64,6 +64,12 @@ while getopts "FIUhls:u:e:d:" o; do
 		F)
 			force=1
 			;;
+		S)
+			server="$OPTARG"
+			;;
+		i)
+			proto="http"
+			;;
 		I)
 			curl_opts+=("-k")
 			;;
@@ -73,6 +79,7 @@ while getopts "FIUhls:u:e:d:" o; do
 			;;
 	esac
 done
+server=${server:-${proto:-https}://ghostbin.com}
 
 # Look for a newer version of the script (but don't interrupt the user.)
 upgrade=$(mktemp /tmp/ghost.XXXXXX)
