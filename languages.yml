@@ -34,173 +34,207 @@ languageGroups:
   - name: ansi
     title: ANSI
     formatter: ansi
+  #- name: markdown
+  #  title: Markdown
+  #  formatter: markdown
   - name: irc
     title: IRC Log
 - title: Common Programming Languages
   languages:
   - name: logos
     title: Logos + Objective-C
-  - name: objective-c
+    extensions: [x, xi, xm, xmi]
+  - extensions: [m, h]
+    name: objective-c
     names: [objectivec, obj-c, objc]
     title: Objective-C
-  - name: objective-c++
+  - extensions: [mm, hh]
+    name: objective-c++
     names: [objectivec++, obj-c++, objc++]
     title: Objective-C++
-  - name: c
+  - extensions: [c, h, idc]
+    mimetypes: [text/x-chdr, text/x-csrc]
+    name: c
     title: C
-  - name: cpp
+  - extensions: [cpp, hpp, c++, h++, cc, hh, cxx, hxx, C, H, cp, CPP]
+    mimetypes: [text/x-c++hdr, text/x-c++src]
+    name: cpp
     names: [c++]
     title: C++
-  - name: perl
+  - extensions: [pl, pm]
+    mimetypes: [text/x-perl, application/x-perl]
+    name: perl
     names: [pl]
     title: Perl
   - name: go
     title: Go
+    extensions: [go]
 - title: Other Languages
   languages:
-  - name: tex
-    names: [latex]
-    title: TeX
-  - name: python
+  - extensions: [py, pyw, sc, SConstruct, SConscript, tac, sage]
+    mimetypes: [text/x-python, application/x-python]
+    name: python
     names: [py, sage]
     title: Python
-  - name: pycon
-    title: Python console session
-  - name: pytb
-    title: Python Traceback
-  - name: python3
+  - {name: pycon, title: Python console session}
+  - {name: pytb, title: Python Traceback}
+  - mimetypes: [text/x-python3, application/x-python3]
+    name: python3
     names: [py3]
     title: Python 3
-  - name: py3tb
-    title: Python 3.0 Traceback
-  - name: rb
+  - {name: py3tb, title: Python 3.0 Traceback}
+  - extensions: [rb, rbw, Rakefile, rake, gemspec, rbx, duby]
+    mimetypes: [text/x-ruby, application/x-ruby]
+    name: rb
     names: [ruby, duby]
     title: Ruby
   - name: rbcon
     names: [irb]
     title: Ruby irb session
-  - name: lua
+  - extensions: [lua, wlua]
+    mimetypes: [text/x-lua, application/x-lua]
+    name: lua
     title: Lua
-  - name: moon
+  - mimetypes: [text/x-moonscript, application/x-moonscript]
+    name: moon
     names: [moonscript]
     title: MoonScript
-  - name: croc
-    title: Croc
-  - name: minid
-    title: MiniD
-  - name: io
-    title: Io
-  - name: tcl
+  - {name: croc, title: Croc}
+  - {name: minid, title: MiniD}
+  - {name: io, title: Io}
+  - mimetypes: [text/x-tcl, text/x-script.tcl, application/x-tcl]
+    name: tcl
     title: Tcl
-  - name: factor
-    title: Factor
-  - name: fancy
+  - {name: factor, title: Factor}
+  - extensions: [fy, fancypack]
+    name: fancy
     names: [fy]
     title: Fancy
-  - name: dg
-    title: dg
-  - name: gas
+  - {name: dg, title: dg}
+  - extensions: [s, S]
+    name: gas
     title: GAS
-  - name: objdump
-    title: objdump
-  - name: d-objdump
-    title: d-objdump
-  - name: cpp-objdump
+  - {name: objdump, title: objdump}
+  - {name: d-objdump, title: d-objdump}
+  - extensions: [cpp-objdump, c++-objdump, cxx-objdump]
+    name: cpp-objdump
     names: [c++-objdumb, cxx-objdump]
     title: cpp-objdump
-  - name: c-objdump
-    title: c-objdump
-  - name: llvm
-    title: LLVM
-  - name: nasm
+  - {name: c-objdump, title: c-objdump}
+  - {name: llvm, title: LLVM}
+  - extensions: [asm, ASM]
+    name: nasm
     title: NASM
-  - name: ca65
-    title: ca65
-  - name: d
+  - {name: ca65, title: ca65}
+  - extensions: [d, di]
+    name: d
     title: D
   - name: delphi
     names: [pas, pascal, objectpascal]
     title: Delphi
-  - name: ec
+  - extensions: [ec, eh]
+    mimetypes: [text/x-echdr, text/x-ecsrc]
+    name: ec
     title: eC
-  - name: dylan
+  - extensions: [dylan, dyl, intr]
+    name: dylan
     title: Dylan
-  - name: fortran
+  - extensions: [f, f90, F, F90]
+    name: fortran
     title: Fortran
-  - name: glsl
+  - extensions: [vert, frag, geo]
+    name: glsl
     title: GLSL
-  - name: prolog
+  - extensions: [prolog, pro, pl]
+    name: prolog
     title: Prolog
-  - name: cython
+  - extensions: [pyx, pxd, pxi]
+    mimetypes: [text/x-cython, application/x-cython]
+    name: cython
     names: [pyx]
     title: Cython
-  - name: vala
+  - extensions: [vala, vapi]
+    name: vala
     names: [vapi]
     title: Vala
-  - name: ooc
-    title: Ooc
-  - name: felix
+  - {name: ooc, title: Ooc}
+  - extensions: [flx, flxh]
+    name: felix
     names: [flx]
     title: Felix
-  - name: ada
+  - extensions: [adb, ads, ada]
+    name: ada
     names: [ada95ada2005]
     title: Ada
-  - name: modula2
+  - extensions: [def, mod]
+    name: modula2
     names: [m2]
     title: Modula-2
   - name: blitzmax
     names: [bmax]
     title: BlitzMax
-  - name: nimrod
+  - extensions: [nim, nimrod]
+    name: nimrod
     names: [nim]
     title: Nimrod
-  - name: fan
-    title: Fantom
-  - name: rust
+  - {name: fan, title: Fantom}
+  - extensions: [rs, rc]
+    name: rust
     title: Rust
-  - name: cuda
+  - extensions: [cu, cuh]
+    name: cuda
     names: [cu]
     title: CUDA
-  - name: monkey
-    title: Monkey
-  - name: dylan-lid
+  - {name: monkey, title: Monkey}
+  - extensions: [lid, hdp]
+    name: dylan-lid
     names: [lid]
     title: DylanLID
   - name: dylan-console
     names: [dylan-repl]
     title: Dylan session
-  - name: cobol
+  - extensions: [cob, COB, cpy, CPY]
+    name: cobol
     title: COBOL
-  - name: cobolfree
+  - extensions: [cbl, CBL]
+    name: cobolfree
     title: COBOLFree
-  - name: smali
-    title: Smali
+  - {name: smali, title: Smali}
   - name: csharp
     names: [c#]
     title: C#
-  - name: nemerle
-    title: Nemerle
-  - name: boo
-    title: Boo
-  - name: vb.net
+  - {name: nemerle, title: Nemerle}
+  - {name: boo, title: Boo}
+  - extensions: [vb, bas]
+    mimetypes: [text/x-vbnet, text/x-vba]
+    name: vb.net
     names: [vbnet]
     title: VB.net
-  - name: aspx-cs
+  - extensions: [aspx, asax, ascx, ashx, asmx, axd]
+    name: aspx-cs
     title: aspx-cs
-  - name: aspx-vb
+  - extensions: [aspx, asax, ascx, ashx, asmx, axd]
+    name: aspx-vb
     title: aspx-vb
-  - name: fsharp
+  - extensions: [fs, fsi]
+    name: fsharp
     title: FSharp
-  - name: Clipper
+  - extensions: [PRG, prg]
+    name: Clipper
     names: [XBase]
     title: FoxPro
-  - name: racket
+  - extensions: [rkt, rktl]
+    mimetypes: [text/x-racket, application/x-racket]
+    name: racket
     names: [rkt]
     title: Racket
-  - name: scheme
+  - extensions: [scm, ss]
+    mimetypes: [text/x-scheme, application/x-scheme]
+    name: scheme
     names: [scm]
     title: Scheme
-  - name: common-lisp
+  - extensions: [cl, lisp, el]
+    name: common-lisp
     names: [cl]
     title: Common Lisp
   - name: haskell
@@ -209,138 +243,134 @@ languageGroups:
   - name: lhs
     names: [literate-haskell]
     title: Literate Haskell
-  - name: sml
+  - extensions: [sml, sig, fun]
+    mimetypes: [text/x-standardml, application/x-standardml]
+    name: sml
     title: Standard ML
-  - name: ocaml
+  - extensions: [ml, mli, mll, mly]
+    name: ocaml
     title: OCaml
-  - name: erlang
+  - extensions: [erl, hrl, es, escript]
+    name: erlang
     title: Erlang
-  - name: erl
-    title: Erlang erl session
-  - name: opa
-    title: Opa
-  - name: coq
-    title: Coq
-  - name: newlisp
+  - {name: erl, title: Erlang erl session}
+  - {name: opa, title: Opa}
+  - {name: coq, title: Coq}
+  - extensions: [lsp, nl]
+    mimetypes: [text/x-newlisp, application/x-newlisp]
+    name: newlisp
     title: NewLisp
-  - name: elixir
+  - extensions: [ex, exs]
+    name: elixir
     names: [ex, exs]
     title: Elixir
-  - name: iex
-    title: Elixir iex session
-  - name: koka
+  - {name: iex, title: Elixir iex session}
+  - extensions: [kk, kki]
+    name: koka
     title: Koka
   - name: verilog
     names: [v]
     title: verilog
-  - name: systemverilog
+  - extensions: [sv, svh]
+    name: systemverilog
     names: [sv]
     title: systemverilog
-  - name: vhdl
+  - extensions: [vhdl, vhd]
+    name: vhdl
     title: vhdl
-  - name: java
-    title: Java
-  - name: scala
-    title: Scala
-  - name: gosu
+  - {name: java, title: Java}
+  - {name: scala, title: Scala}
+  - extensions: [gs, gsx, gsp, vark]
+    name: gosu
     title: Gosu
-  - name: gst
-    title: Gosu Template
-  - name: groovy
-    title: Groovy
+  - {name: gst, title: Gosu Template}
+  - {name: groovy, title: Groovy}
   - name: ioke
     names: [ik]
     title: Ioke
-  - name: clojure
+  - mimetypes: [text/x-clojure, application/x-clojure]
+    name: clojure
     names: [clj]
     title: Clojure
-  - name: kotlin
-    title: Kotlin
-  - name: xtend
-    title: Xtend
-  - name: aspectj
-    title: AspectJ
-  - name: ceylon
-    title: Ceylon
-  - name: julia
+  - {name: kotlin, title: Kotlin}
+  - {name: xtend, title: Xtend}
+  - {name: aspectj, title: AspectJ}
+  - {name: ceylon, title: Ceylon}
+  - mimetypes: [text/x-julia, application/x-julia]
+    name: julia
     names: [jl]
     title: Julia
-  - name: jlcon
-    title: Julia console
-  - name: mupad
-    title: MuPAD
-  - name: matlab
-    title: Matlab
-  - name: matlabsession
-    title: Matlab session
-  - name: octave
-    title: Octave
-  - name: scilab
+  - {name: jlcon, title: Julia console}
+  - {name: mupad, title: MuPAD}
+  - {name: matlab, title: Matlab}
+  - {name: matlabsession, title: Matlab session}
+  - {name: octave, title: Octave}
+  - extensions: [sci, sce, tst]
+    name: scilab
     title: Scilab
-  - name: numpy
-    title: NumPy
+  - {name: numpy, title: NumPy}
   - name: rconsole
     names: [rout]
     title: RConsole
-  - name: splus
+  - extensions: [S, R, .Rhistory, .Rprofile]
+    mimetypes: [text/S-plus, text/S, text/x-r-source, text/x-r, text/x-R, text/x-r-history,
+      text/x-r-profile]
+    name: splus
     names: [s, r]
     title: S
-  - name: jags
+  - extensions: [jag, bug]
+    name: jags
     title: JAGS
   - name: bugs
     names: [winbugs, openbugs]
     title: BUGS
-  - name: stan
-    title: Stan
-  - name: idl
-    title: IDL
-  - name: rd
-    title: Rd
-  - name: brainfuck
+  - {name: stan, title: Stan}
+  - {name: idl, title: IDL}
+  - {name: rd, title: Rd}
+  - extensions: [bf, b]
+    name: brainfuck
     names: [bf]
     title: Brainfuck
-  - name: befunge
-    title: Befunge
-  - name: redcode
-    title: Redcode
-  - name: moocode
-    title: MOOCode
+  - {name: befunge, title: Befunge}
+  - {name: redcode, title: Redcode}
+  - {name: moocode, title: MOOCode}
   - name: smalltalk
     names: [squeak]
     title: Smalltalk
-  - name: logtalk
-    title: Logtalk
-  - name: gnuplot
+  - {name: logtalk, title: Logtalk}
+  - extensions: [plot, plt]
+    name: gnuplot
     title: Gnuplot
-  - name: pov
+  - extensions: [pov, inc]
+    name: pov
     title: POVRay
-  - name: applescript
-    title: AppleScript
-  - name: modelica
-    title: Modelica
-  - name: rebol
+  - {name: applescript, title: AppleScript}
+  - {name: modelica, title: Modelica}
+  - extensions: [r, r3]
+    name: rebol
     title: REBOL
-  - name: abap
-    title: ABAP
-  - name: newspeak
-    title: Newspeak
+  - {name: abap, title: ABAP}
+  - {name: newspeak, title: Newspeak}
   - name: Cucumber
     names: [cucumber, Gherkin, gherkin]
     title: Gherkin
   - name: asy
     names: [asymptote]
     title: Asymptote
-  - name: postscript
+  - extensions: [ps, eps]
+    name: postscript
     title: PostScript
-  - name: ahk
+  - extensions: [ahk, ahkl]
+    name: ahk
     title: autohotkey
-  - name: gooddata-cl
-    title: GoodData-CL
-  - name: maql
+  - {name: gooddata-cl, title: GoodData-CL}
+  - mimetypes: [text/x-gooddata-maql, application/x-gooddata-maql]
+    name: maql
     title: MAQL
-  - name: protobuf
-    title: Protocol Buffer
-  - name: hybris
+  - {name: protobuf, title: Protocol Buffer}
+  - extensions: [hy, hyb]
+    mimetypes: [text/x-hybris, application/x-hybris]
+    name: hybris
     names: [hy]
     title: Hybris
   - name: awk
@@ -349,122 +379,119 @@ languageGroups:
   - name: cfengine3
     names: [cf3]
     title: CFEngine3
-  - name: snobol
-    title: Snobol
-  - name: ecl
-    title: ECL
-  - name: urbiscript
-    title: UrbiScript
-  - name: openedge
+  - {name: snobol, title: Snobol}
+  - {name: ecl, title: ECL}
+  - {name: urbiscript, title: UrbiScript}
+  - extensions: [p, cls]
+    mimetypes: [text/x-openedge, application/x-openedge]
+    name: openedge
     names: [abl, progress]
     title: OpenEdge ABL
-  - name: bro
-    title: Bro
+  - {name: bro, title: Bro}
   - name: mscgen
     names: [msc]
     title: Mscgen
-  - name: kconfig
+  - extensions: [Kconfig, '*Config.in*', external.in*, standard-modules.in]
+    name: kconfig
     names: [menuconfig, linux-config, kernel-config]
     title: Kconfig
-  - name: vgl
-    title: VGL
-  - name: sp
-    title: SourcePawn
-  - name: RobotFramework
+  - {name: vgl, title: VGL}
+  - {name: sp, title: SourcePawn}
+  - extensions: [txt, robot]
+    name: RobotFramework
     names: [robotframework]
     title: RobotFramework
-  - name: puppet
-    title: Puppet
-  - name: nsis
+  - {name: puppet, title: Puppet}
+  - extensions: [nsi, nsh]
+    name: nsis
     names: [nsi, nsh]
     title: NSIS
-  - name: spec
-    title: RPMSpec
-  - name: cbmbas
-    title: CBM BASIC V2
+  - {name: spec, title: RPMSpec}
+  - {name: cbmbas, title: CBM BASIC V2}
   - name: autoit
     names: [Autoit]
     title: AutoIt
-  - name: ragel
-    title: Ragel
-  - name: ragel-em
-    title: Embedded Ragel
-  - name: ragel-c
-    title: Ragel in C Host
-  - name: ragel-d
-    title: Ragel in D Host
-  - name: ragel-cpp
-    title: Ragel in CPP Host
-  - name: ragel-objc
-    title: Ragel in Objective C Host
+  - {name: ragel, title: Ragel}
+  - {name: ragel-em, title: Embedded Ragel}
+  - {name: ragel-c, title: Ragel in C Host}
+  - {name: ragel-d, title: Ragel in D Host}
+  - {name: ragel-cpp, title: Ragel in CPP Host}
+  - {name: ragel-objc, title: Ragel in Objective C Host}
   - name: ragel-ruby
     names: [ragel-rb]
     title: Ragel in Ruby Host
-  - name: ragel-java
-    title: Ragel in Java Host
-  - name: antlr
-    title: ANTLR
-  - name: antlr-python
+  - {name: ragel-java, title: Ragel in Java Host}
+  - {name: antlr, title: ANTLR}
+  - extensions: [G, g]
+    name: antlr-python
     title: ANTLR With Python Target
-  - name: antlr-perl
+  - extensions: [G, g]
+    name: antlr-perl
     title: ANTLR With Perl Target
-  - name: antlr-ruby
+  - extensions: [G, g]
+    name: antlr-ruby
     names: [antlr-rb]
     title: ANTLR With Ruby Target
-  - name: antlr-cpp
+  - extensions: [G, g]
+    name: antlr-cpp
     title: ANTLR With CPP Target
-  - name: antlr-csharp
+  - extensions: [G, g]
+    name: antlr-csharp
     names: [antlr-c#]
     title: ANTLR With C# Target
-  - name: antlr-objc
+  - extensions: [G, g]
+    name: antlr-objc
     title: ANTLR With ObjectiveC Target
-  - name: antlr-java
+  - extensions: [G, g]
+    name: antlr-java
     title: ANTLR With Java Target
-  - name: antlr-as
+  - extensions: [G, g]
+    name: antlr-as
     names: [antlr-actionscript]
     title: ANTLR With ActionScript Target
-  - name: treetop
+  - extensions: [treetop, tt]
+    name: treetop
     title: Treetop
-  - name: bash
+  - extensions: [sh, ksh, bash, ebuild, eclass, .bashrc, bashrc, .bash_*, bash_*]
+    mimetypes: [application/x-sh, application/x-shellscript]
+    name: bash
     names: [sh, ksh]
     title: Bash
-  - name: console
-    title: Bash Session
-  - name: tcsh
+  - {name: console, title: Bash Session}
+  - extensions: [tcsh, csh]
+    name: tcsh
     names: [csh]
     title: Tcsh
-  - name: bat
+  - extensions: [bat, cmd]
+    name: bat
     title: Batchfile
   - name: powershell
     names: [posh, ps1]
     title: PowerShell
-  - name: shell-session
-    title: Shell Session
+  - {name: shell-session, title: Shell Session}
+  - {name: text, title: Text only}
+  - {name: raw, title: Raw token data}
   - name: postgresql
     names: [postgres]
     title: PostgreSQL SQL dialect
-  - name: plpgsql
-    title: PL/pgSQL
+  - {name: plpgsql, title: PL/pgSQL}
   - name: psql
     names: [postgresql-console, postgres-console]
     title: PostgreSQL console (psql)
-  - name: sql
-    title: SQL
-  - name: mysql
-    title: MySQL
-  - name: sqlite3
-    title: sqlite3con
-  - name: html+php
+  - {name: sql, title: SQL}
+  - {name: mysql, title: MySQL}
+  - {name: sqlite3, title: sqlite3con}
+  - mimetypes: [application/x-php, application/x-httpd-php, application/x-httpd-php3,
+      application/x-httpd-php4, application/x-httpd-php5]
+    name: html+php
     title: HTML+PHP
-  - name: xml+php
-    title: XML+PHP
-  - name: css+php
-    title: CSS+PHP
-  - name: js+php
+  - {name: xml+php, title: XML+PHP}
+  - {name: css+php, title: CSS+PHP}
+  - mimetypes: [application/x-javascript+php, text/x-javascript+php, text/javascript+php]
+    name: js+php
     names: [javascript+php]
     title: JavaScript+PHP
-  - name: erb
-    title: ERB
+  - {name: erb, title: ERB}
   - name: rhtml
     names: [html+erb, html+ruby]
     title: RHTML
@@ -474,201 +501,225 @@ languageGroups:
   - name: css+erb
     names: [css+ruby]
     title: CSS+Ruby
-  - name: js+erb
+  - mimetypes: [application/x-javascript+ruby, text/x-javascript+ruby, text/javascript+ruby]
+    name: js+erb
     names: [javascript+erb, js+ruby, javascript+ruby]
     title: JavaScript+Ruby
-  - name: smarty
-    title: Smarty
-  - name: html+smarty
-    title: HTML+Smarty
-  - name: xml+smarty
-    title: XML+Smarty
-  - name: css+smarty
-    title: CSS+Smarty
-  - name: js+smarty
+  - {name: smarty, title: Smarty}
+  - {name: html+smarty, title: HTML+Smarty}
+  - {name: xml+smarty, title: XML+Smarty}
+  - {name: css+smarty, title: CSS+Smarty}
+  - mimetypes: [application/x-javascript+smarty, text/x-javascript+smarty, text/javascript+smarty]
+    name: js+smarty
     names: [javascript+smarty]
     title: JavaScript+Smarty
-  - name: django
+  - mimetypes: [application/x-django-templating, application/x-jinja]
+    name: django
     names: [jinja]
     title: Django/Jinja
-  - name: html+django
+  - mimetypes: [text/html+django, text/html+jinja]
+    name: html+django
     names: [html+jinja]
     title: HTML+Django/Jinja
-  - name: css+django
+  - mimetypes: [text/css+django, text/css+jinja]
+    name: css+django
     names: [css+jinja]
     title: CSS+Django/Jinja
-  - name: xml+django
+  - mimetypes: [application/xml+django, application/xml+jinja]
+    name: xml+django
     names: [xml+jinja]
     title: XML+Django/Jinja
-  - name: js+django
+  - mimetypes: [application/x-javascript+django, application/x-javascript+jinja, text/x-javascript+django,
+      text/x-javascript+jinja, text/javascript+django, text/javascript+jinja]
+    name: js+django
     names: [javascript+django, js+jinja, javascript+jinja]
     title: JavaScript+Django/Jinja
-  - name: genshi
+  - mimetypes: [application/x-genshi, application/x-kid]
+    name: genshi
     names: [kid, xml+genshi, xml+kid]
     title: Genshi
   - name: html+genshi
     names: [html+kid]
     title: HTML+Genshi
-  - name: genshitext
+  - mimetypes: [application/x-genshi-text, text/x-genshi]
+    name: genshitext
     title: Genshi Text
   - name: css+genshitext
     names: [css+genshi]
     title: CSS+Genshi Text
-  - name: js+genshitext
+  - mimetypes: [application/x-javascript+genshi, text/x-javascript+genshi, text/javascript+genshi]
+    name: js+genshitext
     names: [js+genshi, javascript+genshitext, javascript+genshi]
     title: JavaScript+Genshi Text
-  - name: myghty
+  - extensions: [myt, autodelegate]
+    name: myghty
     title: Myghty
-  - name: html+myghty
-    title: HTML+Myghty
-  - name: xml+myghty
-    title: XML+Myghty
-  - name: css+myghty
-    title: CSS+Myghty
-  - name: js+myghty
+  - {name: html+myghty, title: HTML+Myghty}
+  - {name: xml+myghty, title: XML+Myghty}
+  - {name: css+myghty, title: CSS+Myghty}
+  - mimetypes: [application/x-javascript+myghty, text/x-javascript+myghty, text/javascript+mygthy]
+    name: js+myghty
     names: [javascript+myghty]
     title: JavaScript+Myghty
-  - name: mason
+  - extensions: [m, mhtml, mc, mi, autohandler, dhandler]
+    name: mason
     title: Mason
-  - name: mako
-    title: Mako
-  - name: html+mako
-    title: HTML+Mako
-  - name: xml+mako
-    title: XML+Mako
-  - name: js+mako
+  - {name: mako, title: Mako}
+  - {name: html+mako, title: HTML+Mako}
+  - {name: xml+mako, title: XML+Mako}
+  - mimetypes: [application/x-javascript+mako, text/x-javascript+mako, text/javascript+mako]
+    name: js+mako
     names: [javascript+mako]
     title: JavaScript+Mako
-  - name: css+mako
-    title: CSS+Mako
-  - name: jsp
-    title: Java Server Page
-  - name: cheetah
+  - {name: css+mako, title: CSS+Mako}
+  - {name: jsp, title: Java Server Page}
+  - extensions: [tmpl, spt]
+    mimetypes: [application/x-cheetah, application/x-spitfire]
+    name: cheetah
     names: [spitfire]
     title: Cheetah
-  - name: html+cheetah
+  - mimetypes: [text/html+cheetah, text/html+spitfire]
+    name: html+cheetah
     names: [html+spitfire]
     title: HTML+Cheetah
-  - name: xml+cheetah
+  - mimetypes: [application/xml+cheetah, application/xml+spitfire]
+    name: xml+cheetah
     names: [xml+spitfire]
     title: XML+Cheetah
-  - name: js+cheetah
+  - mimetypes: [application/x-javascript+cheetah, text/x-javascript+cheetah, text/javascript+cheetah,
+      application/x-javascript+spitfire, text/x-javascript+spitfire, text/javascript+spitfire]
+    name: js+cheetah
     names: [javascript+cheetah, js+spitfire, javascript+spitfire]
     title: JavaScript+Cheetah
-  - name: evoque
-    title: Evoque
-  - name: html+evoque
-    title: HTML+Evoque
-  - name: xml+evoque
-    title: XML+Evoque
-  - name: cfs
-    title: cfstatement
-  - name: cfm
+  - {name: evoque, title: Evoque}
+  - {name: html+evoque, title: HTML+Evoque}
+  - {name: xml+evoque, title: XML+Evoque}
+  - {name: cfs, title: cfstatement}
+  - extensions: [cfm, cfml, cfc]
+    name: cfm
     title: Coldfusion HTML
-  - name: velocity
+  - extensions: [vm, fhtml]
+    name: velocity
     title: Velocity
-  - name: html+velocity
-    title: HTML+Velocity
-  - name: xml+velocity
-    title: XML+Velocity
-  - name: ssp
-    title: Scalate Server Page
-  - name: tea
-    title: Tea
-  - name: html+lasso
+  - {name: html+velocity, title: HTML+Velocity}
+  - {name: xml+velocity, title: XML+Velocity}
+  - {name: ssp, title: Scalate Server Page}
+  - {name: tea, title: Tea}
+  - mimetypes: [text/html+lasso, application/x-httpd-lasso, 'application/x-httpd-lasso[89]']
+    name: html+lasso
     title: HTML+Lasso
-  - name: xml+lasso
-    title: XML+Lasso
-  - name: css+lasso
-    title: CSS+Lasso
-  - name: js+lasso
+  - {name: xml+lasso, title: XML+Lasso}
+  - {name: css+lasso, title: CSS+Lasso}
+  - mimetypes: [application/x-javascript+lasso, text/x-javascript+lasso, text/javascript+lasso]
+    name: js+lasso
     names: [javascript+lasso]
     title: JavaScript+Lasso
-  - name: ini
+  - extensions: [ini, cfg]
+    name: ini
     names: [cfg]
     title: INI
-  - name: properties
-    title: Properties
+  - {name: properties, title: Properties}
   - name: sourceslist
     names: [sources.list]
     title: Debian Sourcelist
-  - name: basemake
-    title: Base Makefile
-  - name: make
+  - {name: basemake, title: Base Makefile}
+  - extensions: [mak, Makefile, makefile, Makefile.*, GNUmakefile]
+    name: make
     names: [makefile, mf, bsdmake]
     title: Makefile
-  - name: diff
+  - extensions: [diff, patch]
+    mimetypes: [text/x-diff, text/x-patch]
+    name: diff
     names: [udiff]
     title: Diff
-  - name: groff
+  - extensions: [tex, aux, toc]
+    mimetypes: [text/x-tex, text/x-latex]
+    name: tex
+    names: [latex]
+    title: TeX
+  - extensions: ['[1234567]', man]
+    mimetypes: [application/x-troff, text/troff]
+    name: groff
     names: [nroff, man]
     title: Groff
-  - name: apacheconf
+  - extensions: [.htaccess, apache.conf, apache2.conf]
+    name: apacheconf
     names: [aconf, apache]
     title: ApacheConf
-  - name: bbcode
-    title: BBCode
+  - {name: bbcode, title: BBCode}
   - name: trac-wiki
     names: [moin]
     title: MoinMoin/Trac Wiki markup
-  - name: rst
+  - extensions: [rst, rest]
+    mimetypes: [text/x-rst, text/prs.fallenstein.rst]
+    name: rst
     names: [rest, restructuredtext]
     title: reStructuredText
-  - name: vim
+  - extensions: [vim, .vimrc, .exrc, .gvimrc, _vimrc, _exrc, _gvimrc, vimrc, gvimrc]
+    name: vim
     title: VimL
-  - name: pot
+  - extensions: [pot, po]
+    mimetypes: [application/x-gettext, text/x-gettext, text/gettext]
+    name: pot
     names: [po]
     title: Gettext Catalog
   - name: squidconf
     names: [squid.conf, squid]
     title: SquidConf
-  - name: control
-    title: Debian Control file
-  - name: dpatch
+  - {name: control, title: Debian Control file}
+  - extensions: [dpatch, darcspatch]
+    name: dpatch
     title: Darcs Patch
-  - name: yaml
+  - extensions: [yaml, yml]
+    name: yaml
     title: YAML
   - name: lighty
     names: [lighttpd]
     title: Lighttpd configuration file
-  - name: nginx
-    title: Nginx configuration file
-  - name: cmake
+  - {name: nginx, title: Nginx configuration file}
+  - extensions: [cmake, CMakeLists.txt]
+    name: cmake
     title: CMake
-  - name: http
-    title: HTTP
+  - {name: http, title: HTTP}
   - name: pypylog
     names: [pypy]
     title: PyPy Log
-  - name: registry
-    title: reg
+  - {name: registry, title: reg}
   - name: haxeml
     names: [hxml]
     title: Hxml
-  - name: html
+  - extensions: [html, htm, xhtml, xslt]
+    mimetypes: [text/html, application/xhtml+xml]
+    name: html
     title: HTML
-  - name: xml
+  - extensions: [xml, xsl, rss, xslt, xsd, wsdl]
+    mimetypes: [text/xml, application/xml, image/svg+xml, application/rss+xml, application/atom+xml]
+    name: xml
     title: XML
-  - name: js
+  - mimetypes: [application/javascript, application/x-javascript, text/x-javascript,
+      text/javascript]
+    name: js
     names: [javascript]
     title: JavaScript
-  - name: json
-    title: JSON
-  - name: css
-    title: CSS
-  - name: php
+  - {name: json, title: JSON}
+  - {name: css, title: CSS}
+  - extensions: [php, 'php[345]', inc]
+    name: php
     names: [php3, php4, php5]
     title: PHP
-  - name: as
+  - mimetypes: [application/x-actionscript3, text/x-actionscript3, text/actionscript3]
+    name: as
     names: [actionscript]
     title: ActionScript
-  - name: xslt
+  - extensions: [xsl, xslt, xpl]
+    mimetypes: [application/xsl+xml, application/xslt+xml]
+    name: xslt
     title: XSLT
-  - name: as3
+  - mimetypes: [application/x-actionscript, text/x-actionscript, text/actionscript]
+    name: as3
     names: [actionscript3]
     title: ActionScript 3
-  - name: mxml
-    title: MXML
+  - {name: mxml, title: MXML}
   - name: hx
     names: [haXe]
     title: haXe
@@ -678,8 +729,7 @@ languageGroups:
   - name: sass
     names: [SASS]
     title: Sass
-  - name: scss
-    title: SCSS
+  - {name: scss, title: SCSS}
   - name: objective-j
     names: [objectivej, obj-j, objj]
     title: Objective-J
@@ -689,7 +739,9 @@ languageGroups:
   - name: live-script
     names: [livescript]
     title: LiveScript
-  - name: duel
+  - extensions: [duel, jbst]
+    mimetypes: [text/x-duel, text/x-jbst]
+    name: duel
     names: [Duel Engine, Duel View, JBST, jbst, JsonML+BST]
     title: Duel
   - name: scaml
@@ -698,18 +750,18 @@ languageGroups:
   - name: jade
     names: [JADE]
     title: Jade
-  - name: xquery
+  - extensions: [xqy, xquery, xq, xql, xqm]
+    mimetypes: [text/xquery, application/xquery]
+    name: xquery
     names: [xqy, xq, xql, xqm]
     title: XQuery
-  - name: dtd
-    title: DTD
-  - name: dart
-    title: Dart
-  - name: lasso
+  - {name: dtd, title: DTD}
+  - {name: dart, title: Dart}
+  - extensions: [lasso, 'lasso[89]']
+    name: lasso
     names: [lassoscript]
     title: Lasso
   - name: qml
     names: [Qt Meta Language, Qt modeling Language]
     title: QML
-  - name: ts
-    title: TypeScript
+  - {name: ts, title: TypeScript}

@@ -15,6 +15,8 @@ import (
 type Language struct {
 	Title, Name, Formatter string
 	Names                  []string
+	Extensions             []string
+	MIMETypes              []string `yaml:"mimetypes"`
 }
 
 type LanguageList []*Language
