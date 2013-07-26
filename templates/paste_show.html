@@ -8,7 +8,13 @@
 </div>
 <div class="paste input-block-level">
 <div class="paste-toolbox">
-	<span class="paste-title"><strong>Paste {{.Obj.ID}}</strong> <span class="paste-subtitle">{{with langByLexer .Obj.Language}}{{.Title}}{{else}}({{.Obj.Language}}){{end}} <a title="View Raw" href="{{pasteURL "raw" .Obj}}"><i class="icon-file-text"> </i></a></span></span>
+	<span class="paste-title">
+		<strong>Paste {{.Obj.ID}}</strong>
+		<span class="paste-subtitle">{{with langByLexer .Obj.Language}}{{.Title}}{{else}}({{.Obj.Language}}){{end}}
+			<a title="View Raw" href="{{pasteURL "raw" .Obj}}"><i class="icon-file-text"> </i></a>
+			<a title="Download" href="{{pasteURL "download" .Obj}}"><i class="icon-download"> </i></a>
+		</span>
+	</span>
 	<div class="paste-toolbox-buttons pull-right hidden-phone" id="desktop-paste-control-container"></div>
 </div>
 <div class="code">{{render .Obj}}</div>

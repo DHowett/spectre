@@ -55,6 +55,30 @@ func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, reader)
 }
 
+func getPasteDownloadHandler(o Model, w http.ResponseWriter, r *http.Request) {
+	p := o.(*Paste)
+	lang := LanguageNamed(p.Language)
+	mime := "text/plain"
+	ext := "txt"
+	if lang != nil {
+		if len(lang.MIMETypes) > 0 {
+			mime = lang.MIMETypes[0]
+		}
+
+		if len(lang.Extensions) > 0 {
+			ext = lang.Extensions[0]
+		}
+	}
+
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+p.ID.String()+"."+ext+"\"")
+	w.Header().Set("Content-Type", mime+"; charset=utf-8")
+	w.Header().Set("Content-Transfer-Encoding", "binary")
+
+	reader, _ := p.Reader()
+	defer reader.Close()
+	io.Copy(w, reader)
+}
+
 func isEditAllowed(p *Paste, r *http.Request) bool {
 	session, _ := sessionStore.Get(r, "session")
 	pastes, ok := session.Values["pastes"].([]string)
@@ -297,6 +321,7 @@ func main() {
 		getRouter.Handle("/paste/new", RedirectHandler("/"))
 		getRouter.HandleFunc("/paste/{id}", RequiredModelObjectHandler(lookupPasteWithRequest, RenderTemplateForModel("paste_show"))).Name("paste_show")
 		getRouter.HandleFunc("/paste/{id}/raw", RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteRawHandler))).Name("paste_raw")
+		getRouter.HandleFunc("/paste/{id}/download", RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteDownloadHandler))).Name("paste_download")
 		getRouter.HandleFunc("/paste/{id}/edit", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_edit")))).Name("paste_edit")
 		getRouter.HandleFunc("/paste/{id}/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_delete_confirm")))).Name("paste_delete")
 		getRouter.Handle("/paste/", RedirectHandler("/"))
