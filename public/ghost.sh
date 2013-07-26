@@ -29,29 +29,11 @@ if [[ ! -f "${ca_bundle}" ]]; then
 _END
 fi
 
-# Look for a newer version of the script (but don't interrupt the user.)
-upgrade=$(mktemp /tmp/ghost.XXXXXX)
-{
-	read -r code < <(curl --cacert "${ca_bundle}" -fs -w '%{http_code}' -z "$0" -o "${upgrade}" https://ghostbin.com/ghost.sh);
-	[[ $code -eq 200 ]] && echo "There's a new version of ghost.sh available at https://ghostbin.com/ghost.sh" >&2
-	if [[ $code -ne 200 ]]; then
-		rm "${upgrade}"
-		upgrade=
-	fi
-}
+export CURL_CA_BUNDLE="${ca_bundle}"
+export -a curl_opts=("-c" "${rcdir}/cookie.jar" "-b" "${rcdir}/cookie.jar" "-f" "-s")
 
-function _upgrade() {
-	if [[ -z "${upgrade}" ]]; then
-		echo "It doesn't get any better than this." >&2
-		exit 1
-	fi
-	mv "${upgrade}" "${0}"
-	chmod +x "${0}"
-	echo "Done." >&2
-	exit
-}
-
-while getopts "Uhls:u:e:d:" o; do
+force=0
+while getopts "FIUhls:u:e:d:" o; do
 	case $o in
 		h)
 			usage
@@ -77,8 +59,13 @@ while getopts "Uhls:u:e:d:" o; do
 			paste=$OPTARG
 			;;
 		U)
-			_upgrade
-			exit
+			mode="upgrade"
+			;;
+		F)
+			force=1
+			;;
+		I)
+			curl_opts+=("-k")
 			;;
 		?)
 			usage
@@ -86,6 +73,32 @@ while getopts "Uhls:u:e:d:" o; do
 			;;
 	esac
 done
+
+# Look for a newer version of the script (but don't interrupt the user.)
+upgrade=$(mktemp /tmp/ghost.XXXXXX)
+{
+	declare -a upg_curl_opts=("${curl_opts[@]}")
+	[[ "$force" -eq 0 || "${mode}" != "upgrade" ]] && upg_curl_opts+=("-z" "$0")
+	read -r code < <(curl "${upg_curl_opts[@]}" -w '%{http_code}' -o "${upgrade}" https://ghostbin.com/ghost.sh);
+	[[ $code -eq 200 ]] && echo "There's a new version of ghost.sh available at https://ghostbin.com/ghost.sh" >&2
+	if [[ $code -ne 200 ]]; then
+		rm "${upgrade}"
+		upgrade=
+	fi
+}
+
+function _upgrade() {
+	if [[ -z "${upgrade}" ]]; then
+		echo "It doesn't get any better than this." >&2
+		exit 1
+	fi
+	mv "${upgrade}" "${0}"
+	chmod +x "${0}"
+	echo "Done." >&2
+	exit
+}
+
+[[ "${mode}" == "upgrade" ]] && _upgrade
 
 [[ ! -z "${upgrade}" ]] && rm "${upgrade}"
 
@@ -98,7 +111,7 @@ if [[ ! -z $2 ]]; then
 fi
 
 if [[ "${mode}" == "delete" ]]; then
-	IFS='|' read -r code < <(curl --cacert "${ca_bundle}" -c "${rcdir}/cookie.jar" -b "${rcdir}/cookie.jar" -fs -w '%{http_code}' --data-urlencode "(no body)" https://ghostbin.com/paste/${paste}/delete)
+	IFS='|' read -r code < <(curl "${curl_opts[@]}" -w '%{http_code}' --data-urlencode "(no body)" https://ghostbin.com/paste/${paste}/delete)
 	if [[ $code -ne 200 && $code -ne 303 && $code -ne 302 ]]; then
 		echo "Rejected: $code" >&2
 		exit 1
@@ -108,13 +121,13 @@ if [[ "${mode}" == "delete" ]]; then
 elif [[ "${mode}" == "edit" ]]; then
 	filename=$(mktemp /tmp/ghost.XXXXXX)
 	lang=$1
-	curl --cacert "${ca_bundle}" -c "${rcdir}/cookie.jar" -b "${rcdir}/cookie.jar" -o "${filename}" -fs https://ghostbin.com/paste/${paste}/raw
+	curl "${curl_opts[@]}" -o "${filename}" https://ghostbin.com/paste/${paste}/raw
 	${EDITOR:-vi} "${filename}"
 elif [[ "${mode}" == "show" ]]; then
-	curl --cacert "${ca_bundle}" -c "${rcdir}/cookie.jar" -b "${rcdir}/cookie.jar" -fs https://ghostbin.com/paste/${paste}/raw
+	curl "${curl_opts[@]}" https://ghostbin.com/paste/${paste}/raw
 	exit
 elif [[ "${mode}" == "list" ]]; then
-	IFS=' ' read -a pastes < <(curl --cacert "${ca_bundle}" -c "${rcdir}/cookie.jar" -b "${rcdir}/cookie.jar" -fs https://ghostbin.com/session/raw)
+	IFS=' ' read -a pastes < <(curl "${curl_opts[@]}" https://ghostbin.com/session/raw)
 	for i in "${pastes[@]}"; do
 		echo "$i: https://ghostbin.com/paste/$i"
 	done
@@ -133,7 +146,7 @@ pboard=
 url="https://ghostbin.com/paste/new"
 [[ "${mode}" == "edit" || "${mode}" == "update" ]] && url="https://ghostbin.com/paste/${paste}/edit"
 
-IFS='|' read -r code url < <(curl --cacert "${ca_bundle}" -c "${rcdir}/cookie.jar" -b "${rcdir}/cookie.jar" -fs -w '%{http_code}|%{redirect_url}' --data-urlencode text@"$filename" ${lang:+--data-urlencode} ${lang:+lang="$lang"} "${url}" | sed -e 's/HTTP/http/g')
+IFS='|' read -r code url < <(curl "${curl_opts[@]}" -w '%{http_code}|%{redirect_url}' --data-urlencode text@"$filename" ${lang:+--data-urlencode} ${lang:+lang="$lang"} "${url}" | sed -e 's/HTTP/http/g')
 [[ "${mode}" == "edit" ]] && rm "${filename}"
 
 if [[ $code -ne 200 && $code -ne 303 && $code -ne 302 ]]; then
