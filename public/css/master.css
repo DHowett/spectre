@@ -11,6 +11,7 @@ textarea { min-height: 2em; resize: vertical; }
 	margin: 1em 0px 10px;
 	border: 1px solid rgba(0, 0, 0, 0.15);
 	border-radius: 4px;
+	line-height: normal;
 }
 
 .paste.paste-miniature {
