@@ -91,8 +91,8 @@ upgrade=$(mktemp /tmp/ghost.XXXXXX)
 {
 	declare -a upg_curl_opts=("${curl_opts[@]}")
 	[[ "$force" -eq 0 || "${mode}" != "upgrade" ]] && upg_curl_opts+=("-z" "$0")
-	read -r code < <(curl "${upg_curl_opts[@]}" -w '%{http_code}' -o "${upgrade}" https://ghostbin.com/ghost.sh);
-	[[ $code -eq 200 ]] && echo "There's a new version of ghost.sh available at https://ghostbin.com/ghost.sh" >&2
+	read -r code < <(curl "${upg_curl_opts[@]}" -w '%{http_code}' -o "${upgrade}" "${server}/ghost.sh");
+	[[ $code -eq 200 ]] && echo "There's a new version of ghost.sh available at ${server}/ghost.sh" >&2
 	if [[ $code -ne 200 ]]; then
 		rm "${upgrade}"
 		upgrade=
@@ -123,7 +123,7 @@ if [[ ! -z $2 ]]; then
 fi
 
 if [[ "${mode}" == "delete" ]]; then
-	IFS='|' read -r code < <(curl "${curl_opts[@]}" -w '%{http_code}' --data-urlencode "(no body)" https://ghostbin.com/paste/${paste}/delete)
+	IFS='|' read -r code < <(curl "${curl_opts[@]}" -w '%{http_code}' --data-urlencode "(no body)" "${server}/paste/${paste}/delete")
 	if [[ $code -ne 200 && $code -ne 303 && $code -ne 302 ]]; then
 		echo "Rejected: $code" >&2
 		exit 1
@@ -133,15 +133,15 @@ if [[ "${mode}" == "delete" ]]; then
 elif [[ "${mode}" == "edit" ]]; then
 	filename=$(mktemp /tmp/ghost.XXXXXX)
 	lang=$1
-	curl "${curl_opts[@]}" -o "${filename}" https://ghostbin.com/paste/${paste}/raw
+	curl "${curl_opts[@]}" -o "${filename}" "${server}/paste/${paste}/raw"
 	${EDITOR:-vi} "${filename}"
 elif [[ "${mode}" == "show" ]]; then
-	curl "${curl_opts[@]}" https://ghostbin.com/paste/${paste}/raw
+	curl "${curl_opts[@]}" "${server}/paste/${paste}/raw"
 	exit
 elif [[ "${mode}" == "list" ]]; then
-	IFS=' ' read -a pastes < <(curl "${curl_opts[@]}" https://ghostbin.com/session/raw)
+	IFS=' ' read -a pastes < <(curl "${curl_opts[@]}" "${server}/session/raw")
 	for i in "${pastes[@]}"; do
-		echo "$i: https://ghostbin.com/paste/$i"
+		echo "$i: ${server}/paste/$i"
 	done
 	exit
 fi
@@ -155,8 +155,8 @@ pboard=
 [[ -z "${pboard}" ]] && type pbcopy &> /dev/null && pboard=pbcopy
 [[ -z "${pboard}" ]] && type xclip &> /dev/null && [[ -n "${DISPLAY}" ]] && pboard=xclip
 
-url="https://ghostbin.com/paste/new"
-[[ "${mode}" == "edit" || "${mode}" == "update" ]] && url="https://ghostbin.com/paste/${paste}/edit"
+url="${server}/paste/new"
+[[ "${mode}" == "edit" || "${mode}" == "update" ]] && url="${server}/paste/${paste}/edit"
 
 IFS='|' read -r code url < <(curl "${curl_opts[@]}" -w '%{http_code}|%{redirect_url}' --data-urlencode text@"$filename" ${lang:+--data-urlencode} ${lang:+lang="$lang"} "${url}" | sed -e 's/HTTP/http/g')
 [[ "${mode}" == "edit" ]] && rm "${filename}"
