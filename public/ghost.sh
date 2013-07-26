@@ -2,12 +2,17 @@
 function usage() {
 	prog=$(basename "$0")
 	echo "Syntax: $prog <filename> [language]" >&2
-	echo "        $prog -u <paste> <filename> [language]		- Update <paste>" >&2
+	echo "        $prog -u <paste> <filename> [language]	- Update <paste>" >&2
 	echo "        $prog -e <paste> [language]			- Edit <paste> in \$EDITOR (or vi.)" >&2
 	echo "        $prog -d <paste>				- Delete <paste>" >&2
 	echo "        $prog -s <paste>				- Show <paste>" >&2
 	echo "        $prog -l					- List pastes" >&2
 	echo "        $prog -U					- Upgrade ghost.sh (this will replace $0)" >&2
+	echo "Options:" >&2
+	echo "        -S <server>					- Override server" >&2
+	echo "        -i						- Use http" >&2
+	echo "        -I						- Use https, but disable certificate validation" >&2
+	echo "        -F						- Force (upgrade, for example)" >&2
 }
 
 if [[ -z $1 ]]; then
