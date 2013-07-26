@@ -110,7 +110,7 @@ func commandFormatter(stream io.Reader, args ...string) (output string, err erro
 func plainTextFormatter(stream io.Reader, args ...string) (string, error) {
 	buf := &bytes.Buffer{}
 	io.Copy(buf, stream)
-	return strings.Replace(template.HTMLEscapeString(buf.String()), "\n", "<br>", -1), nil
+	return template.HTMLEscapeString(buf.String()), nil
 }
 
 var formatFunctions map[string]FormatFunc = map[string]FormatFunc{
