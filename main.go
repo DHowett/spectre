@@ -289,7 +289,7 @@ func init() {
 }
 
 func main() {
-	InitTemplates(*arguments.rebuild)
+	InitTemplates()
 
 	router = mux.NewRouter()
 

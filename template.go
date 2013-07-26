@@ -3,6 +3,9 @@ package main
 import (
 	"html/template"
 	"io"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 var templateFunctions template.FuncMap = template.FuncMap{}
@@ -34,14 +37,11 @@ func assetFunction(kind string, names ...string) template.HTML {
 	return template.HTML(out)
 }
 
-func InitTemplates(rebuild bool) {
-	RegisterTemplateFunction("equal", func(t1, t2 string) bool { return t1 == t2 })
-	RegisterTemplateFunction("assets", assetFunction)
-
+func InitTemplates() {
 	tmpl = func() *template.Template {
 		return template.Must(template.New("base").Funcs(templateFunctions).ParseGlob("templates/*"))
 	}
-	if !rebuild {
+	if !*arguments.rebuild {
 		t := tmpl()
 		tmpl = func() *template.Template {
 			return t
@@ -51,4 +51,18 @@ func InitTemplates(rebuild bool) {
 
 func ExecuteTemplate(w io.Writer, name string, data interface{}) {
 	tmpl().ExecuteTemplate(w, name, data)
+}
+
+func init() {
+	RegisterTemplateFunction("equal", func(t1, t2 string) bool { return t1 == t2 })
+	RegisterTemplateFunction("assets", assetFunction)
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGHUP)
+
+	go func() {
+		for _ = range sigChan {
+			InitTemplates()
+		}
+	}()
 }
