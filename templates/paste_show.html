@@ -1,6 +1,16 @@
 {{define "page_paste_show"}}
 {{template "header" .}}
 <div id="paste-controls" style="display: inline;">
+	<div class="btn-group">
+		<a title="View Raw" href="{{pasteURL "raw" .Obj}}" class="btn">
+			<i class="hidden-phone icon-file-text icon-large"></i>
+			<span class="visible-phone">View Raw</span>
+		</a>
+		<a title="Download" href="{{pasteURL "download" .Obj}}" class="btn">
+			<i class="hidden-phone icon-download icon-large"></i>
+			<span class="visible-phone">Download</span>
+		</a>
+	</div>
 	{{if editAllowed .}}<a href="{{pasteURL "edit" .Obj}}" class="btn btn-primary">
 		<i class="hidden-phone icon-edit icon-large"></i>
 		<span class="visible-phone">Edit</span>
@@ -11,8 +21,6 @@
 	<span class="paste-title">
 		<strong>Paste {{.Obj.ID}}</strong>
 		<span class="paste-subtitle">{{with langByLexer .Obj.Language}}{{.Title}}{{else}}({{.Obj.Language}}){{end}}
-			<a title="View Raw" href="{{pasteURL "raw" .Obj}}"><i class="icon-file-text"> </i></a>
-			<a title="Download" href="{{pasteURL "download" .Obj}}"><i class="icon-download"> </i></a>
 		</span>
 	</span>
 	<div class="paste-toolbox-buttons pull-right hidden-phone" id="desktop-paste-control-container"></div>
