@@ -20,6 +20,9 @@ textarea { min-height: 2em; resize: vertical; }
 }
 
 .paste .code {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	background-color: #2a2a2a;
 	font-family: 'Envy Code R', 'monospace';
 	font-size: 12pt;
 	padding: 9.5px;
@@ -38,7 +41,6 @@ textarea { min-height: 2em; resize: vertical; }
 
 .paste textarea.code {
 	/* Fix the text field's appearance */
-	background-color: inherit;
 	color: inherit;
 	border: none;
 	margin-bottom: 0px;
