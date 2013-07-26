@@ -23,7 +23,3 @@
 </body>
 </html>
 {{end}}
-
-{{define "s2langbox"}}{{ $lang := or .Language "text" }}{{if langByLexer $lang | not}}{{$lang := "text"}}{{end}}<select class="dropdown" id="langbox" name="lang" data-selected="{{$lang}}">
-{{languageOptionListHTML}}
-</select>{{end}}
