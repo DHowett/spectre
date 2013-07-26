@@ -95,10 +95,14 @@ form {
 		float: none !important;
 	}
 	span.paste-title {
+		line-height: 1em;
+		font-size: 14pt;
 		display: block;
 		text-align: center;
 	}
 	span.paste-title .paste-subtitle {
+		line-height: 1em;
+		font-size: 8pt;
 		margin-top: .2em;
 		display: block;
 	}
