@@ -469,8 +469,6 @@ languageGroups:
     names: [posh, ps1]
     title: PowerShell
   - {name: shell-session, title: Shell Session}
-  - {name: text, title: Text only}
-  - {name: raw, title: Raw token data}
   - name: postgresql
     names: [postgres]
     title: PostgreSQL SQL dialect
