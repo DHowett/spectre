@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"html/template"
 	"io"
+	"os"
 	"os/exec"
+	"os/signal"
 	"sort"
 	"strings"
+	"syscall"
 )
 
 type Language struct {
@@ -55,7 +58,7 @@ func LanguageOptionListHTML() template.HTML {
 	return template.HTML(languageOptionCache)
 }
 
-var languageConfig struct {
+type _LanguageConfiguration struct {
 	LanguageGroups []*struct {
 		Title     string
 		Languages LanguageList
@@ -64,6 +67,8 @@ var languageConfig struct {
 
 	languageMap map[string]*Language
 }
+
+var languageConfig _LanguageConfiguration
 
 type FormatFunc func(io.Reader, ...string) (string, error)
 
@@ -124,6 +129,8 @@ func FormatPaste(p *Paste) (string, error) {
 }
 
 func loadLanguageConfig() {
+	languageConfig = _LanguageConfiguration{}
+
 	err := YAMLUnmarshalFile("languages.yml", &languageConfig)
 	if err != nil {
 		panic(err)
@@ -140,6 +147,8 @@ func loadLanguageConfig() {
 		sort.Sort(g.Languages)
 	}
 
+	languageOptionCache = ""
+
 	for _, v := range languageConfig.Formatters {
 		v.fn = formatFunctions[v.Func]
 	}
@@ -147,6 +156,15 @@ func loadLanguageConfig() {
 
 func init() {
 	loadLanguageConfig()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGHUP)
+
+	go func() {
+		for _ = range sigChan {
+			loadLanguageConfig()
+		}
+	}()
 
 	RegisterTemplateFunction("langByLexer", LanguageNamed)
 	RegisterTemplateFunction("languageOptionListHTML", LanguageOptionListHTML)
