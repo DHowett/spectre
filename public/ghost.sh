@@ -26,7 +26,7 @@ if [[ ! -d "${rcdir}" ]]; then
 fi
 
 ca_bundle="${rcdir}/ca-bundle.pem"
-if [[ ! -f "${ca_bundle}" ]]; then
+if [[ ! -s "${ca_bundle}" ]]; then
 	echo "Installing StartSSL CA bundle." >&2
 	base64 -v &> /dev/null && _b="base64 -D" || _b="base64 -d"
 	tr -d -c "[A-Z][a-z][0-9]+/=" << _END | $_b | bzip2 -dc > "${ca_bundle}"
