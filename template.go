@@ -3,9 +3,6 @@ package main
 import (
 	"html/template"
 	"io"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 var templateFunctions template.FuncMap = template.FuncMap{}
@@ -57,12 +54,5 @@ func init() {
 	RegisterTemplateFunction("equal", func(t1, t2 string) bool { return t1 == t2 })
 	RegisterTemplateFunction("assets", assetFunction)
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGHUP)
-
-	go func() {
-		for _ = range sigChan {
-			InitTemplates()
-		}
-	}()
+	RegisterReloadFunction(InitTemplates)
 }

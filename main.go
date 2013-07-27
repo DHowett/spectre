@@ -10,9 +10,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -275,6 +277,14 @@ func (a *args) parse() {
 
 var arguments = &args{}
 
+type ReloadFunction func()
+
+var reloadFunctions = []ReloadFunction{}
+
+func RegisterReloadFunction(f ReloadFunction) {
+	reloadFunctions = append(reloadFunctions, f)
+}
+
 func init() {
 	arguments.register()
 	arguments.parse()
@@ -314,6 +324,16 @@ func init() {
 
 func main() {
 	InitTemplates()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGHUP)
+	go func() {
+		for _ = range sigChan {
+			for _, f := range reloadFunctions {
+				f()
+			}
+		}
+	}()
 
 	router = mux.NewRouter()
 

@@ -4,12 +4,9 @@ import (
 	"bytes"
 	"html/template"
 	"io"
-	"os"
 	"os/exec"
-	"os/signal"
 	"sort"
 	"strings"
-	"syscall"
 )
 
 type Language struct {
@@ -159,15 +156,8 @@ func loadLanguageConfig() {
 func init() {
 	loadLanguageConfig()
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGHUP)
-
-	go func() {
-		for _ = range sigChan {
-			loadLanguageConfig()
-		}
-	}()
-
 	RegisterTemplateFunction("langByLexer", LanguageNamed)
 	RegisterTemplateFunction("languageOptionListHTML", LanguageOptionListHTML)
+
+	RegisterReloadFunction(loadLanguageConfig)
 }
