@@ -196,7 +196,7 @@ textarea {
 }
 body {
   margin: 0;
-  font-family: LatinModernSans10Regular, Helvetica, Sans;
+  font-family: LatinModernSans10, Helvetica, Sans;
   font-size: 14px;
   line-height: 20px;
   color: #333333;
@@ -1205,7 +1205,7 @@ input,
 button,
 select,
 textarea {
-  font-family: LatinModernSans10Regular, Helvetica, Sans;
+  font-family: LatinModernSans10, Helvetica, Sans;
 }
 label {
   display: block;
@@ -3108,7 +3108,7 @@ input[type="submit"].btn.btn-mini {
 .navbar-search .search-query {
   margin-bottom: 0;
   padding: 4px 14px;
-  font-family: LatinModernSans10Regular, Helvetica, Sans;
+  font-family: LatinModernSans10, Helvetica, Sans;
   font-size: 13px;
   font-weight: normal;
   line-height: 1;

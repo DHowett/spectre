@@ -9,7 +9,7 @@
 }
 
 @font-face {
-    font-family: 'LatinModernSans10Regular';
+    font-family: 'LatinModernSans10';
     src: url('../fonts/lmsans10-regular-webfont.eot');
     src: url('../fonts/lmsans10-regular-webfont.eot?#iefix') format('embedded-opentype'),
          url('../fonts/lmsans10-regular-webfont.woff') format('woff'),
@@ -20,12 +20,12 @@
 }
 
 @font-face {
-    font-family: 'LatinModernSans10Bold';
+    font-family: 'LatinModernSans10';
     src: url('../fonts/lmsans10-bold-webfont.eot');
     src: url('../fonts/lmsans10-bold-webfont.eot?#iefix') format('embedded-opentype'),
          url('../fonts/lmsans10-bold-webfont.woff') format('woff'),
          url('../fonts/lmsans10-bold-webfont.ttf') format('truetype');
-    font-weight: normal;
+    font-weight: bold;
     font-style: normal;
 
 }
