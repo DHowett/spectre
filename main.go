@@ -261,6 +261,7 @@ func pasteDestroyCallback(p *Paste) {
 
 var pasteStore *FilesystemPasteStore
 var sessionStore *sessions.FilesystemStore
+var clientOnlySessionStore *sessions.CookieStore
 var router *mux.Router
 
 type args struct {
@@ -320,6 +321,19 @@ func init() {
 	sessionStore = sessions.NewFilesystemStore(sesdir, sessionKey)
 	sessionStore.Options.Path = "/"
 	sessionStore.Options.MaxAge = 86400 * 365
+
+	var clientOnlySessionEncryptionKey []byte = nil
+	if sessionKeyFile, err := os.Open(filepath.Join(*arguments.root, "client_session_enc.key")); err == nil {
+		buf := &bytes.Buffer{}
+		io.Copy(buf, sessionKeyFile)
+		clientOnlySessionEncryptionKey = buf.Bytes()
+		sessionKeyFile.Close()
+	} else {
+		log.Fatalln("client_session_enc.key not found. make one with seskey.go?")
+	}
+	clientOnlySessionStore = sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
+	clientOnlySessionStore.Options.Path = "/"
+	clientOnlySessionStore.Options.MaxAge = 0
 
 	pastedir := filepath.Join(*arguments.root, "pastes")
 	os.Mkdir(pastedir, 0700)
