@@ -1,6 +1,9 @@
 package main
 
-import "net/http"
+import (
+	"net/http"
+	"net/url"
+)
 
 type Model interface{}
 type RenderContext struct {
@@ -10,6 +13,14 @@ type RenderContext struct {
 
 type HTTPError interface {
 	StatusCode() int
+}
+
+type DeferLookupError struct {
+	Interstitial *url.URL
+}
+
+func (d DeferLookupError) Error() string {
+	return ""
 }
 
 type ModelRenderFunc func(Model, http.ResponseWriter, *http.Request)
@@ -53,7 +64,12 @@ func RequiredModelObjectHandler(lookup ModelLookupFunc, fn ModelRenderFunc) http
 		defer errorRecoveryHandler(w)
 
 		if obj, err := lookup(r); err != nil {
-			panic(err)
+			if dle, ok := err.(DeferLookupError); ok {
+				w.Header().Set("Location", dle.Interstitial.String())
+				w.WriteHeader(http.StatusFound)
+			} else {
+				panic(err)
+			}
 		} else {
 			fn(obj, w, r)
 		}
