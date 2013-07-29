@@ -137,7 +137,12 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := pasteStore.New(nil)
+	id, err := generatePasteID()
+	if err != nil {
+		panic(err)
+	}
+
+	p, err := pasteStore.New(id, nil)
 	if err != nil {
 		panic(err)
 	}

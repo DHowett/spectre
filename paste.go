@@ -17,7 +17,7 @@ var base32Encoder = base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789")
 const ENCRYPTION_VERSION string = "1"
 
 type PasteStore interface {
-	New([]byte) (*Paste, error)
+	New(PasteID, []byte) (*Paste, error)
 	Get(PasteID, []byte) (*Paste, error)
 	Save(*Paste) error
 	Destroy(*Paste) error
@@ -136,11 +136,7 @@ func (store *FilesystemPasteStore) filenameForID(id PasteID) string {
 	return filepath.Join(store.path, id.String())
 }
 
-func (store *FilesystemPasteStore) New(key []byte) (p *Paste, err error) {
-	id, err := generatePasteID()
-	if err != nil {
-		return
-	}
+func (store *FilesystemPasteStore) New(id PasteID, key []byte) (p *Paste, err error) {
 	p = &Paste{ID: id, store: store}
 
 	if key != nil {
