@@ -256,25 +256,30 @@ func pasteURL(routeType string, p *Paste) string {
 }
 
 func sessionHandler(w http.ResponseWriter, r *http.Request) {
-	var pastes []string
+	var pastes []*Paste
+	var ids []string
 	session, _ := sessionStore.Get(r, "session")
 	if session_pastes, ok := session.Values["pastes"].([]string); ok {
-		p := make([]string, len(session_pastes))
+		pastes = make([]*Paste, len(session_pastes))
+		ids = make([]string, len(session_pastes))
 		n := 0
 		for _, v := range session_pastes {
-			if _, err := os.Stat(filepath.Join(*arguments.root, "pastes", v)); !os.IsNotExist(err) {
-				p[n] = v
+			if obj, _ := pasteStore.Get(PasteIDFromString(v), nil); obj != nil {
+				pastes[n] = obj
+				ids[n] = obj.ID.String()
 				n++
 			}
 		}
-		pastes = p[:n]
+		pastes = pastes[:n]
+		ids = ids[:n]
 	} else {
-		pastes = []string{}
+		pastes = []*Paste{}
+		ids = []string{}
 	}
 
 	if strings.HasSuffix(r.URL.Path, "/raw") {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Write([]byte(strings.Join(pastes, " ")))
+		w.Write([]byte(strings.Join(ids, " ")))
 	} else {
 		ExecuteTemplate(w, "page_session_pastes", &RenderContext{pastes, r})
 	}
