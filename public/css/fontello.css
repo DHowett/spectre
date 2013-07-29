@@ -2,9 +2,9 @@
   font-family: 'fontello';
   src: url('../fonts/fontello.eot?54339584');
   src: url('../fonts/fontello.eot?54339584#iefix') format('embedded-opentype'),
+       url('../fonts/fontello.svg?54339584#fontello') format('svg'),
        url('../fonts/fontello.woff?54339584') format('woff'),
-       url('../fonts/fontello.ttf?54339584') format('truetype'),
-       url('../fonts/fontello.svg?54339584#fontello') format('svg');
+       url('../fonts/fontello.ttf?54339584') format('truetype');
   font-weight: normal;
   font-style: normal;
 }

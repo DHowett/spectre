@@ -4,9 +4,9 @@
     font-family: 'Envy Code R';
     src: url('../fonts/envy_code_r-webfont.eot');
     src: url('../fonts/envy_code_r-webfont.eot?#iefix') format('embedded-opentype'),
+         url('../fonts/envy_code_r-webfont.svg#envy_code_rregular') format('svg'),
          url('../fonts/envy_code_r-webfont.woff') format('woff'),
-         url('../fonts/envy_code_r-webfont.ttf') format('truetype'),
-         url('../fonts/envy_code_r-webfont.svg#envy_code_rregular') format('svg');
+         url('../fonts/envy_code_r-webfont.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 }
@@ -15,9 +15,9 @@
     font-family: 'Envy Code R';
     src: url('../fonts/envy_code_r_bold-webfont.eot');
     src: url('../fonts/envy_code_r_bold-webfont.eot?#iefix') format('embedded-opentype'),
+         url('../fonts/envy_code_r_bold-webfont.svg#envy_code_rbold') format('svg'),
          url('../fonts/envy_code_r_bold-webfont.woff') format('woff'),
-         url('../fonts/envy_code_r_bold-webfont.ttf') format('truetype'),
-         url('../fonts/envy_code_r_bold-webfont.svg#envy_code_rbold') format('svg');
+         url('../fonts/envy_code_r_bold-webfont.ttf') format('truetype');
     font-weight: bold;
     font-style: normal;
 }
