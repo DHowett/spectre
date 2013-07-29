@@ -337,7 +337,10 @@ func renderPaste(p *Paste) template.HTML {
 		}
 
 		rendered := template.HTML(out)
-		renderedPastes[p.ID] = &RenderedPaste{body: rendered, renderTime: time.Now()}
+		if !p.Encrypted {
+			renderedPastes[p.ID] = &RenderedPaste{body: rendered, renderTime: time.Now()}
+		}
+
 		return rendered
 	} else {
 		return cached.body
