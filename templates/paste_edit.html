@@ -13,7 +13,7 @@
 		<div id="paste-controls" style="display: inline;">
 			{{if not .}}<div class="input-prepend phone-expand">
 				<span class="add-on"><i class="icon-lock"> </i></span>
-				<div class="input-wrapper"><input class="input-block-level" type="password" name="password" autocomplete="off"></div>
+				<div class="input-wrapper"><input class="input-block-level" type="password" name="password" autocomplete="off" placeholder="optional password"></div>
 			</div>{{end}}
 			{{template "s2langbox" .}}
 			{{if .}}<button title="Delete" type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
