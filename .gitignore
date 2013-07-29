@@ -11,3 +11,4 @@ public/js/*.min.js
 pygments
 xattr
 restarter
+templates/_local.html
