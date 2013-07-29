@@ -174,24 +174,25 @@ func (store *FilesystemPasteStore) Get(id PasteID, key []byte) (p *Paste, err er
 	if hmac != "" {
 		paste.Encrypted = true
 
-		if key == nil {
-			err = PasteEncryptedError{ID: id}
-			return
-		}
-		hmacBytes, e := base32Encoder.DecodeString(hmac)
-		if e != nil {
-			err = e
-			return
-		}
+		err = PasteEncryptedError{ID: id}
+		if key != nil {
+			err = nil
 
-		ok := checkMAC([]byte(id.String()), hmacBytes, key)
+			hmacBytes, e := base32Encoder.DecodeString(hmac)
+			if e != nil {
+				err = e
+				return
+			}
 
-		if !ok {
-			err = PasteInvalidKeyError{ID: id}
-			return
+			ok := checkMAC([]byte(id.String()), hmacBytes, key)
+
+			if !ok {
+				err = PasteInvalidKeyError{ID: id}
+				return
+			}
+
+			paste.encryptionKey = key
 		}
-
-		paste.encryptionKey = key
 	}
 
 	paste.Language = getMetadata(filename, "language", "text")
