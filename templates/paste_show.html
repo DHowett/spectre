@@ -3,7 +3,7 @@
 <div class="paste input-block-level">
 <div class="paste-toolbox">
 	<span class="paste-title">
-		{{if .Obj.Encrypted}}<i class="icon-lock"></i><strong>{{end}}Paste {{.Obj.ID}}</strong>
+		{{if .Obj.Encrypted}}<i class="icon-lock"></i>{{end}}<strong>Paste {{.Obj.ID}}</strong>
 		<span class="paste-subtitle">{{with langByLexer .Obj.Language}}{{.Title}}{{else}}({{.Obj.Language}}){{end}}</span>
 	</span>
 	<div class="paste-toolbox-buttons pull-right hidden-phone" id="desktop-paste-control-container">
