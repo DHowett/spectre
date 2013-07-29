@@ -137,7 +137,7 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := pasteStore.New()
+	p, err := pasteStore.New(nil)
 	if err != nil {
 		panic(err)
 	}
@@ -184,7 +184,7 @@ func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 
 func lookupPasteWithRequest(r *http.Request) (p Model, err error) {
 	id := PasteIDFromString(mux.Vars(r)["id"])
-	p, err = pasteStore.Get(id)
+	p, err = pasteStore.Get(id, nil)
 	return
 }
 

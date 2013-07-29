@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base32"
 	"github.com/DHowett/go-xattr"
@@ -10,9 +12,13 @@ import (
 	"time"
 )
 
+var base32Encoder = base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789")
+
+const ENCRYPTION_VERSION string = "1"
+
 type PasteStore interface {
-	New() (*Paste, error)
-	Get(PasteID) (*Paste, error)
+	New([]byte) (*Paste, error)
+	Get(PasteID, []byte) (*Paste, error)
 	Save(*Paste) error
 	Destroy(*Paste) error
 
@@ -29,6 +35,18 @@ func (id PasteID) String() string {
 func PasteIDFromString(s string) PasteID {
 	return PasteID(s)
 }
+
+type PasteEncryptedError struct {
+	ID PasteID
+}
+
+func (e PasteEncryptedError) Error() string {
+	return "Paste " + e.ID.String() + " is encrypted."
+}
+
+type PasteInvalidKeyError PasteEncryptedError
+
+func (e PasteInvalidKeyError) Error() string { return "" }
 
 type PasteNotFoundError struct {
 	ID PasteID
@@ -62,6 +80,9 @@ type Paste struct {
 	Language string
 	store    PasteStore
 	mtime    time.Time
+
+	Encrypted     bool
+	encryptionKey []byte
 }
 
 func (p *Paste) Save() error {
@@ -108,20 +129,25 @@ func generatePasteID() (PasteID, error) {
 		return "", err
 	}
 
-	return PasteIDFromString(base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789").EncodeToString(uuid)[0:5]), nil
+	return PasteIDFromString(base32Encoder.EncodeToString(uuid)[0:5]), nil
 }
 
 func (store *FilesystemPasteStore) filenameForID(id PasteID) string {
 	return filepath.Join(store.path, id.String())
 }
 
-func (store *FilesystemPasteStore) New() (p *Paste, err error) {
+func (store *FilesystemPasteStore) New(key []byte) (p *Paste, err error) {
 	id, err := generatePasteID()
 	if err != nil {
 		return
 	}
-
 	p = &Paste{ID: id, store: store}
+
+	if key != nil {
+		p.Encrypted = true
+		p.encryptionKey = key
+	}
+
 	return
 }
 
@@ -138,7 +164,7 @@ func getMetadata(fn string, name string, dflt string) string {
 	return string(bytes)
 }
 
-func (store *FilesystemPasteStore) Get(id PasteID) (p *Paste, err error) {
+func (store *FilesystemPasteStore) Get(id PasteID, key []byte) (p *Paste, err error) {
 	filename := store.filenameForID(id)
 	stat, err := os.Stat(filename)
 	if err != nil {
@@ -146,10 +172,37 @@ func (store *FilesystemPasteStore) Get(id PasteID) (p *Paste, err error) {
 		return
 	}
 
-	p = &Paste{ID: id, store: store, mtime: stat.ModTime()}
-	p.Language = getMetadata(filename, "language", "text")
+	paste := &Paste{ID: id, store: store, mtime: stat.ModTime()}
 
-	store.PasteUpdateCallback(p)
+	hmac := getMetadata(filename, "hmac", "")
+	if hmac != "" {
+		paste.Encrypted = true
+
+		if key == nil {
+			err = PasteEncryptedError{ID: id}
+			return
+		}
+		hmacBytes, e := base32Encoder.DecodeString(hmac)
+		if e != nil {
+			err = e
+			return
+		}
+
+		ok := checkMAC([]byte(id.String()), hmacBytes, key)
+
+		if !ok {
+			err = PasteInvalidKeyError{ID: id}
+			return
+		}
+
+		paste.encryptionKey = key
+	}
+
+	paste.Language = getMetadata(filename, "language", "text")
+
+	store.PasteUpdateCallback(paste)
+
+	p = paste
 	return
 }
 
@@ -157,6 +210,18 @@ func (store *FilesystemPasteStore) Save(p *Paste) error {
 	filename := store.filenameForID(p.ID)
 	if err := putMetadata(filename, "language", p.Language); err != nil {
 		return err
+	}
+
+	if p.Encrypted {
+		hmacBytes := constructMAC([]byte(p.ID.String()), p.encryptionKey)
+		hmac := base32Encoder.EncodeToString(hmacBytes)
+		if err := putMetadata(filename, "hmac", hmac); err != nil {
+			return err
+		}
+
+		if err := putMetadata(filename, "encryption_version", ENCRYPTION_VERSION); err != nil {
+			return err
+		}
 	}
 
 	store.PasteUpdateCallback(p)
@@ -181,6 +246,14 @@ func (store *FilesystemPasteStore) readStream(p *Paste) (*PasteReader, error) {
 		return nil, err
 	}
 
+	if p.Encrypted {
+		blockCipher, _ := aes.NewCipher(p.encryptionKey)
+		var iv [aes.BlockSize]byte
+		stream := cipher.NewOFB(blockCipher, iv[:])
+		streamReader := &cipher.StreamReader{S: stream, R: r}
+		r = &ReadCloser{Reader: streamReader, Closer: r}
+	}
+
 	return &PasteReader{ReadCloser: r, paste: p}, nil
 }
 
@@ -190,6 +263,14 @@ func (store *FilesystemPasteStore) writeStream(p *Paste) (*PasteWriter, error) {
 	var err error
 	if w, err = os.Create(filename); err != nil {
 		return nil, err
+	}
+
+	if p.Encrypted {
+		blockCipher, _ := aes.NewCipher(p.encryptionKey)
+		var iv [aes.BlockSize]byte
+		stream := cipher.NewOFB(blockCipher, iv[:])
+		streamWriter := &cipher.StreamWriter{S: stream, W: w}
+		w = &WriteCloser{Writer: streamWriter, Closer: w}
 	}
 
 	return &PasteWriter{WriteCloser: w, paste: p}, nil
