@@ -1,0 +1,20 @@
+{{define "page_paste_authenticate"}}
+{{template "header" .}}
+<div class="well">
+<form method="post">
+<span class="well-title"><strong>Authentication Required</strong></span><br>
+<p>Paste <strong>{{requestVariable . "id"}}</strong> is password-protected.</p>
+{{$i:=requestVariable . "i"}}
+<div class="control-group{{if $i}} error{{end}}">
+<div class="input-prepend phone-expand">
+	<span class="add-on"><i class="icon-lock"> </i></span>
+	<div class="input-wrapper"><input class="input-block-level" type="password" name="password" autocomplete="off"></div>
+</div>
+{{if $i}}<span class="help-inline">Incorrect Password</span>{{end}}
+</div>
+<button type="submit" class="btn btn-phone-expand">Okay!</button>
+</form>
+</div>
+{{template "footer" .}}
+{{end}}
+

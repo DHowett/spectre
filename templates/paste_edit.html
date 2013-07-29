@@ -11,6 +11,10 @@
 	<span class="paste-title"><strong>{{if .}}Paste {{.ID}}{{else}}New Paste{{end}}</strong></span>
 	<div class="paste-toolbox-buttons pull-right hidden-phone" id="desktop-paste-control-container">
 		<div id="paste-controls" style="display: inline;">
+			{{if not .}}<div class="input-prepend phone-expand">
+				<span class="add-on"><i class="icon-lock"> </i></span>
+				<div class="input-wrapper"><input class="input-block-level" type="password" name="password" autocomplete="off"></div>
+			</div>{{end}}
 			{{template "s2langbox" .}}
 			{{if .}}<button title="Delete" type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
 				<i class="hidden-phone icon-trash icon-large"></i>

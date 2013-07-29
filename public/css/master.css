@@ -4,6 +4,16 @@ body {
 
 textarea { min-height: 2em; resize: vertical; }
 
+input[type=password] {
+	margin-bottom: 0;
+	margin-right: 4px;
+}
+
+.input-prepend {
+	color: rgb(51, 51, 51);
+	margin-bottom: 0px;
+}
+
 .paste {
 	min-height: 40%;
 	background-color: #222;
@@ -71,6 +81,10 @@ span.paste-title .paste-subtitle {
 	margin-top: 1em;
 }
 
+.well .well-title {
+	font-size: 125%;
+}
+
 form {
 	margin-bottom: 0;
 }
@@ -84,6 +98,14 @@ form {
 .dropdown {
 	width: 250px;
 	margin-right: 4px;
+}
+
+.input-prepend.phone-expand {
+	position: relative;
+}
+
+.input-prepend.phone-expand .input-wrapper {
+	display: inline-block;
 }
 
 @media (max-width: 767px) {
@@ -109,7 +131,7 @@ form {
 	.dropdown {
 		padding: 0px;
 	}
-	.dropdown, .btn-phone-expand, .visible-phone .btn {
+	.dropdown, .phone-expand, .btn-phone-expand, .visible-phone .btn {
 		display: block;
 		float: none;
 		width: 100%;
@@ -137,5 +159,21 @@ form {
 	}
 	.dropdown.select2-offscreen {
 		width: 1px !important;
+	}
+	.input-prepend.phone-expand .input-wrapper {
+		display: block;
+		position: absolute;
+		left: 31px;
+		right: 0;
+		top: 0;
+		bottom: 0;
+	}
+	.input-prepend.phone-expand .input-wrapper input {
+		display: block;
+		width: 100%;
+		height: 100%;
+		-webkit-box-sizing: border-box;
+		-moz-box-sizing: border-box;
+		box-sizing: border-box;
 	}
 }
