@@ -192,6 +192,7 @@ func (store *FilesystemPasteStore) Get(id PasteID, key []byte) (p *Paste, err er
 			}
 
 			paste.encryptionKey = key
+			err = nil
 		}
 	}
 
