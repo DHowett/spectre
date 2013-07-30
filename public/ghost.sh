@@ -1,7 +1,7 @@
 #!/bin/bash
 function usage() {
 	prog=$(basename "$0")
-	echo "Syntax: $prog <filename> [language]" >&2
+	echo "Syntax: $prog [-p] <filename> [language]" >&2
 	echo "        $prog -u <paste> <filename> [language]	- Update <paste>" >&2
 	echo "        $prog -e <paste> [language]			- Edit <paste> in \$EDITOR (or vi.)" >&2
 	echo "        $prog -d <paste>				- Delete <paste>" >&2
@@ -9,6 +9,7 @@ function usage() {
 	echo "        $prog -l					- List pastes" >&2
 	echo "        $prog -U					- Upgrade ghost.sh (this will replace $0)" >&2
 	echo "Options:" >&2
+	echo "        -p						- Prompt for password" >&2
 	echo "        -S <server>					- Override server" >&2
 	echo "        -i						- Use http" >&2
 	echo "        -I						- Use https, but disable certificate validation" >&2
@@ -29,45 +30,50 @@ fi
 export -a curl_opts=("-c" "${rcdir}/cookie.jar" "-b" "${rcdir}/cookie.jar" "-f" "-s")
 
 force=0
-while getopts "S:iFIUhls:u:e:d:" o; do
+passworded=0
+
+while getopts "d:e:FhIilpS:s:Uu:" o; do
 	case $o in
-		h)
-			usage
-			exit
-			;;
-		l)
-			mode="list"
-			;;
-		s)
-			mode="show"
-			paste=$OPTARG
-			;;
-		u)
-			mode="update"
+		d)
+			mode="delete"
 			paste=$OPTARG
 			;;
 		e)
 			mode="edit"
 			paste=$OPTARG
 			;;
-		d)
-			mode="delete"
+		F)
+			force=1
+			;;
+		h)
+			usage
+			exit
+			;;
+		I)
+			curl_opts+=("-k")
+			;;
+		i)
+			proto="http"
+			;;
+		l)
+			mode="list"
+			;;
+		p)
+			passworded=1
+			;;
+		S)
+			server="$OPTARG"
+			;;
+		s)
+			mode="show"
 			paste=$OPTARG
 			;;
 		U)
 			mode="upgrade"
 			;;
-		F)
-			force=1
-			;;
-		S)
-			server="$OPTARG"
-			;;
-		i)
-			proto="http"
-			;;
-		I)
-			curl_opts+=("-k")
+		u)
+			mode="update"
+			paste=$OPTARG
 			;;
 		?)
 			usage
@@ -99,6 +105,10 @@ function _upgrade() {
 	chmod +x "${0}"
 	echo "Done." >&2
 	exit
+}
+
+function _password() {
+	read -p "Password:" -r -s $1
 }
 
 [[ "${mode}" == "upgrade" ]] && _upgrade
@@ -149,7 +159,8 @@ pboard=
 url="${server}/paste/new"
 [[ "${mode}" == "edit" || "${mode}" == "update" ]] && url="${server}/paste/${paste}/edit"
 
-IFS='|' read -r code url < <(curl "${curl_opts[@]}" -w '%{http_code}|%{redirect_url}' --data-urlencode text@"$filename" ${lang:+--data-urlencode} ${lang:+lang="$lang"} "${url}" | sed -e 's/HTTP/http/g')
+[[ $passworded -eq 1 ]] && _password pw && echo
+IFS='|' read -r code url < <(curl "${curl_opts[@]}" -w '%{http_code}|%{redirect_url}' --data-urlencode text@"$filename" ${lang:+--data-urlencode} ${lang:+lang="$lang"} ${pw:+--data-urlencode} ${pw:+password="$pw"} "${url}" | sed -e 's/HTTP/http/g')
 [[ "${mode}" == "edit" ]] && rm "${filename}"
 
 if [[ $code -ne 200 && $code -ne 303 && $code -ne 302 ]]; then
