@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const CURRENT_ENCRYPTION_METHOD string = "1"
+const CURRENT_ENCRYPTION_METHOD string = "2"
 
 type PasteStore interface {
 	GenerateNewPasteID(bool) (PasteID, error)
@@ -345,6 +345,25 @@ var encryptionMethodHandlers = map[string]EncryptionMethodHandlers{
 			blockCipher, _ := aes.NewCipher(p.encryptionKey)
 			var iv [aes.BlockSize]byte
 			stream := cipher.NewOFB(blockCipher, iv[:])
+			streamWriter := &cipher.StreamWriter{S: stream, W: w}
+			return &WriteCloser{Writer: streamWriter, Closer: w}
+		},
+	},
+	"2": EncryptionMethodHandlers{
+		generateMACMessage: func(p *Paste) []byte {
+			return append([]byte(p.ID.String()), p.encryptionSalt...)
+		},
+		encryptedReadWrapper: func(p *Paste, r io.ReadCloser) io.ReadCloser {
+			blockCipher, _ := aes.NewCipher(p.encryptionKey)
+			var iv [aes.BlockSize]byte
+			stream := cipher.NewCTR(blockCipher, iv[:])
+			streamReader := &cipher.StreamReader{S: stream, R: r}
+			return &ReadCloser{Reader: streamReader, Closer: r}
+		},
+		encryptedWriteWrapper: func(p *Paste, w io.WriteCloser) io.WriteCloser {
+			blockCipher, _ := aes.NewCipher(p.encryptionKey)
+			var iv [aes.BlockSize]byte
+			stream := cipher.NewCTR(blockCipher, iv[:])
 			streamWriter := &cipher.StreamWriter{S: stream, W: w}
 			return &WriteCloser{Writer: streamWriter, Closer: w}
 		},
