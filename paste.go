@@ -1,6 +1,7 @@
 package main
 
 import (
+	"code.google.com/p/go.crypto/scrypt"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -17,11 +18,12 @@ var base32Encoder = base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789")
 const ENCRYPTION_VERSION string = "1"
 
 type PasteStore interface {
-	New(PasteID, []byte) (*Paste, error)
+	New(bool) (*Paste, error)
 	Get(PasteID, []byte) (*Paste, error)
 	Save(*Paste) error
 	Destroy(*Paste) error
 
+	EncryptionKeyForPasteWithPassword(*Paste, string) []byte
 	readStream(*Paste) (*PasteReader, error)
 	writeStream(*Paste) (*PasteWriter, error)
 }
@@ -81,8 +83,9 @@ type Paste struct {
 	store    PasteStore
 	mtime    time.Time
 
-	Encrypted     bool
-	encryptionKey []byte
+	Encrypted      bool
+	encryptionKey  []byte
+	encryptionSalt string
 }
 
 func (p *Paste) Save() error {
@@ -105,6 +108,15 @@ func (p *Paste) LastModified() time.Time {
 	return p.mtime
 }
 
+func (p *Paste) SetEncryptionKey(key []byte) {
+	p.encryptionKey = key
+	p.Encrypted = (key != nil)
+}
+
+func (p *Paste) EncryptionKeyWithPassword(password string) []byte {
+	return p.store.EncryptionKeyForPasteWithPassword(p, password)
+}
+
 type PasteCallback func(*Paste)
 type FilesystemPasteStore struct {
 	PasteUpdateCallback  PasteCallback
@@ -122,26 +134,45 @@ func NewFilesystemPasteStore(path string) *FilesystemPasteStore {
 	}
 }
 
-func generatePasteID() (PasteID, error) {
-	uuid := make([]byte, 3)
+func generateRandomBase32String(nbytes, idlen int) (string, error) {
+	uuid := make([]byte, nbytes)
 	n, err := rand.Read(uuid)
 	if n != len(uuid) || err != nil {
 		return "", err
 	}
 
-	return PasteIDFromString(base32Encoder.EncodeToString(uuid)[0:5]), nil
+	s := base32Encoder.EncodeToString(uuid)
+	if idlen == -1 {
+		idlen = len(s)
+	}
+
+	return s[0:idlen], nil
+}
+
+func generatePasteID(encrypted bool) (PasteID, error) {
+	nbytes, idlen := 3, 5
+	if encrypted {
+		nbytes, idlen = 5, 8
+	}
+
+	s, err := generateRandomBase32String(nbytes, idlen)
+	return PasteIDFromString(s), err
 }
 
 func (store *FilesystemPasteStore) filenameForID(id PasteID) string {
 	return filepath.Join(store.path, id.String())
 }
 
-func (store *FilesystemPasteStore) New(id PasteID, key []byte) (p *Paste, err error) {
+func (store *FilesystemPasteStore) New(encrypted bool) (p *Paste, err error) {
+	id, err := generatePasteID(encrypted)
+	if err != nil {
+		panic(err)
+	}
+
 	p = &Paste{ID: id, store: store}
 
-	if key != nil {
-		p.Encrypted = true
-		p.encryptionKey = key
+	if encrypted {
+		p.encryptionSalt, _ = generateRandomBase32String(8, -1)
 	}
 
 	return
@@ -173,6 +204,7 @@ func (store *FilesystemPasteStore) Get(id PasteID, key []byte) (p *Paste, err er
 	hmac := getMetadata(filename, "hmac", "")
 	if hmac != "" {
 		paste.Encrypted = true
+		paste.encryptionSalt = getMetadata(filename, "encryption_salt", paste.ID.String())
 
 		err = PasteEncryptedError{ID: id}
 		if key != nil {
@@ -220,6 +252,10 @@ func (store *FilesystemPasteStore) Save(p *Paste) error {
 		if err := putMetadata(filename, "encryption_version", ENCRYPTION_VERSION); err != nil {
 			return err
 		}
+
+		if err := putMetadata(filename, "encryption_salt", p.encryptionSalt); err != nil {
+			return err
+		}
 	}
 
 	store.PasteUpdateCallback(p)
@@ -234,6 +270,19 @@ func (store *FilesystemPasteStore) Destroy(p *Paste) error {
 
 	store.PasteDestroyCallback(p)
 	return nil
+}
+
+func (store *FilesystemPasteStore) EncryptionKeyForPasteWithPassword(p *Paste, password string) []byte {
+	if password == "" {
+		return nil
+	}
+
+	key, err := scrypt.Key([]byte(password), []byte(p.encryptionSalt), 16384, 8, 1, 32)
+	if err != nil {
+		panic(err)
+	}
+
+	return key
 }
 
 func (store *FilesystemPasteStore) readStream(p *Paste) (*PasteReader, error) {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"code.google.com/p/go.crypto/scrypt"
 	"encoding/gob"
 	"flag"
 	"github.com/golang/groupcache/lru"
@@ -115,20 +114,6 @@ func requiresEditPermission(fn ModelRenderFunc) ModelRenderFunc {
 	}
 }
 
-func pasteKeyFromRequest(id PasteID, r *http.Request) []byte {
-	password := r.FormValue("password")
-	if password == "" {
-		return nil
-	}
-
-	key, err := scrypt.Key([]byte(password), []byte(id), 16384, 8, 1, 32)
-	if err != nil {
-		panic(err)
-	}
-
-	return key
-}
-
 func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 	body := r.FormValue("text")
@@ -157,16 +142,14 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := generatePasteID()
+	password := r.FormValue("password")
+	p, err := pasteStore.New(password != "")
 	if err != nil {
 		panic(err)
 	}
 
-	key := pasteKeyFromRequest(id, r)
-	p, err := pasteStore.New(id, key)
-	if err != nil {
-		panic(err)
-	}
+	key := p.EncryptionKeyWithPassword(password)
+	p.SetEncryptionKey(key)
 
 	if sessionOk(r) {
 		session, _ := sessionStore.Get(r, "session")
@@ -291,7 +274,13 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 
 func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
 	id := PasteIDFromString(mux.Vars(r)["id"])
-	key := pasteKeyFromRequest(id, r)
+	password := r.FormValue("password")
+	p, _ := pasteStore.Get(id, nil)
+	if p == nil {
+		panic(&PasteNotFoundError{ID: id})
+	}
+
+	key := p.EncryptionKeyWithPassword(password)
 	if key != nil {
 		cliSession, _ := clientOnlySessionStore.Get(r, "c_session")
 		pasteKeys, ok := cliSession.Values["paste_keys"].(map[PasteID][]byte)
