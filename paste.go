@@ -4,16 +4,12 @@ import (
 	"code.google.com/p/go.crypto/scrypt"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
-	"encoding/base32"
 	"github.com/DHowett/go-xattr"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
 )
-
-var base32Encoder = base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789")
 
 const ENCRYPTION_VERSION string = "1"
 
@@ -133,21 +129,6 @@ func NewFilesystemPasteStore(path string) *FilesystemPasteStore {
 		PasteUpdateCallback:  PasteCallback(noopPasteCallback),
 		PasteDestroyCallback: PasteCallback(noopPasteCallback),
 	}
-}
-
-func generateRandomBase32String(nbytes, idlen int) (string, error) {
-	uuid := make([]byte, nbytes)
-	n, err := rand.Read(uuid)
-	if n != len(uuid) || err != nil {
-		return "", err
-	}
-
-	s := base32Encoder.EncodeToString(uuid)
-	if idlen == -1 {
-		idlen = len(s)
-	}
-
-	return s[0:idlen], nil
 }
 
 func (store *FilesystemPasteStore) GenerateNewPasteID(encrypted bool) (PasteID, error) {
