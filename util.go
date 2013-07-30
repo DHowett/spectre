@@ -32,10 +32,19 @@ func checkMAC(message, messageMAC, key []byte) bool {
 
 var base32Encoder = base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789")
 
-func generateRandomBase32String(nbytes, outlen int) (string, error) {
+func generateRandomBytes(nbytes int) ([]byte, error) {
 	uuid := make([]byte, nbytes)
 	n, err := rand.Read(uuid)
 	if n != len(uuid) || err != nil {
+		return []byte{}, err
+	}
+
+	return uuid, nil
+}
+
+func generateRandomBase32String(nbytes, outlen int) (string, error) {
+	uuid, err := generateRandomBytes(nbytes)
+	if err != nil {
 		return "", err
 	}
 
