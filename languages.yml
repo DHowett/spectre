@@ -111,8 +111,14 @@ languageGroups:
     names: [fy]
     title: Fancy
   - {name: dg, title: dg}
+  - extensions: [pl, pm, nqp, p6, 6pl, p6l, pl6, 6pm, p6m, pm6]
+    mimetypes: [text/x-perl6, application/x-perl6]
+    name: perl6
+    names: [pl6]
+    title: Perl6
   - extensions: [s, S]
     name: gas
+    names: [asm]
     title: GAS
   - {name: objdump, title: objdump}
   - {name: d-objdump, title: d-objdump}
@@ -136,6 +142,7 @@ languageGroups:
     mimetypes: [text/x-echdr, text/x-ecsrc]
     name: ec
     title: eC
+  - {name: nesc, title: nesC}
   - extensions: [dylan, dyl, intr]
     name: dylan
     title: Dylan
@@ -151,7 +158,7 @@ languageGroups:
   - extensions: [pyx, pxd, pxi]
     mimetypes: [text/x-cython, application/x-cython]
     name: cython
-    names: [pyx]
+    names: [pyx, pyrex]
     title: Cython
   - extensions: [vala, vapi]
     name: vala
@@ -173,6 +180,10 @@ languageGroups:
   - name: blitzmax
     names: [bmax]
     title: BlitzMax
+  - extensions: [bb, decls]
+    name: blitzbasic
+    names: [b3d, bplus]
+    title: BlitzBasic
   - extensions: [nim, nimrod]
     name: nimrod
     names: [nim]
@@ -186,6 +197,10 @@ languageGroups:
     names: [cu]
     title: CUDA
   - {name: monkey, title: Monkey}
+  - extensions: [swg, i]
+    name: Swig
+    names: [swig]
+    title: SWIG
   - extensions: [lid, hdp]
     name: dylan-lid
     names: [lid]
@@ -199,6 +214,7 @@ languageGroups:
   - extensions: [cbl, CBL]
     name: cobolfree
     title: COBOLFree
+  - {name: clay, title: Clay}
   - {name: smali, title: Smali}
   - name: csharp
     names: [c#]
@@ -235,14 +251,18 @@ languageGroups:
     title: Scheme
   - extensions: [cl, lisp, el]
     name: common-lisp
-    names: [cl]
+    names: [cl, lisp]
     title: Common Lisp
   - name: haskell
     names: [hs]
     title: Haskell
+  - {name: agda, title: Agda}
   - name: lhs
-    names: [literate-haskell]
+    names: [literate-haskell, lhaskell]
     title: Literate Haskell
+  - name: lagda
+    names: [literate-agda]
+    title: Literate Agda
   - extensions: [sml, sig, fun]
     mimetypes: [text/x-standardml, application/x-standardml]
     name: sml
@@ -327,15 +347,20 @@ languageGroups:
   - {name: stan, title: Stan}
   - {name: idl, title: IDL}
   - {name: rd, title: Rd}
+  - name: igor
+    names: [igorpro]
+    title: Igor
   - extensions: [bf, b]
     name: brainfuck
     names: [bf]
     title: Brainfuck
   - {name: befunge, title: Befunge}
   - {name: redcode, title: Redcode}
-  - {name: moocode, title: MOOCode}
+  - name: moocode
+    names: [moo]
+    title: MOOCode
   - name: smalltalk
-    names: [squeak]
+    names: [squeak, st]
     title: Smalltalk
   - {name: logtalk, title: Logtalk}
   - extensions: [plot, plt]
@@ -359,15 +384,19 @@ languageGroups:
     title: Asymptote
   - extensions: [ps, eps]
     name: postscript
+    names: [postscr]
     title: PostScript
   - extensions: [ahk, ahkl]
     name: ahk
+    names: [autohotkey]
     title: autohotkey
   - {name: gooddata-cl, title: GoodData-CL}
   - mimetypes: [text/x-gooddata-maql, application/x-gooddata-maql]
     name: maql
     title: MAQL
-  - {name: protobuf, title: Protocol Buffer}
+  - name: protobuf
+    names: [proto]
+    title: Protocol Buffer
   - extensions: [hy, hyb]
     mimetypes: [text/x-hybris, application/x-hybris]
     name: hybris
@@ -411,6 +440,10 @@ languageGroups:
   - name: autoit
     names: [Autoit]
     title: AutoIt
+  - extensions: [rexx, rex, rx, arexx]
+    name: rexx
+    names: [ARexx, arexx]
+    title: Rexx
   - {name: ragel, title: Ragel}
   - {name: ragel-em, title: Embedded Ragel}
   - {name: ragel-c, title: Ragel in C Host}
@@ -464,9 +497,11 @@ languageGroups:
     title: Tcsh
   - extensions: [bat, cmd]
     name: bat
+    names: [dosbatch, winbatch]
     title: Batchfile
-  - name: powershell
-    names: [posh, ps1]
+  - extensions: [ps1, psm1]
+    name: powershell
+    names: [posh, ps1, psm1]
     title: PowerShell
   - {name: shell-session, title: Shell Session}
   - name: postgresql
@@ -517,7 +552,7 @@ languageGroups:
     title: Django/Jinja
   - mimetypes: [text/html+django, text/html+jinja]
     name: html+django
-    names: [html+jinja]
+    names: [html+jinja, htmldjango]
     title: HTML+Django/Jinja
   - mimetypes: [text/css+django, text/css+jinja]
     name: css+django
@@ -578,7 +613,7 @@ languageGroups:
     title: Cheetah
   - mimetypes: [text/html+cheetah, text/html+spitfire]
     name: html+cheetah
-    names: [html+spitfire]
+    names: [html+spitfire, htmlcheetah]
     title: HTML+Cheetah
   - mimetypes: [application/xml+cheetah, application/xml+spitfire]
     name: xml+cheetah
@@ -614,11 +649,13 @@ languageGroups:
     title: JavaScript+Lasso
   - extensions: [ini, cfg]
     name: ini
-    names: [cfg]
+    names: [cfg, dosini]
     title: INI
-  - {name: properties, title: Properties}
+  - name: properties
+    names: [jproperties]
+    title: Properties
   - name: sourceslist
-    names: [sources.list]
+    names: [sources.list, debsources]
     title: Debian Sourcelist
   - {name: basemake, title: Base Makefile}
   - extensions: [mak, Makefile, makefile, Makefile.*, GNUmakefile]
@@ -664,7 +701,9 @@ languageGroups:
   - name: squidconf
     names: [squid.conf, squid]
     title: SquidConf
-  - {name: control, title: Debian Control file}
+  - name: control
+    names: [debcontrol]
+    title: Debian Control file
   - extensions: [dpatch, darcspatch]
     name: dpatch
     title: Darcs Patch
@@ -686,11 +725,12 @@ languageGroups:
   - name: haxeml
     names: [hxml]
     title: Hxml
+  - {name: ebnf, title: EBNF}
   - extensions: [html, htm, xhtml, xslt]
     mimetypes: [text/html, application/xhtml+xml]
     name: html
     title: HTML
-  - extensions: [xml, xsl, rss, xslt, xsd, wsdl]
+  - extensions: [xml, xsl, rss, xslt, xsd, wsdl, wsf]
     mimetypes: [text/xml, application/xml, image/svg+xml, application/rss+xml, application/atom+xml]
     name: xml
     title: XML
@@ -718,9 +758,11 @@ languageGroups:
     names: [actionscript3]
     title: ActionScript 3
   - {name: mxml, title: MXML}
-  - name: hx
-    names: [haXe]
-    title: haXe
+  - extensions: [hx, hxsl]
+    mimetypes: [text/haxe, text/x-haxe, text/x-hx]
+    name: hx
+    names: [Haxe, haxe, haXe, hxsl]
+    title: Haxe
   - name: haml
     names: [HAML]
     title: Haml
@@ -732,7 +774,7 @@ languageGroups:
     names: [objectivej, obj-j, objj]
     title: Objective-J
   - name: coffee-script
-    names: [coffeescript]
+    names: [coffeescript, coffee]
     title: CoffeeScript
   - name: live-script
     names: [livescript]
