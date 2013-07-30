@@ -5,6 +5,7 @@ import (
 	"code.google.com/p/go.crypto/scrypt"
 	"encoding/gob"
 	"flag"
+	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"html/template"
@@ -16,9 +17,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
+
+const PASTE_CACHE_MAX_ENTRIES int = 1000
 
 type PasteAccessDeniedError struct {
 	action string
@@ -325,11 +329,26 @@ type RenderedPaste struct {
 	renderTime time.Time
 }
 
-var renderedPastes = make(map[PasteID]*RenderedPaste)
+var renderCache struct {
+	mu sync.RWMutex
+	c  *lru.Cache
+}
 
 func renderPaste(p *Paste) template.HTML {
-	cached, ok := renderedPastes[p.ID]
+	renderCache.mu.RLock()
+	var cached *RenderedPaste
+	var cval interface{}
+	var ok bool
+	if renderCache.c != nil {
+		if cval, ok = renderCache.c.Get(p.ID); ok {
+			cached = cval.(*RenderedPaste)
+		}
+	}
+	renderCache.mu.RUnlock()
+
 	if !ok || cached.renderTime.Before(p.LastModified()) {
+		defer renderCache.mu.Unlock()
+		renderCache.mu.Lock()
 		out, err := FormatPaste(p)
 
 		if err != nil {
@@ -338,7 +357,10 @@ func renderPaste(p *Paste) template.HTML {
 
 		rendered := template.HTML(out)
 		if !p.Encrypted {
-			renderedPastes[p.ID] = &RenderedPaste{body: rendered, renderTime: time.Now()}
+			if renderCache.c == nil {
+				renderCache.c = &lru.Cache{MaxEntries: PASTE_CACHE_MAX_ENTRIES}
+			}
+			renderCache.c.Add(p.ID, &RenderedPaste{body: rendered, renderTime: time.Now()})
 		}
 
 		return rendered
@@ -348,8 +370,13 @@ func renderPaste(p *Paste) template.HTML {
 }
 
 func pasteDestroyCallback(p *Paste) {
+	defer renderCache.mu.Unlock()
+	renderCache.mu.Lock()
+	if renderCache.c == nil {
+		return
+	}
 	// Clear the cached render when a paste is destroyed
-	delete(renderedPastes, p.ID)
+	renderCache.c.Remove(p.ID)
 }
 
 var pasteStore *FilesystemPasteStore
