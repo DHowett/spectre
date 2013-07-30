@@ -18,6 +18,7 @@ var base32Encoder = base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789")
 const ENCRYPTION_VERSION string = "1"
 
 type PasteStore interface {
+	GenerateNewPasteID(bool) (PasteID, error)
 	New(bool) (*Paste, error)
 	Get(PasteID, []byte) (*Paste, error)
 	Save(*Paste) error
@@ -149,7 +150,7 @@ func generateRandomBase32String(nbytes, idlen int) (string, error) {
 	return s[0:idlen], nil
 }
 
-func generatePasteID(encrypted bool) (PasteID, error) {
+func (store *FilesystemPasteStore) GenerateNewPasteID(encrypted bool) (PasteID, error) {
 	nbytes, idlen := 3, 5
 	if encrypted {
 		nbytes, idlen = 5, 8
@@ -164,7 +165,7 @@ func (store *FilesystemPasteStore) filenameForID(id PasteID) string {
 }
 
 func (store *FilesystemPasteStore) New(encrypted bool) (p *Paste, err error) {
-	id, err := generatePasteID(encrypted)
+	id, err := store.GenerateNewPasteID(encrypted)
 	if err != nil {
 		panic(err)
 	}
