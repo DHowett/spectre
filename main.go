@@ -378,6 +378,7 @@ func pasteDestroyCallback(p *Paste) {
 }
 
 var pasteStore *FilesystemPasteStore
+var expirator *Expirator
 var sessionStore *sessions.FilesystemStore
 var clientOnlySessionStore *sessions.CookieStore
 var router *mux.Router
@@ -461,6 +462,8 @@ func init() {
 	os.Mkdir(pastedir, 0700)
 	pasteStore = NewFilesystemPasteStore(pastedir)
 	pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
+
+	expirator = NewExpirator(*arguments.root, &ExpiringPasteStore{pasteStore})
 }
 
 func main() {
@@ -476,6 +479,8 @@ func main() {
 			}
 		}
 	}()
+
+	go expirator.Run()
 
 	router = mux.NewRouter()
 
