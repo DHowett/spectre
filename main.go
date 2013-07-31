@@ -10,7 +10,6 @@ import (
 	"github.com/gorilla/sessions"
 	"html/template"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -439,7 +438,7 @@ func init() {
 		sessionKey = buf.Bytes()
 		sessionKeyFile.Close()
 	} else {
-		log.Fatalln("session.key not found. make one with seskey.go?")
+		glog.Fatal("session.key not found. make one with seskey.go?")
 	}
 	sessionStore = sessions.NewFilesystemStore(sesdir, sessionKey)
 	sessionStore.Options.Path = "/"
@@ -452,7 +451,7 @@ func init() {
 		clientOnlySessionEncryptionKey = buf.Bytes()
 		sessionKeyFile.Close()
 	} else {
-		log.Fatalln("client_session_enc.key not found. make one with seskey.go?")
+		glog.Fatal("client_session_enc.key not found. make one with seskey.go?")
 	}
 	clientOnlySessionStore = sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
 	clientOnlySessionStore.Options.Path = "/"
