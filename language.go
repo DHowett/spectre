@@ -69,11 +69,12 @@ type _LanguageConfiguration struct {
 
 var languageConfig _LanguageConfiguration
 
-type FormatFunc func(io.Reader, ...string) (string, error)
+type FormatFunc func(*Formatter, io.Reader, ...string) (string, error)
 
 type Formatter struct {
 	Name string
 	Func string
+	Env  []string
 	Args []string
 	fn   FormatFunc
 }
@@ -87,15 +88,16 @@ func (f *Formatter) Format(stream io.Reader, lang string) (string, error) {
 		}
 		myargs[i] = n
 	}
-	return f.fn(stream, myargs...)
+	return f.fn(f, stream, myargs...)
 }
 
-func commandFormatter(stream io.Reader, args ...string) (output string, err error) {
+func commandFormatter(formatter *Formatter, stream io.Reader, args ...string) (output string, err error) {
 	var outbuf, errbuf bytes.Buffer
 	command := exec.Command(args[0], args[1:]...)
 	command.Stdin = stream
 	command.Stdout = &outbuf
 	command.Stderr = &errbuf
+	command.Env = formatter.Env
 	err = command.Run()
 	output = strings.TrimSpace(outbuf.String())
 	if err != nil {
@@ -104,7 +106,7 @@ func commandFormatter(stream io.Reader, args ...string) (output string, err erro
 	return
 }
 
-func plainTextFormatter(stream io.Reader, args ...string) (string, error) {
+func plainTextFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
 	buf := &bytes.Buffer{}
 	io.Copy(buf, stream)
 	return template.HTMLEscapeString(buf.String()), nil
