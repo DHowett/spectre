@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"flag"
+	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -341,15 +342,22 @@ func renderPaste(p *Paste) template.HTML {
 		out, err := FormatPaste(p)
 
 		if err != nil {
-			return template.HTML("There was an error rendering this paste.<br />" + template.HTMLEscapeString(out))
+			glog.Errorf("Render for %s failed: (%s) output: %s", p.ID, err.Error(), out)
+			return template.HTML("There was an error rendering this paste.")
 		}
 
 		rendered := template.HTML(out)
 		if !p.Encrypted {
 			if renderCache.c == nil {
-				renderCache.c = &lru.Cache{MaxEntries: PASTE_CACHE_MAX_ENTRIES}
+				renderCache.c = &lru.Cache{
+					MaxEntries: PASTE_CACHE_MAX_ENTRIES,
+					OnEvicted: func(key lru.Key, value interface{}) {
+						glog.Info("RENDER CACHE: Evicted ", key)
+					},
+				}
 			}
 			renderCache.c.Add(p.ID, &RenderedPaste{body: rendered, renderTime: time.Now()})
+			glog.Info("RENDER CACHE: Cached ", p.ID)
 		}
 
 		return rendered
@@ -364,6 +372,8 @@ func pasteDestroyCallback(p *Paste) {
 	if renderCache.c == nil {
 		return
 	}
+
+	glog.Info("RENDER CACHE: Removing ", p.ID, " due to destruction.")
 	// Clear the cached render when a paste is destroyed
 	renderCache.c.Remove(p.ID)
 }
@@ -461,6 +471,7 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGHUP)
 	go func() {
 		for _ = range sigChan {
+			glog.Info("Received SIGHUP")
 			for _, f := range reloadFunctions {
 				f()
 			}

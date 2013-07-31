@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/golang/glog"
 	"html/template"
 	"io"
 )
@@ -35,10 +36,12 @@ func assetFunction(kind string, names ...string) template.HTML {
 }
 
 func InitTemplates() {
+	glog.Info("Loading templates.")
 	tmpl = func() *template.Template {
 		return template.Must(template.New("base").Funcs(templateFunctions).ParseGlob("templates/*"))
 	}
 	if !*arguments.rebuild {
+		glog.Info("Caching templates.")
 		t := tmpl()
 		tmpl = func() *template.Template {
 			return t
