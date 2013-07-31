@@ -5,7 +5,11 @@ type ExpiringPasteStore struct {
 }
 
 func (e *ExpiringPasteStore) Get(id ExpirableID) (Expirable, error) {
-	return e.PasteStore.Get(PasteID(id), nil)
+	v, err := e.PasteStore.Get(PasteID(id), nil)
+	if v == nil {
+		return nil, err
+	}
+	return v, err
 }
 
 func (e *ExpiringPasteStore) Destroy(ex Expirable) {
