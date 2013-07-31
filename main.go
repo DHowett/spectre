@@ -22,6 +22,7 @@ import (
 )
 
 const PASTE_CACHE_MAX_ENTRIES int = 1000
+const MAX_EXPIRE_DURATION time.Duration = 15 * 24 * time.Hour
 
 type PasteAccessDeniedError struct {
 	action string
@@ -129,6 +130,19 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 		p.Language = r.FormValue("lang")
 	}
 	pw.Close() // Saves p
+
+	expireIn := r.FormValue("expire")
+	if expireIn != "" {
+		dur, _ := time.ParseDuration(expireIn)
+		if dur > MAX_EXPIRE_DURATION {
+			dur = MAX_EXPIRE_DURATION
+		}
+		expirator.ExpireObject(p, dur)
+	} else {
+		if expirator.ObjectHasExpiration(p) {
+			expirator.CancelObjectExpiration(p)
+		}
+	}
 
 	w.Header().Set("Location", pasteURL("show", p))
 	w.WriteHeader(http.StatusSeeOther)
