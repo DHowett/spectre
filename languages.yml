@@ -3,7 +3,7 @@ formatters:
     name: default
     func: commandFormatter
     args:
-    - ./pygments/pygmentize
+    - ./bin/pygments/pygmentize
     - "-f"
     - html
     - "-l"
@@ -17,13 +17,13 @@ formatters:
     name: markdown
     func: commandFormatter
     args:
-    - ./Markdown.pl
+    - ./bin/Markdown.pl
     - "--html4tags"
   ansi:
     name: ansi
     func: commandFormatter
     args:
-    - ./ansi2html
+    - ./bin/ansi2html
     - "--naked"
 languageGroups:
 - title: Text
