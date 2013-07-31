@@ -11,8 +11,9 @@ import (
 type ExpirableID string
 
 type ExpirationHandle struct {
-	ExpirationTime time.Time
-	ID             ExpirableID
+	ExpirationTime  time.Time
+	ID              ExpirableID
+	expirationTimer *time.Timer
 }
 
 type Expirator struct {
@@ -78,22 +79,36 @@ func (e *Expirator) saveExpirations() {
 }
 
 func (e *Expirator) registerExpirationHandle(ex *ExpirationHandle) {
-	glog.Info("Registering expiration for ", ex.ID)
 	expiryFunc := func() { e.expirationChannel <- ex }
 
 	if e.expirationMap == nil {
 		e.expirationMap = make(map[ExpirableID]*ExpirationHandle)
 	}
 
+	if ex.expirationTimer != nil {
+		e.cancelExpirationHandle(ex)
+		glog.Info("Existing expiration for ", ex.ID, " cancelled")
+	}
+
+	glog.Info("Registering expiration for ", ex.ID)
 	now := time.Now()
 	if ex.ExpirationTime.After(now) {
-		time.AfterFunc(ex.ExpirationTime.Sub(now), expiryFunc)
 		e.expirationMap[ex.ID] = ex
 		e.urgentFlushRequired = true
+
+		ex.expirationTimer = time.AfterFunc(ex.ExpirationTime.Sub(now), expiryFunc)
 	} else {
 		glog.Warning("Force-expiring outdated handle ", ex.ID)
 		expiryFunc()
 	}
+}
+
+func (e *Expirator) cancelExpirationHandle(ex *ExpirationHandle) {
+	ex.expirationTimer.Stop()
+	delete(e.expirationMap, ex.ID)
+	e.urgentFlushRequired = true
+
+	glog.Info("Execution order belayed for ", ex.ID)
 }
 
 func (e *Expirator) Run() {
@@ -128,8 +143,19 @@ func (e *Expirator) Run() {
 }
 
 func (e *Expirator) ExpireObject(ex Expirable, dur time.Duration) {
-	e.registerExpirationHandle(&ExpirationHandle{
-		ID:             ex.ExpirationID(),
-		ExpirationTime: time.Now().Add(dur),
-	})
+	id := ex.ExpirationID()
+	exh, ok := e.expirationMap[id]
+	if !ok {
+		exh = &ExpirationHandle{ID: id}
+	}
+	exh.ExpirationTime = time.Now().Add(dur)
+	e.registerExpirationHandle(exh)
+}
+
+func (e *Expirator) CancelObjectExpiration(ex Expirable) {
+	id := ex.ExpirationID()
+	exh, ok := e.expirationMap[id]
+	if ok {
+		e.cancelExpirationHandle(exh)
+	}
 }
