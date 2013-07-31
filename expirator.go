@@ -159,3 +159,9 @@ func (e *Expirator) CancelObjectExpiration(ex Expirable) {
 		e.cancelExpirationHandle(exh)
 	}
 }
+
+func (e *Expirator) ObjectHasExpiration(ex Expirable) bool {
+	id := ex.ExpirationID()
+	_, ok := e.expirationMap[id]
+	return ok
+}
