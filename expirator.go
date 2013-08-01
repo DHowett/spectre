@@ -56,7 +56,7 @@ func (e *Expirator) loadExpirations() {
 	for _, v := range tempMap {
 		e.registerExpirationHandle(v)
 	}
-	glog.Info("Finished loading expirations.")
+	glog.Info("Loaded ", len(tempMap), " expirations.")
 }
 
 func (e *Expirator) saveExpirations() {
@@ -74,6 +74,7 @@ func (e *Expirator) saveExpirations() {
 	gobEncoder.Encode(e.expirationMap)
 
 	file.Close()
+	glog.Info("Wrote ", len(e.expirationMap), " expirations.")
 
 	e.flushRequired, e.urgentFlushRequired = false, false
 }
@@ -90,15 +91,15 @@ func (e *Expirator) registerExpirationHandle(ex *ExpirationHandle) {
 		glog.Info("Existing expiration for ", ex.ID, " cancelled")
 	}
 
-	glog.Info("Registering expiration for ", ex.ID)
 	now := time.Now()
 	if ex.ExpirationTime.After(now) {
 		e.expirationMap[ex.ID] = ex
 		e.urgentFlushRequired = true
 
 		ex.expirationTimer = time.AfterFunc(ex.ExpirationTime.Sub(now), expiryFunc)
+		glog.Info("Registered expiration for ", ex.ID, " at ", ex.ExpirationTime)
 	} else {
-		glog.Warning("Force-expiring outdated handle ", ex.ID)
+		glog.Warning("Force-expiring handle ", ex.ID, ", outdated by ", now.Sub(ex.ExpirationTime), ".")
 		expiryFunc()
 	}
 }
@@ -108,25 +109,23 @@ func (e *Expirator) cancelExpirationHandle(ex *ExpirationHandle) {
 	delete(e.expirationMap, ex.ID)
 	e.urgentFlushRequired = true
 
-	glog.Info("Execution order belayed for ", ex.ID)
+	glog.Info("Execution order for ", ex.ID, " at ", ex.ExpirationTime, " belayed.")
 }
 
 func (e *Expirator) Run() {
 	go e.loadExpirations()
-	glog.Info("Starting expirator.")
+	glog.Info("Launching Expirator.")
 	flushTicker, urgentFlushTicker := time.NewTicker(30*time.Second), time.NewTicker(1*time.Second)
 	for {
 		select {
 		// 30-second flush timer (only save if changed)
 		case _ = <-flushTicker.C:
 			if e.expirationMap != nil && (e.flushRequired || e.urgentFlushRequired) {
-				glog.Info("Flushing paste expirations to disk.")
 				e.saveExpirations()
 			}
 		// 1-second flush timer (only save if *super-urgent, but still throttle)
 		case _ = <-urgentFlushTicker.C:
 			if e.expirationMap != nil && e.urgentFlushRequired {
-				glog.Info("Urgently flushing paste expirations to disk.")
 				e.saveExpirations()
 			}
 		case expiration := <-e.expirationChannel:
