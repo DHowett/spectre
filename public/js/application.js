@@ -28,3 +28,7 @@ $(function() {
 
 	mql.addListener(mqlListener);
 });
+
+$(function() {
+	$('[autofocus]:not(:focus)').eq(0).focus();
+})
