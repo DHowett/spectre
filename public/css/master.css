@@ -125,8 +125,16 @@ span.paste-title .paste-subtitle {
 	color: #999;
 }
 
-.well, .alert-block {
+.alert-block {
 	margin: 10px;
+}
+
+.well {
+	margin: 10px;
+	min-height: 20px;
+	padding: 15px;
+	border: 1px solid black;
+	border-radius: 4px;
 }
 
 .well .well-title {
