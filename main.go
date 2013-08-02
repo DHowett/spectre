@@ -130,10 +130,9 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 	if r.FormValue("lang") != "" {
 		p.Language = r.FormValue("lang")
 	}
-	pw.Close() // Saves p
 
 	expireIn := r.FormValue("expire")
-	if expireIn != "" {
+	if expireIn != "" && expireIn != "-1" {
 		dur, _ := time.ParseDuration(expireIn)
 		if dur > MAX_EXPIRE_DURATION {
 			dur = MAX_EXPIRE_DURATION
@@ -144,6 +143,10 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 			pasteExpirator.CancelObjectExpiration(p)
 		}
 	}
+
+	p.Expiration = expireIn
+
+	pw.Close() // Saves p
 
 	w.Header().Set("Location", pasteURL("show", p))
 	w.WriteHeader(http.StatusSeeOther)

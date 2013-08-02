@@ -75,12 +75,14 @@ func (pr *PasteWriter) Close() error {
 }
 
 type Paste struct {
-	ID       PasteID
-	Language string
-	store    PasteStore
-	mtime    time.Time
+	ID         PasteID
+	Language   string
+	Encrypted  bool
+	Expiration string
 
-	Encrypted        bool
+	store PasteStore
+	mtime time.Time
+
 	encryptionKey    []byte
 	encryptionSalt   []byte
 	encryptionMethod string
@@ -234,6 +236,7 @@ func (store *FilesystemPasteStore) Get(id PasteID, key []byte) (p *Paste, err er
 	}
 
 	paste.Language = getMetadata(filename, "language", "text")
+	paste.Expiration = getMetadata(filename, "expiration", "")
 
 	store.PasteUpdateCallback(paste)
 
@@ -245,6 +248,12 @@ func (store *FilesystemPasteStore) Save(p *Paste) error {
 	filename := store.filenameForID(p.ID)
 	if err := putMetadata(filename, "language", p.Language); err != nil {
 		return err
+	}
+
+	if p.Expiration != "" {
+		if err := putMetadata(filename, "expiration", p.Expiration); err != nil {
+			return err
+		}
 	}
 
 	if p.Encrypted {
