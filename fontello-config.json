@@ -11,6 +11,12 @@
       "src": "fontawesome"
     },
     {
+      "uid": "d7271d490b71df4311e32cdacae8b331",
+      "css": "home",
+      "code": 59402,
+      "src": "fontawesome"
+    },
+    {
       "uid": "c1f1975c885aa9f3dad7810c53b82074",
       "css": "lock",
       "code": 59399,
@@ -50,6 +56,12 @@
       "uid": "5408be43f7c42bccee419c6be53fdef5",
       "css": "file-text",
       "code": 59394,
+      "src": "fontawesome"
+    },
+    {
+      "uid": "598a5f2bcf3521d1615de8e1881ccd17",
+      "css": "clock",
+      "code": 59401,
       "src": "fontawesome"
     },
     {

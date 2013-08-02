@@ -1,7 +1,8 @@
 {{define "page_paste_show"}}
 {{template "header" .}}
-<div class="paste input-block-level">
+<div class="paste">
 <div class="paste-toolbox">
+	{{template "home-button"}}
 	<span class="paste-title">
 		{{if .Obj.Encrypted}}<i class="icon-lock"></i>{{end}}<strong>Paste {{.Obj.ID}}</strong>
 		<span class="paste-subtitle">{{with langByLexer .Obj.Language}}{{.Title}}{{else}}({{.Obj.Language}}){{end}}</span>

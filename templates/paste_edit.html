@@ -6,14 +6,15 @@
 
 {{define "paste_edit_partial"}}
 <form action="{{if .}}{{pasteURL "edit" .}}{{else}}/paste/new{{end}}" method="post">
-<div class="paste input-block-level">
+<div class="paste">
 <div class="paste-toolbox">
+	{{template "home-button"}}
 	<span class="paste-title"><strong>{{if .}}Paste {{.ID}}{{else}}New Paste{{end}}</strong></span>
 	<div class="paste-toolbox-buttons pull-right hidden-phone" id="desktop-paste-control-container">
 		<div id="paste-controls" style="display: inline;">
 			{{if not .}}<div class="input-prepend phone-expand">
 				<span class="add-on"><i class="icon-lock"> </i></span>
-				<div class="input-wrapper"><input class="input-block-level" type="password" name="password" autocomplete="off" placeholder="optional password"></div>
+				<div class="input-wrapper"><input type="password" name="password" autocomplete="off" placeholder="optional password"></div>
 			</div>{{end}}
 			{{template "s2langbox" .}}
 			{{if .}}<button title="Delete" type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
@@ -27,7 +28,9 @@
 		</div>
 	</div>
 </div>
-<textarea tabindex="1" class="input-block-level code" name="text" rows="20">{{if .}}{{pasteBody .}}{{end}}</textarea>
+<div class="textarea-height-wrapper">
+<textarea tabindex="1" class="code" name="text" rows="20">{{if .}}{{pasteBody .}}{{end}}</textarea>
+</div>
 </div>
 <div class="visible-phone" id="phone-paste-control-container"></div>
 </form>

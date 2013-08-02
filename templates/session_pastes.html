@@ -1,10 +1,16 @@
 {{define "page_session_pastes"}}
 {{template "header" .}}
-<div class="well" style="padding: 8px 0px;">
-<ul class="nav nav-list">
-<li class="nav-header">All Pastes owned by You ({{len .Obj}})</li>
+<div class="paste">
+<div class="paste-toolbox">
+	{{template "home-button"}}
+	<span class="paste-title">
+		<strong>All Pastes by You</strong>
+		<span class="paste-subtitle">{{len .Obj}}</span>
+	</span>
+</div>
+<ul class="paste-list">
 {{range .Obj}}
-<li><a href="{{pasteURL "show" .}}">{{if .Encrypted}}<i class="icon-lock"> </i>{{end}}{{.ID}} <small>({{.Language}})</small></a></li>
+<li><a href="{{pasteURL "show" .}}"><span class="paste-title">{{if .Encrypted}}<i class="icon-lock"> </i>{{end}}<strong>{{.ID}}</strong> <span class="paste-subtitle">{{with langByLexer .Language}}{{.Title}}{{else}}({{.Language}}){{end}}</span></span></a></li>
 {{end}}
 </ul>
 </div>

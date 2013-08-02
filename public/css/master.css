@@ -1,5 +1,9 @@
+html, body {
+	height: 100%;
+}
+
 body {
-	margin-bottom: 1em;
+	background-color: #ccc;
 }
 
 textarea { min-height: 2em; resize: vertical; }
@@ -9,33 +13,57 @@ input[type=password] {
 	margin-right: 4px;
 }
 
+.brand-bar {
+	font-weight: bold;
+	font-size: 16px;
+	background-color: #222;
+	color: white;
+	text-align: center;
+	margin-bottom: 10px;
+	padding: 4px;
+	border-radius: 4px;
+}
+
+.brand-bar a {
+	color: white;
+}
+
+.brand-bar a:hover, .brand-bar a:focus {
+	color: #999;
+	text-decoration: none;
+}
+
 .input-prepend {
 	color: rgb(51, 51, 51);
 	margin-bottom: 0px;
 }
 
 .paste {
-	min-height: 40%;
-	background-color: #222;
+	min-height: 100%;
+	background-color: #2a2a2a;
 	color: #ebebeb;
-	margin: 1em 0px 10px;
 	border: 1px solid rgba(0, 0, 0, 0.15);
-	border-radius: 4px;
 	line-height: normal;
 }
 
 .paste.paste-miniature {
 	min-height: 0;
+	height: auto;
 	margin: 0px 0px 5px;
+	border-radius: 4px;
 }
 
 .paste .code {
 	border-top-left-radius: 4px;
 	border-top-right-radius: 4px;
-	background-color: #2a2a2a;
 	font-family: 'Envy Code R', 'monospace';
 	font-size: 12pt;
 	padding: 9.5px;
+	line-height: normal;
+	width: 100%;
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
 }
 
 .paste.paste-miniature .code {
@@ -51,6 +79,7 @@ input[type=password] {
 
 .paste textarea.code {
 	/* Fix the text field's appearance */
+	background-color: inherit;
 	color: inherit;
 	border: none;
 	margin-bottom: 0px;
@@ -62,7 +91,26 @@ input[type=password] {
 	-webkit-appearance: none;
 }
 
+ul.paste-list {
+	list-style: none;
+	padding: 9.5px;
+	margin: 0;
+}
+
+ul.paste-list > li {
+	padding: 4px;
+}
+
+ul.paste-list > li:hover {
+	background-color: #333;
+}
+
+ul.paste-list > li > a {
+	text-decoration: none;
+}
+
 div.paste-toolbox {
+	background-color: #222;
 	padding: 6px;
 }
 
@@ -78,15 +126,21 @@ span.paste-title .paste-subtitle {
 }
 
 .well, .alert-block {
-	margin-top: 1em;
+	margin: 10px;
 }
 
 .well .well-title {
 	font-size: 125%;
 }
 
+.paste .well {
+	border-color: #444;
+	background-color: #333;
+}
+
 form {
 	margin-bottom: 0;
+	height: 100%;
 }
 
 .icon-large:before {
@@ -108,13 +162,57 @@ form {
 	display: inline-block;
 }
 
+.paste .textarea-height-wrapper {
+	display: inline;
+}
+
+@media (min-width: 767px) {
+	div.paste-toolbox {
+		height: 32px;
+	}
+	.paste {
+		position: relative;
+	}
+	.paste .textarea-height-wrapper {
+		display: block;
+		position: absolute;
+		left: 0;
+		right: 0;
+		top: 44px;
+		bottom: 0;
+	}
+	.paste .textarea-height-wrapper textarea {
+		display: block;
+		width: 100%;
+		height: 100%;
+		-webkit-box-sizing: border-box;
+		-moz-box-sizing: border-box;
+		box-sizing: border-box;
+	}
+}
+
 @media (max-width: 767px) {
+	body {
+		height: auto;
+		padding: 10px;
+	}
+	.well, .alert-block {
+		margin: 0;
+	}
+	.paste {
+		min-height: 0;
+		height: auto;
+		border-radius: 4px;
+	}
+	#phone-paste-control-container {
+		margin-top: 10px;
+	}
 	.code {
-		font-size: 10pt !important;
+		font-size: 10pt;
 	}
 	.pull-right {
 		display: block;
-		float: none !important;
+		float: none;
 	}
 	span.paste-title {
 		line-height: 1em;
@@ -131,7 +229,11 @@ form {
 	.dropdown {
 		padding: 0px;
 	}
-	.dropdown, .phone-expand, .btn-phone-expand, .visible-phone .btn {
+	.dropdown,
+	.phone-expand,
+	.btn-phone-expand,
+	.visible-phone .btn-group,
+	.visible-phone .btn {
 		display: block;
 		float: none;
 		width: 100%;
@@ -146,16 +248,6 @@ form {
 		width: 50%;
 		margin-left: 0;
 		margin-top: 0;
-	}
-	.visible-phone .btn-group {
-		display: block;
-		float: none;
-		width: 100%;
-		margin-left: 0;
-		margin-top: .5em;
-		-webkit-box-sizing: border-box;
-		-moz-box-sizing: border-box;
-		box-sizing: border-box;
 	}
 	.dropdown.select2-offscreen {
 		width: 1px !important;
