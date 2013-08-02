@@ -10,7 +10,6 @@ textarea { min-height: 2em; resize: vertical; }
 
 input[type=password] {
 	margin-bottom: 0;
-	margin-right: 4px;
 }
 
 .brand-bar {
@@ -159,7 +158,6 @@ form {
 
 .dropdown {
 	width: 250px;
-	margin-right: 4px;
 }
 
 .input-prepend.phone-expand {
