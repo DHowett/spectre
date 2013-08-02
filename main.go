@@ -569,11 +569,11 @@ func main() {
 		postRouter.HandleFunc("/paste/new", http.HandlerFunc(pasteCreate))
 	}
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./public")))
+	http.Handle("/", &fourOhFourConsumerHandler{router})
 
 	var addr string = *arguments.bind + ":" + *arguments.port
 	server := &http.Server{
-		Addr:    addr,
-		Handler: &fourOhFourConsumerHandler{router},
+		Addr: addr,
 	}
 	server.ListenAndServe()
 }
