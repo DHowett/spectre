@@ -1,6 +1,7 @@
 package main
 
 import (
+	"./expirator"
 	"bytes"
 	"encoding/gob"
 	"flag"
@@ -137,10 +138,10 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 		if dur > MAX_EXPIRE_DURATION {
 			dur = MAX_EXPIRE_DURATION
 		}
-		expirator.ExpireObject(p, dur)
+		pasteExpirator.ExpireObject(p, dur)
 	} else {
-		if expirator.ObjectHasExpiration(p) {
-			expirator.CancelObjectExpiration(p)
+		if pasteExpirator.ObjectHasExpiration(p) {
+			pasteExpirator.CancelObjectExpiration(p)
 		}
 	}
 
@@ -392,7 +393,7 @@ func pasteDestroyCallback(p *Paste) {
 }
 
 var pasteStore *FilesystemPasteStore
-var expirator *Expirator
+var pasteExpirator *expirator.Expirator
 var sessionStore *sessions.FilesystemStore
 var clientOnlySessionStore *sessions.CookieStore
 var router *mux.Router
@@ -477,7 +478,7 @@ func init() {
 	pasteStore = NewFilesystemPasteStore(pastedir)
 	pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 
-	expirator = NewExpirator(filepath.Join(*arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
+	pasteExpirator = expirator.NewExpirator(filepath.Join(*arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
 }
 
 func main() {
@@ -494,7 +495,7 @@ func main() {
 		}
 	}()
 
-	go expirator.Run()
+	go pasteExpirator.Run()
 
 	router = mux.NewRouter()
 

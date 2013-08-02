@@ -1,4 +1,4 @@
-package main
+package expirator
 
 import (
 	"encoding/gob"
