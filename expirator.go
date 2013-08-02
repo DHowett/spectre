@@ -4,7 +4,6 @@ import (
 	"encoding/gob"
 	"github.com/golang/glog"
 	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -37,12 +36,20 @@ type ExpirableStore interface {
 func NewExpirator(path string, store ExpirableStore) *Expirator {
 	return &Expirator{
 		expirableStore:    store,
-		dataPath:          filepath.Join(path, "expiry.gob"),
+		dataPath:          path,
 		expirationChannel: make(chan *ExpirationHandle, 1000),
 	}
 }
 
+func (e *Expirator) canSave() bool {
+	return e.dataPath != ""
+}
+
 func (e *Expirator) loadExpirations() {
+	if !e.canSave() {
+		return
+	}
+
 	file, err := os.Open(e.dataPath)
 	if err != nil {
 		return
@@ -60,6 +67,10 @@ func (e *Expirator) loadExpirations() {
 }
 
 func (e *Expirator) saveExpirations() {
+	if !e.canSave() {
+		return
+	}
+
 	if e.expirationMap == nil {
 		return
 	}
@@ -115,16 +126,19 @@ func (e *Expirator) cancelExpirationHandle(ex *ExpirationHandle) {
 func (e *Expirator) Run() {
 	go e.loadExpirations()
 	glog.Info("Launching Expirator.")
-	flushTicker, urgentFlushTicker := time.NewTicker(30*time.Second), time.NewTicker(1*time.Second)
+	var flushTickerChan, urgentFlushTickerChan <-chan time.Time
+	if e.canSave() {
+		flushTickerChan, urgentFlushTickerChan = time.NewTicker(30*time.Second).C, time.NewTicker(1*time.Second).C
+	}
 	for {
 		select {
 		// 30-second flush timer (only save if changed)
-		case _ = <-flushTicker.C:
+		case _ = <-flushTickerChan:
 			if e.expirationMap != nil && (e.flushRequired || e.urgentFlushRequired) {
 				e.saveExpirations()
 			}
 		// 1-second flush timer (only save if *super-urgent, but still throttle)
-		case _ = <-urgentFlushTicker.C:
+		case _ = <-urgentFlushTickerChan:
 			if e.expirationMap != nil && e.urgentFlushRequired {
 				e.saveExpirations()
 			}

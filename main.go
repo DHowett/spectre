@@ -477,7 +477,7 @@ func init() {
 	pasteStore = NewFilesystemPasteStore(pastedir)
 	pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 
-	expirator = NewExpirator(*arguments.root, &ExpiringPasteStore{pasteStore})
+	expirator = NewExpirator(filepath.Join(*arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
 }
 
 func main() {
