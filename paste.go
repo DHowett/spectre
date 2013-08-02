@@ -138,8 +138,12 @@ func (store *FilesystemPasteStore) GenerateNewPasteID(encrypted bool) (PasteID, 
 		nbytes, idlen = 5, 8
 	}
 
-	s, err := generateRandomBase32String(nbytes, idlen)
-	return PasteIDFromString(s), err
+	for {
+		s, err := generateRandomBase32String(nbytes, idlen)
+		if _, staterr := os.Stat(store.filenameForID(PasteIDFromString(s))); os.IsNotExist(staterr) {
+			return PasteIDFromString(s), err
+		}
+	}
 }
 
 func (store *FilesystemPasteStore) filenameForID(id PasteID) string {
