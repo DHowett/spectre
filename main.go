@@ -288,8 +288,14 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
+	if throttleAuthForRequest(r) {
+		w.WriteHeader(420)
+		return
+	}
+
 	id := PasteIDFromString(mux.Vars(r)["id"])
 	password := r.FormValue("password")
+
 	p, _ := pasteStore.Get(id, nil)
 	if p == nil {
 		panic(&PasteNotFoundError{ID: id})
@@ -311,6 +317,42 @@ func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
 	url, _ := router.Get("paste_show").URL("id", id.String())
 	w.Header().Set("Location", url.String())
 	w.WriteHeader(http.StatusSeeOther)
+}
+
+func throttleAuthForRequest(r *http.Request) bool {
+	ip := r.Header.Get("X-Forwarded-For")
+	if ip == "" {
+		ip = r.RemoteAddr[:strings.LastIndex(r.RemoteAddr, ":")]
+	}
+
+	id := mux.Vars(r)["id"]
+
+	tok := ip + "|" + id
+
+	var at *AuthThrottleEntry
+	v, _ := authThrottler.Store.Get(expirator.ExpirableID(tok))
+	if v != nil {
+		at = v.(*AuthThrottleEntry)
+	} else {
+		at = &AuthThrottleEntry{ID: tok, Hits: 0}
+		authThrottler.Store.(*ExpiringAuthThrottleStore).Add(at)
+	}
+
+	at.Hits++
+
+	if at.Hits >= 5 {
+		// If they've tried and failed too much, renew the throttle
+		// at five minutes, to make them cool off.
+
+		authThrottler.ExpireObject(at, 5*time.Minute)
+		return true
+	}
+
+	if !authThrottler.ObjectHasExpiration(at) {
+		authThrottler.ExpireObject(at, 1*time.Minute)
+	}
+
+	return false
 }
 
 func requestVariable(rc *RenderContext, variable string) string {
@@ -394,6 +436,7 @@ func pasteDestroyCallback(p *Paste) {
 
 var pasteStore *FilesystemPasteStore
 var pasteExpirator *expirator.Expirator
+var authThrottler *expirator.Expirator
 var sessionStore *sessions.FilesystemStore
 var clientOnlySessionStore *sessions.CookieStore
 var router *mux.Router
@@ -479,6 +522,7 @@ func init() {
 	pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 
 	pasteExpirator = expirator.NewExpirator(filepath.Join(*arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
+	authThrottler = expirator.NewExpirator("", NewExpiringAuthThrottleStore())
 }
 
 func main() {
@@ -496,6 +540,7 @@ func main() {
 	}()
 
 	go pasteExpirator.Run()
+	go authThrottler.Run()
 
 	router = mux.NewRouter()
 
