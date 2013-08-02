@@ -12,10 +12,14 @@
 	<span class="paste-title"><strong>{{if .}}Paste {{.ID}}{{else}}New Paste{{end}}</strong></span>
 	<div class="paste-toolbox-buttons pull-right hidden-phone" id="desktop-paste-control-container">
 		<div id="paste-controls" style="display: inline;">
-			{{if not .}}<div class="input-prepend phone-expand">
-				<span class="add-on"><i class="icon-lock"> </i></span>
-				<div class="input-wrapper"><input type="password" name="password" autocomplete="off" placeholder="optional password"></div>
-			</div>{{end}}
+			<button id="expirationButton" title="Expiration" type="button" class="btn">
+				<i class="hidden-phone icon-clock icon-large"></i>
+				<span class="visible-phone">Expiration</span>
+			</button>
+			{{if not .}}<button id="encryptionButton" title="Encryption" type="button" class="btn">
+				<i id="encryptionIcon" class="hidden-phone icon-lock-open-alt icon-large"></i>
+				<span class="visible-phone">Encryption</span>
+			</button>{{end}}
 			{{template "s2langbox" .}}
 			{{if .}}<button title="Delete" type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
 				<i class="hidden-phone icon-trash icon-large"></i>
@@ -33,6 +37,42 @@
 </div>
 </div>
 <div class="visible-phone" id="phone-paste-control-container"></div>
+<input type="hidden" name="expire" value="{{if .}}{{.Expiration}}{{else}}-1{{end}}">
+<div id="expireModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+		<h3>Expiration</h3>
+	</div>
+	<div class="modal-body">
+		<p>How long should this paste be allowed to roam the Earth?</p>
+		<div data-toggle="buttons-radio">
+			<button type="button" class="btn" data-value="-1">Forever</button>
+			<button type="button" class="btn" data-value="10m">Ten Minutes</button>
+			<button type="button" class="btn" data-value="1h">One Hour</button>
+			<button type="button" class="btn" data-value="24h">One Day</button>
+			<button type="button" class="btn" data-value="600h">Fifteen Days</button>
+		</div>
+	</div>
+	<div class="modal-footer">
+		<button data-dismiss="modal" class="btn" aria-hidden="true">Okay</button>
+	</div>
+</div>
+{{if not .}}<div id="encryptModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+		<h3>Encrypt Paste</h3>
+	</div>
+	<div class="modal-body">
+		<p>Enter a password with which to encrypt this paste, or leave it blank to eschew encryption.</p>
+		<div class="input-prepend phone-expand">
+			<span class="add-on"><i class="icon-lock"> </i></span>
+			<div class="input-wrapper"><input type="password" name="password" autocomplete="off" placeholder="password"></div>
+		</div>
+	</div>
+	<div class="modal-footer">
+		<button data-dismiss="modal" class="btn" aria-hidden="true">Okay</button>
+	</div>
+</div>{{end}}
 </form>
 {{if .}}<div id="deleteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
 	<form name="deleteForm" action="{{pasteURL "delete" .}}" method="post">

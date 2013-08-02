@@ -32,3 +32,48 @@ $(function() {
 $(function() {
 	$('[autofocus]:not(:focus)').eq(0).focus();
 })
+
+$(function() {
+	var encModal = $("#encryptModal")
+	if(!encModal) return;
+
+	encModal.modal({show: false});
+
+	encModal.find("input[type='password']").keypress(function(e) {
+		if(e.which == 13) {
+			encModal.modal("hide");
+			return false;
+		}
+	});
+
+	encModal.on("shown", function() {
+		$(this).find("input").eq(0).focus().select();
+	});
+
+	encModal.on("hidden", function() {
+		encrypted = $(this).find("input").val().length > 0;
+		$("#encryptionIcon").removeClass("icon-lock icon-lock-open-alt").addClass(encrypted ? "icon-lock" : "icon-lock-open-alt");
+	});
+
+	$("#encryptionButton").on("click", function() {
+		encModal.modal("show");
+	});
+})
+
+$(function() {
+	var expModal = $("#expireModal")
+	if(!expModal) return;
+
+	var expInput = $("input[name='expire']")
+
+	expModal.modal({show: false});
+
+	expModal.find("button[data-value='"+expInput.val()+"']").button('toggle');
+	expModal.find("button[data-value]").on("click", function() {
+		expInput.val($(this).data("value"));
+	})
+
+	$("#expirationButton").on("click", function() {
+		expModal.modal("show");
+	});
+})
