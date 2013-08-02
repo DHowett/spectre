@@ -145,6 +145,11 @@ span.paste-title .paste-subtitle {
 	background-color: #333;
 }
 
+.paste .well.well-error {
+	border-color: #500;
+	background-color: #422;
+}
+
 form {
 	margin-bottom: 0;
 	height: 100%;
