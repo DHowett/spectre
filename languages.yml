@@ -807,3 +807,4 @@ languageGroups:
     names: [Qt Meta Language, Qt modeling Language]
     title: QML
   - {name: ts, title: TypeScript}
+  - {name: gdb-session, title: GDB Session}
