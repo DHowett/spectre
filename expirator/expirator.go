@@ -16,8 +16,9 @@ type ExpirationHandle struct {
 }
 
 type Expirator struct {
+	Store ExpirableStore
+
 	dataPath            string
-	expirableStore      ExpirableStore
 	expirationMap       map[ExpirableID]*ExpirationHandle
 	expirationChannel   chan *ExpirationHandle
 	flushRequired       bool
@@ -35,7 +36,7 @@ type ExpirableStore interface {
 
 func NewExpirator(path string, store ExpirableStore) *Expirator {
 	return &Expirator{
-		expirableStore:    store,
+		Store:             store,
 		dataPath:          path,
 		expirationChannel: make(chan *ExpirationHandle, 1000),
 	}
@@ -144,9 +145,9 @@ func (e *Expirator) Run() {
 			}
 		case expiration := <-e.expirationChannel:
 			glog.Info("Expiring ", expiration.ID)
-			expirable, _ := e.expirableStore.Get(expiration.ID)
+			expirable, _ := e.Store.Get(expiration.ID)
 			if expirable != nil {
-				e.expirableStore.Destroy(expirable)
+				e.Store.Destroy(expirable)
 			}
 
 			delete(e.expirationMap, expiration.ID)
