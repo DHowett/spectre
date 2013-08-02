@@ -289,16 +289,17 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 
 func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
 	if throttleAuthForRequest(r) {
-		w.WriteHeader(420)
+		RenderError(GenericStringError("Cool it."), 420, w)
 		return
 	}
 
 	id := PasteIDFromString(mux.Vars(r)["id"])
 	password := r.FormValue("password")
 
-	p, _ := pasteStore.Get(id, nil)
+	p, err := pasteStore.Get(id, nil)
 	if p == nil {
-		panic(&PasteNotFoundError{ID: id})
+		RenderError(err, http.StatusNotFound, w)
+		return
 	}
 
 	key := p.EncryptionKeyWithPassword(password)
