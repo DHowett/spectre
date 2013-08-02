@@ -3,7 +3,7 @@ html, body {
 }
 
 body {
-	background-color: #ccc;
+	background-color: #666;
 }
 
 textarea { min-height: 2em; resize: vertical; }
