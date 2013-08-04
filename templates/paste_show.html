@@ -7,27 +7,26 @@
 		{{if .Obj.Encrypted}}<i class="icon-lock"></i>{{end}}<strong>Paste {{.Obj.ID}}</strong>
 		<span class="paste-subtitle">{{with langByLexer .Obj.Language}}{{.Title}}{{else}}({{.Obj.Language}}){{end}}</span>
 	</span>
-	<div class="paste-toolbox-buttons pull-right hidden-phone" id="desktop-paste-control-container">
+	<div class="paste-toolbox-buttons pull-right" id="desktop-paste-control-container">
 		<div id="paste-controls">
 			<div class="btn-group">
 				<a title="View Raw" href="{{pasteURL "raw" .Obj}}" class="btn btn-inverse">
-					<i class="hidden-phone icon-file-text icon-large"></i>
+					<i class="icon-file-text icon-large"></i>
 					<span class="visible-phone">View Raw</span>
 				</a>
 				<a title="Download" href="{{pasteURL "download" .Obj}}" class="btn btn-inverse">
-					<i class="hidden-phone icon-download icon-large"></i>
+					<i class="icon-download icon-large"></i>
 					<span class="visible-phone">Download</span>
 				</a>
 			</div>
-			{{if editAllowed .}}<a title="Edit" href="{{pasteURL "edit" .Obj}}" class="btn btn-primary">
-				<i class="hidden-phone icon-edit icon-large"></i>
-				<span class="visible-phone">Edit</span>
-			</a>{{end}}
 		</div>
+		{{if editAllowed .}}<a title="Edit" href="{{pasteURL "edit" .Obj}}" class="btn btn-primary">
+			<i class="icon-edit icon-large"></i>
+		</a>{{end}}
 	</div>
 </div>
 <div class="code">{{render .Obj}}</div>
+<div class="well visible-phone" id="phone-paste-control-container"></div>
 </div>
-<div class="visible-phone" id="phone-paste-control-container"></div>
 {{template "footer" .}}
 {{end}}

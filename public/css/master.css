@@ -1,35 +1,16 @@
 html, body {
 	height: 100%;
+	margin: 0;
 }
 
 body {
-	background-color: #666;
+	background-color: #2a2a2a;
 }
 
 textarea { min-height: 2em; resize: vertical; }
 
 input[type=password] {
 	margin-bottom: 0;
-}
-
-.brand-bar {
-	font-weight: bold;
-	font-size: 16px;
-	background-color: #222;
-	color: white;
-	text-align: center;
-	margin-bottom: 10px;
-	padding: 4px;
-	border-radius: 4px;
-}
-
-.brand-bar a {
-	color: white;
-}
-
-.brand-bar a:hover, .brand-bar a:focus {
-	color: #999;
-	text-decoration: none;
 }
 
 .input-prepend {
@@ -124,10 +105,6 @@ span.paste-title .paste-subtitle {
 	color: #999;
 }
 
-.alert-block {
-	margin: 10px;
-}
-
 .well {
 	margin: 10px;
 	min-height: 20px;
@@ -177,6 +154,11 @@ form {
 	display: inline;
 }
 
+.btn-trough {
+	line-height: 34px;
+	text-align: center;
+}
+
 @media (min-width: 767px) {
 	div.paste-toolbox {
 		height: 32px;
@@ -200,36 +182,37 @@ form {
 		-moz-box-sizing: border-box;
 		box-sizing: border-box;
 	}
+	#paste-controls {
+		display: inline;
+	}
 }
 
 @media (max-width: 767px) {
-	body {
+	html, body {
 		height: auto;
-		padding: 10px;
+		padding: 0px;
 	}
-	.well, .alert-block {
+	.well {
 		margin: 0;
 	}
 	.paste {
 		min-height: 0;
 		height: auto;
-		border-radius: 4px;
 	}
-	#phone-paste-control-container {
-		margin-top: 10px;
+	#paste-controls {
+		display: block;
 	}
-	.code {
+	#phone-paste-control-container.well {
+		padding: 4px;
+	}
+	.paste .code {
 		font-size: 10pt;
 	}
-	.pull-right {
-		display: block;
-		float: none;
-	}
 	span.paste-title {
-		line-height: 1em;
 		font-size: 14pt;
-		display: block;
-		text-align: center;
+		display: inline-block;
+		line-height: 1em;
+		margin-top: -4px;
 	}
 	span.paste-title .paste-subtitle {
 		line-height: 1em;
@@ -245,20 +228,18 @@ form {
 	.btn-phone-expand,
 	.visible-phone .btn-group,
 	.visible-phone .btn {
-		display: block;
-		float: none;
 		width: 100%;
 		margin-left: 0;
-		margin-top: .5em;
+		margin-top: .25em;
+		margin-bottom: .25em;
 		-webkit-box-sizing: border-box;
 		-moz-box-sizing: border-box;
 		box-sizing: border-box;
 	}
 	.visible-phone .btn-group .btn {
-		display: inline-block;
 		width: 50%;
-		margin-left: 0;
 		margin-top: 0;
+		margin-bottom: 0;
 	}
 	.dropdown.select2-offscreen {
 		width: 1px !important;

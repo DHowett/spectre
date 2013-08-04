@@ -19,8 +19,7 @@ $(function() {
 		} else {
 			newParent = $("#desktop-paste-control-container");
 		}
-		newParent.empty();
-		newParent.append(controls);
+		newParent.prepend(controls);
 
 		lastMqlMatch = mql.matches;
 	};

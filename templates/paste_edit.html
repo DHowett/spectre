@@ -10,14 +10,14 @@
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title"><strong>{{if .}}Paste {{.ID}}{{else}}New Paste{{end}}</strong></span>
-	<div class="paste-toolbox-buttons pull-right hidden-phone" id="desktop-paste-control-container">
+	<div class="paste-toolbox-buttons pull-right" id="desktop-paste-control-container">
 		<div id="paste-controls">
 			<button id="expirationButton" title="Expiration" type="button" class="btn btn-inverse">
-				<i class="hidden-phone icon-clock icon-large"></i>
+				<i class="icon-clock icon-large"></i>
 				<span class="visible-phone">Expiration</span>
 			</button>
 			{{if not .}}<button id="encryptionButton" title="Encryption" type="button" class="btn btn-inverse">
-				<i id="encryptionIcon" class="hidden-phone icon-lock-open-alt icon-large"></i>
+				<i id="encryptionIcon" class="icon-lock-open-alt icon-large"></i>
 				<span class="visible-phone">Encryption</span>
 			</button>{{end}}
 			{{template "s2langbox" .}}
@@ -25,18 +25,17 @@
 				<i class="hidden-phone icon-trash icon-large"></i>
 				<span class="visible-phone">Delete</span>
 			</button>{{end}}
-			<button title="Save" type="submit" class="btn btn-primary">
-				<i class="hidden-phone icon-save icon-large"></i>
-				<span class="visible-phone">Save</span>
-			</button>
 		</div>
+		<button title="Save" type="submit" class="btn btn-primary">
+			<i class="icon-save icon-large"></i>
+		</button>
 	</div>
 </div>
 <div class="textarea-height-wrapper">
 <textarea autofocus="autofocus" tabindex="1" class="code" name="text" rows="20">{{if .}}{{pasteBody .}}{{end}}</textarea>
 </div>
+<div class="well visible-phone" id="phone-paste-control-container"></div>
 </div>
-<div class="visible-phone" id="phone-paste-control-container"></div>
 <input type="hidden" name="expire" value="{{if .}}{{.Expiration}}{{else}}-1{{end}}">
 <div id="expireModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
 	<div class="modal-header">
@@ -45,7 +44,7 @@
 	</div>
 	<div class="modal-body">
 		<p>How long should this paste be allowed to roam the Earth?</p>
-		<div data-toggle="buttons-radio">
+		<div data-toggle="buttons-radio" class="btn-trough">
 			<button type="button" class="btn" data-value="-1">Forever</button>
 			<button type="button" class="btn" data-value="10m">Ten Minutes</button>
 			<button type="button" class="btn" data-value="1h">One Hour</button>
