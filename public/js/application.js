@@ -75,14 +75,24 @@ $(function() {
 		var ln=$("#line-numbers");
 		if(!ln) return;
 
-		var lines = $("#code").text().split("\n").length;
-		var n="";
-		var i = 0;
-		for(i=0; i < lines; i++) {
-			n += ""+(i+1)+"\n";
+		var curLines = -1;
+
+		var fillForLines = function(lines, callback) {
+			if(lines == curLines) return;
+			var n="";
+			var i = 0;
+			for(i=0; i < lines; i++) {
+				n += ""+(i+1)+"\n";
+			}
+			ln.text(n);
+
+			curLines = lines;
+			if(callback) callback();
 		}
-		var lineno_chars = Math.floor(Math.log(i+1)/Math.LN10)+1;
-		ln.text(n);
+
+		if($("#code").length > 0) {
+			fillForLines(($("#code").text().match(/\n/g)||[]).length+1);
+		}
 	})();
 	(function(){
 		$('[autofocus]:not(:focus)').eq(0).focus();
