@@ -7,7 +7,7 @@ body {
 	background-color: #2a2a2a;
 }
 
-textarea { min-height: 2em; resize: vertical; }
+textarea { min-height: 2em; resize: none; }
 
 input[type=password] {
 	margin-bottom: 0;
@@ -23,6 +23,7 @@ input[type=password] {
 	background-color: #2a2a2a;
 	color: #ebebeb;
 	line-height: normal;
+	position: relative;
 }
 
 .paste.paste-miniature {
@@ -71,6 +72,7 @@ input[type=password] {
 }
 
 .paste .code.code-line-numbers {
+	overflow-x: visible;
 	color: #555;
 	width: auto;
 	padding-right: 4px;
@@ -141,6 +143,24 @@ span.paste-title .paste-subtitle {
 	background-color: #422;
 }
 
+.paste .textarea-height-wrapper {
+	display: block;
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 44px;
+	bottom: 0;
+	height: 100%;
+}
+.paste .textarea-height-wrapper textarea {
+	display: block;
+	width: 100%;
+	height: 100%;
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
+}
+
 form {
 	margin-bottom: 0;
 	height: 100%;
@@ -164,10 +184,6 @@ form {
 	display: inline-block;
 }
 
-.paste .textarea-height-wrapper {
-	display: inline;
-}
-
 .btn-trough {
 	line-height: 34px;
 	text-align: center;
@@ -185,25 +201,6 @@ form {
 @media (min-width: 767px) {
 	div.paste-toolbox {
 		height: 32px;
-	}
-	.paste {
-		position: relative;
-	}
-	.paste .textarea-height-wrapper {
-		display: block;
-		position: absolute;
-		left: 0;
-		right: 0;
-		top: 44px;
-		bottom: 0;
-	}
-	.paste .textarea-height-wrapper textarea {
-		display: block;
-		width: 100%;
-		height: 100%;
-		-webkit-box-sizing: border-box;
-		-moz-box-sizing: border-box;
-		box-sizing: border-box;
 	}
 	#paste-controls {
 		display: inline-block;
@@ -286,5 +283,8 @@ form {
 		-webkit-box-sizing: border-box;
 		-moz-box-sizing: border-box;
 		box-sizing: border-box;
+	}
+	.paste .textarea-height-wrapper {
+		top: 42px;
 	}
 }
