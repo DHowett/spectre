@@ -31,6 +31,16 @@ func assetFunction(kind string, names ...string) template.HTML {
 		for _, n := range names {
 			out += "<link rel=\"stylesheet\" href=\"/css/" + n + ".css\" type=\"text/css\" media=\"screen\">"
 		}
+	} else if kind == "less" {
+		// Do not use less/less.js in production.
+		if *arguments.minified {
+			return template.HTML("")
+		}
+
+		for _, n := range names {
+			out += "<link rel=\"stylesheet/less\" href=\"/css/" + n + ".less\" type=\"text/css\" media=\"screen\">"
+		}
+		out += "<script src=\"/js/less.js\" type=\"text/javascript\"></script>"
 	}
 	return template.HTML(out)
 }
