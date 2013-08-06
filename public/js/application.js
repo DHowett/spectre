@@ -108,13 +108,19 @@ $(function() {
 		$('[autofocus]:not(:focus)').eq(0).focus();
 	})();
 	(function(){
-		$("#code-editor").keydown(function(e) {
-			if(e.keyCode == 9) {
-				var ends = [this.selectionStart, this.selectionEnd];
-				this.value = this.value.substring(0, ends[0]) + "\t" + this.value.substring(ends[1], this.value.length);
-				this.selectionStart = this.selectionEnd = ends[0] + 1;
-				return false;
-			}
-		});
+		var ce = $("#code-editor");
+		if(ce.length > 0) {
+			ce.keydown(function(e) {
+				if(e.keyCode == 9) {
+					var ends = [this.selectionStart, this.selectionEnd];
+					this.value = this.value.substring(0, ends[0]) + "\t" + this.value.substring(ends[1], this.value.length);
+					this.selectionStart = this.selectionEnd = ends[0] + 1;
+					return false;
+				}
+			});
+			$(".paste").on("click", function() {
+				ce.focus();
+			});
+		}
 	})();
 });
