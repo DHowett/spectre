@@ -34,7 +34,7 @@ input[type=password] {
 }
 
 .paste .code {
-	font-family: 'Envy Code R', 'monospace';
+	font-family: 'EnvyCodeRWeb', 'monospace';
 	font-size: 12pt;
 	padding: 9.5px;
 	line-height: normal;
