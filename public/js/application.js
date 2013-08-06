@@ -92,6 +92,14 @@ $(function() {
 
 		if($("#code").length > 0) {
 			fillForLines(($("#code").text().match(/\n/g)||[]).length+1);
+		} else if($("#code-editor").length > 0) {
+			var onUpdate = function() {
+				fillForLines(($("#code-editor").val().match(/\n/g)||[]).length+1, function() {
+					$(".textarea-height-wrapper").css("left", ln.outerWidth());
+				});
+			};
+			$("#code-editor").on("input propertychange", onUpdate);
+			onUpdate.call($("#code-editor").get(0))
 		}
 	})();
 	(function(){

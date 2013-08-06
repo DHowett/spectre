@@ -6,7 +6,7 @@
 
 {{define "paste_edit_partial"}}
 <form action="{{if .}}{{pasteURL "edit" .}}{{else}}/paste/new{{end}}" method="post">
-<div class="paste">
+<div class="clearfix paste">
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title"><strong>{{if .}}Paste {{.ID}}{{else}}New Paste{{end}}</strong></span>
@@ -31,6 +31,7 @@
 		</button>
 	</div>
 </div>
+<div class="code code-line-numbers unselectable" id="line-numbers" aria-hidden="true"></div>
 <div class="textarea-height-wrapper">
 <textarea id="code-editor" autofocus="autofocus" tabindex="1" class="code" name="text" rows="20">{{if .}}{{pasteBody .}}{{end}}</textarea>
 </div>
