@@ -207,7 +207,7 @@ form {
 		box-sizing: border-box;
 	}
 	#paste-controls {
-		display: inline;
+		display: inline-block;
 	}
 }
 
