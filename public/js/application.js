@@ -72,6 +72,19 @@ $(function() {
 		});
 	})();
 	(function(){
+		var ln=$("#line-numbers");
+		if(!ln) return;
+
+		var lines = $("#code").text().split("\n").length;
+		var n="";
+		var i = 0;
+		for(i=0; i < lines; i++) {
+			n += ""+(i+1)+"\n";
+		}
+		var lineno_chars = Math.floor(Math.log(i+1)/Math.LN10)+1;
+		ln.text(n);
+	})();
+	(function(){
 		$('[autofocus]:not(:focus)').eq(0).focus();
 	})();
 });

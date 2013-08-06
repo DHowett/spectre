@@ -38,7 +38,6 @@ input[type=password] {
 	font-size: 12pt;
 	padding: 9.5px;
 	line-height: normal;
-	width: 100%;
 	-webkit-box-sizing: border-box;
 	-moz-box-sizing: border-box;
 	box-sizing: border-box;
@@ -62,12 +61,26 @@ input[type=password] {
 	color: inherit;
 	border: none;
 	margin-bottom: 0px;
+	/* There are no line numbers here yet. */
+	width: 100%;
 }
 
 .paste textarea.code:focus, .paste textarea.code {
 	outline: none none !important;
 	box-shadow: none;
 	-webkit-appearance: none;
+}
+
+.paste .code.code-line-numbers {
+	color: #555;
+	width: auto;
+	padding-right: 4px;
+	padding-left: 4px;
+	text-align: right;
+	font-size: 8pt;
+	line-height: 14pt;
+	float: left;
+	clear: none;
 }
 
 ul.paste-list {
@@ -206,6 +219,9 @@ form {
 	}
 	.paste .code {
 		font-size: 10pt;
+		line-height: 12pt;
+	}
+	.paste .code.code-line-numbers {
 		line-height: 12pt;
 	}
 	span.paste-title {
