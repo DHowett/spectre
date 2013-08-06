@@ -82,6 +82,8 @@ input[type=password] {
 	float: left;
 	clear: none;
 	border-right: 1px solid #333;
+
+	speak: none;
 }
 
 ul.paste-list {
