@@ -81,6 +81,7 @@ input[type=password] {
 	line-height: 14pt;
 	float: left;
 	clear: none;
+	border-right: 1px solid #333;
 }
 
 ul.paste-list {
