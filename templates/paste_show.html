@@ -1,7 +1,7 @@
 {{define "page_paste_show"}}
 {{template "header" .}}
 <div class="paste">
-<div class="paste-toolbox">
+<div class="paste-toolbox unselectable">
 	{{template "home-button"}}
 	<span class="paste-title">
 		{{if .Obj.Encrypted}}<i class="icon-lock"></i>{{end}}<strong>Paste {{.Obj.ID}}</strong>
@@ -25,9 +25,9 @@
 		</a>{{end}}
 	</div>
 </div>
-<div class="code code-line-numbers" id="line-numbers"></div>
+<div class="code code-line-numbers unselectable" id="line-numbers"></div>
 <div class="code" id="code">{{render .Obj}}</div>
-<div class="well visible-phone" id="phone-paste-control-container"></div>
+<div class="well visible-phone unselectable" id="phone-paste-control-container"></div>
 </div>
 {{template "footer" .}}
 {{end}}
