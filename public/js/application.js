@@ -119,9 +119,6 @@ $(function() {
 					return false;
 				}
 			});
-			$(".paste").on("click", function() {
-				ce.focus();
-			});
 		}
 	})();
 });
