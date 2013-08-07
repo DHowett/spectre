@@ -93,15 +93,16 @@ $(function() {
 		}
 
 		if($("#code").length > 0) {
-			var linebar = $(document.createElement('div')).addClass("line-highlight-bar").hide();
-			linebar.appendTo('body');
+			var linebar = $(document.createElement('div'))
+					.addClass("line-highlight-bar")
+					.hide()
+					.appendTo('body');
 			fillForLines(($("#code").text().match(/\n/g)||[]).length+1, function() {
 				ln.children().mouseenter(function() {
 					linebar
 						.css("left", ln.outerWidth())
 						.css("top", $(this).position().top)
 						.width($("#code").outerWidth())
-						.height(ln.css("line-height"))
 						.show();
 				}).mouseleave(function() {
 					linebar.hide();
