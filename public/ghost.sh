@@ -112,7 +112,7 @@ function _upgrade() {
 }
 
 function _password() {
-	read -p "Password:" -r -s $1
+	read -p "Password:" -r -s $1 < /dev/tty
 }
 
 [[ "${mode}" == "upgrade" ]] && _upgrade
