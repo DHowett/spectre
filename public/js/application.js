@@ -115,6 +115,11 @@ $(function() {
 					linebar.hide();
 				}).click(function() {
 					var line = $(this).text();
+					if(history.state && history.state.line == line) {
+						permabar.hide();
+						history.replaceState({}, "", "#");
+						return
+					}
 					positionLinebar.call(this, permabar);
 					history.replaceState({"line":line}, "", "#L" + line);
 				});
