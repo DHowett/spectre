@@ -97,16 +97,32 @@ $(function() {
 					.addClass("line-highlight-bar")
 					.hide()
 					.appendTo('body');
+			var permabar = linebar.clone().appendTo("body");
+			var positionLinebar = function(linebar) {
+				linebar
+					.css("left", ln.outerWidth())
+					.css("top", $(this).position().top)
+					.width($("#code").outerWidth())
+					.show();
+			}
 			fillForLines(($("#code").text().match(/\n/g)||[]).length+1, function() {
 				ln.children().mouseenter(function() {
-					linebar
-						.css("left", ln.outerWidth())
-						.css("top", $(this).position().top)
-						.width($("#code").outerWidth())
-						.show();
+					positionLinebar.call(this, linebar);
 				}).mouseleave(function() {
 					linebar.hide();
+				}).click(function() {
+					var line = $(this).text();
+					positionLinebar.call(this, permabar);
+					history.replaceState({"line":line}, "", "#L" + line);
 				});
+
+				if(window.location.hash) {
+					var v = window.location.hash.match(/^#L(\d+)/);
+					if(v) {
+						var n = parseInt(v[1], 10);
+						positionLinebar.call($("span:nth-child("+n+")", ln).get(0), permabar);
+					}
+				}
 			});
 		} else if($("#code-editor").length > 0) {
 			$("#code-editor").on("input propertychange", function() {
