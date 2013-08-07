@@ -100,13 +100,18 @@ upgrade=$(mktemp /tmp/ghost.XXXXXX)
 	fi
 }
 
+function _mode() {
+	# GNU syntax first, BSD second. BSD stat is more forgiving of errors.
+	stat -c '%a' $1 2>/dev/null || stat -f '%Lp' $1 2>/dev/null
+}
+
 function _upgrade() {
 	if [[ -z "${upgrade}" ]]; then
 		echo "It doesn't get any better than this." >&2
 		exit 1
 	fi
+	chmod "$(_mode "${0}")" "${upgrade}"
 	mv "${upgrade}" "${0}"
-	chmod +x "${0}"
 	echo "Done." >&2
 	exit
 }
