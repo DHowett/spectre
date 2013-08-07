@@ -1,3 +1,17 @@
+/* From http://stackoverflow.com/questions/4217962/scroll-to-an-element-using-jquery */
+jQuery.fn.scrollMinimal = function() {
+	var cTop = this.offset().top;
+	var cHeight = this.outerHeight(true);
+	var windowTop = $(window).scrollTop();
+	var visibleHeight = $(window).height();
+
+	if (cTop < windowTop) {
+		$(window).scrollTop(cTop);
+	} else if (cTop + cHeight > windowTop + visibleHeight) {
+		$(window).scrollTop(cTop - visibleHeight + cHeight);
+	}
+};
+
 $(function() {
 	(function(){
 		var controls = $("#paste-controls");
@@ -128,8 +142,10 @@ $(function() {
 					var v = window.location.hash.match(/^#L(\d+)/);
 					if(v) {
 						var n = v[1];
-						positionLinebar.call($("span:nth-child("+n+")", ln).get(0), permabar);
+						var linespan = $("span:nth-child("+n+")", ln);
+						positionLinebar.call(linespan.get(0), permabar);
 						history.replaceState({"line":n}, "", "#L" + n);
+						linespan.scrollMinimal();
 					}
 				}
 			});
