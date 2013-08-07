@@ -97,7 +97,10 @@ $(function() {
 					.addClass("line-highlight-bar")
 					.hide()
 					.appendTo('body');
-			var permabar = linebar.clone().appendTo("body");
+			var permabar = linebar
+					.clone()
+					.addClass("line-highlight-bar-permanent")
+					.appendTo("body");
 			var positionLinebar = function(linebar) {
 				linebar
 					.css("left", ln.outerWidth())
