@@ -156,7 +156,7 @@ input[type=password] {
 .line-highlight-bar {
 	clear: none;
 	display: block;
-	background-color: rgba(128, 128, 128, 0.10);
+	background-color: rgba(255, 255, 255, 0.05);
 	right: 0;
 	bottom: 0;
 	top: 0;
@@ -164,13 +164,18 @@ input[type=password] {
 	position: absolute;
 	height: @paste-line-height;
 	line-height: @paste-line-height;
+
+	.box-sizing(border-box);
+
 	@media @media-phone {
 		height: @paste-line-height-mobile;
 		line-height: @paste-line-height-mobile;
 	}
 
 	&.line-highlight-bar-permanent {
-		background-color: rgba(128, 128, 128, 0.40);
+		background-color: rgba(255, 255, 255, 0.10);
+		border-top: 1px solid rgba(255, 255, 255, 0.1);
+		border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 	}
 
 }
