@@ -139,7 +139,7 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 		}
 		pasteExpirator.ExpireObject(p, dur)
 	} else {
-		if pasteExpirator.ObjectHasExpiration(p) {
+		if expireIn == "-1" && pasteExpirator.ObjectHasExpiration(p) {
 			pasteExpirator.CancelObjectExpiration(p)
 		}
 	}
