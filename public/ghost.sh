@@ -9,6 +9,7 @@ function usage() {
 	echo "        $prog -l					- List pastes" >&2
 	echo "        $prog -U					- Upgrade ghost.sh (this will replace $0)" >&2
 	echo "Options:" >&2
+	echo "        -x <expiry>					- Expiration for paste (with units: ns/us/ms/s/m/h)" >&2
 	echo "        -p						- Prompt for password" >&2
 	echo "        -S <server>					- Override server" >&2
 	echo "        -i						- Use http" >&2
@@ -32,7 +33,7 @@ export -a curl_opts=("-c" "${rcdir}/cookie.jar" "-b" "${rcdir}/cookie.jar" "-f" 
 force=0
 passworded=0
 
-while getopts "d:e:FhIilpS:s:Uu:" o; do
+while getopts "d:e:FhIilpS:s:Uu:x:" o; do
 	case $o in
 		d)
 			mode="delete"
@@ -74,6 +75,9 @@ while getopts "d:e:FhIilpS:s:Uu:" o; do
 		u)
 			mode="update"
 			paste=$OPTARG
+			;;
+		x)
+			expiry=$OPTARG
 			;;
 		?)
 			usage
@@ -160,7 +164,12 @@ url="${server}/paste/new"
 [[ "${mode}" == "edit" || "${mode}" == "update" ]] && url="${server}/paste/${paste}/edit"
 
 [[ $passworded -eq 1 ]] && _password pw && echo
-IFS='|' read -r code url < <(curl "${curl_opts[@]}" -w '%{http_code}|%{redirect_url}' --data-urlencode text@"$filename" ${lang:+--data-urlencode} ${lang:+lang="$lang"} ${pw:+--data-urlencode} ${pw:+password="$pw"} "${url}" | sed -e 's/HTTP/http/g')
+export -a curl_formargs=("--data-urlencode" "text@$filename")
+[[ ! -z "${lang}" ]]	&& curl_formargs+=("--data-urlencode" "lang=${lang}")
+[[ ! -z "${pw}" ]]	&& curl_formargs+=("--data-urlencode" "password=${pw}")
+[[ ! -z "${expiry}" ]]	&& curl_formargs+=("--data-urlencode" "expire=${expiry}")
+
+IFS='|' read -r code url < <(curl "${curl_opts[@]}" -w '%{http_code}|%{redirect_url}' "${curl_formargs[@]}" "${url}" | sed -e 's/HTTP/http/g')
 [[ "${mode}" == "edit" ]] && rm "${filename}"
 
 if [[ $code -ne 200 && $code -ne 303 && $code -ne 302 ]]; then
