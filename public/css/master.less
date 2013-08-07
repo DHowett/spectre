@@ -146,6 +146,24 @@ input[type=password] {
 	}
 }
 
+.line-highlight-bar {
+	clear: none;
+	display: block;
+	background-color: rgba(128, 128, 128, 0.10);
+	right: 0;
+	bottom: 0;
+	top: 0;
+	left: 0;
+	position: absolute;
+	height: @paste-line-height;
+	line-height: @paste-line-height;
+	@media @media-phone {
+		height: @paste-line-height-mobile;
+		line-height: @paste-line-height-mobile;
+	}
+
+}
+
 ul.paste-list {
 	list-style: none;
 	padding: 9.5px;

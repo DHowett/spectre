@@ -93,7 +93,20 @@ $(function() {
 		}
 
 		if($("#code").length > 0) {
-			fillForLines(($("#code").text().match(/\n/g)||[]).length+1);
+			var linebar = $(document.createElement('div')).addClass("line-highlight-bar").hide();
+			linebar.appendTo('body');
+			fillForLines(($("#code").text().match(/\n/g)||[]).length+1, function() {
+				ln.children().mouseenter(function() {
+					linebar
+						.css("left", ln.outerWidth())
+						.css("top", $(this).position().top)
+						.width($("#code").outerWidth())
+						.height(ln.css("line-height"))
+						.show();
+				}).mouseleave(function() {
+					linebar.hide();
+				});
+			});
 		} else if($("#code-editor").length > 0) {
 			$("#code-editor").on("input propertychange", function() {
 				fillForLines(($("#code-editor").val().match(/\n/g)||[]).length+1, function() {
