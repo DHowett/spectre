@@ -2,6 +2,10 @@
 @toolbox-background: #222;
 @paste-background: #2a2a2a;
 @paste-text-color: #ebebeb;
+@paste-font-size: 12pt;
+@paste-font-size-mobile: 10pt;
+@paste-line-height: @paste-font-size + 2pt;
+@paste-line-height-mobile: @paste-font-size-mobile + 2pt;
 
 @media-tablet: ~"(min-width: 768px)";
 @media-phone: ~"(max-width: 767px)";
@@ -65,14 +69,14 @@ input[type=password] {
 	.code {
 		white-space: pre;
 		font-family: 'EnvyCodeRWeb', 'monospace';
-		font-size: 12pt;
-		line-height: 14pt;
+		font-size: @paste-font-size;
+		line-height: @paste-line-height;
 		padding: 9.5px;
 		.box-sizing(border-box);
 		height: 100%;
 		@media @media-phone {
-			font-size: 10pt;
-			line-height: 12pt;
+			font-size: @paste-font-size-mobile;
+			line-height: @paste-line-height-mobile;
 		}
 		&.code-line-numbers {
 			color: #555;
@@ -81,12 +85,12 @@ input[type=password] {
 			padding-right: 0;
 			padding-left: 0;
 			font-size: 8pt;
-			line-height: 14pt;
+			line-height: @paste-line-height;
 			float: left;
 			border-right: 1px solid #333;
 			speak: none;
 			@media @media-phone {
-				line-height: 12pt;
+				line-height: @paste-line-height-mobile;
 			}
 			span {
 				padding: 0 4px;
