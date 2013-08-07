@@ -127,10 +127,17 @@ $(function() {
 				if(window.location.hash) {
 					var v = window.location.hash.match(/^#L(\d+)/);
 					if(v) {
-						var n = parseInt(v[1], 10);
+						var n = v[1];
 						positionLinebar.call($("span:nth-child("+n+")", ln).get(0), permabar);
+						history.replaceState({"line":n}, "", "#L" + n);
 					}
 				}
+			});
+			$(window).on("resize", function(e) {
+				$(permabar).width($("#code").outerWidth());
+			});
+			$(document).on("media-query-changed", function() {
+				positionLinebar.call($("span:nth-child("+history.state.line+")", ln).get(0), permabar);
 			});
 		} else if($("#code-editor").length > 0) {
 			$("#code-editor").on("input propertychange", function() {
