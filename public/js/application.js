@@ -84,9 +84,9 @@ $(function() {
 			var n="";
 			var i = 0;
 			for(i=0; i < lines; i++) {
-				n += ""+(i+1)+"\n";
+				n += "<span>"+(i+1)+"</span>";
 			}
-			ln.text(n);
+			ln.html(n);
 
 			curLines = lines;
 			if(callback) callback();

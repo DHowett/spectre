@@ -77,9 +77,9 @@ input[type=password] {
 		&.code-line-numbers {
 			color: #555;
 			width: auto;
-			padding-right: 4px;
-			padding-left: 4px;
 			text-align: right;
+			padding-right: 0;
+			padding-left: 0;
 			font-size: 8pt;
 			line-height: 14pt;
 			float: left;
@@ -87,6 +87,15 @@ input[type=password] {
 			speak: none;
 			@media @media-phone {
 				line-height: 12pt;
+			}
+			span {
+				padding: 0 4px;
+				margin: 0;
+				.box-sizing(border-box);
+				display: block;
+				&:hover {
+					color: #888;
+				}
 			}
 		}
 	}
