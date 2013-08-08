@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"github.com/golang/glog"
 	"html/template"
 	"io"
+	"time"
 )
 
 var templateFunctions template.FuncMap = template.FuncMap{}
@@ -13,23 +15,25 @@ func RegisterTemplateFunction(name string, function interface{}) {
 	templateFunctions[name] = function
 }
 
+var cacheBustingNonce int64
+
 func assetFunction(kind string, names ...string) template.HTML {
 	var out string
 	if kind == "js" {
 		if *arguments.minified {
-			return template.HTML("<script src=\"/js/all.min.js\"></script>")
+			names = []string{"all.min"}
 		}
 
 		for _, n := range names {
-			out += "<script src=\"/js/" + n + ".js\"></script>"
+			out += fmt.Sprintf("<script src=\"/js/%s.js?%d\"></script>", n, cacheBustingNonce)
 		}
 	} else if kind == "css" {
 		if *arguments.minified {
-			return template.HTML("<link rel=\"stylesheet\" href=\"/css/all.min.css\" type=\"text/css\" media=\"screen\">")
+			names = []string{"all.min"}
 		}
 
 		for _, n := range names {
-			out += "<link rel=\"stylesheet\" href=\"/css/" + n + ".css\" type=\"text/css\" media=\"screen\">"
+			out += fmt.Sprintf("<link rel=\"stylesheet\" href=\"/css/%s.css?%d\" type=\"text/css\" media=\"screen\">", n, cacheBustingNonce)
 		}
 	} else if kind == "less" {
 		// Do not use less/less.js in production.
@@ -47,6 +51,7 @@ func assetFunction(kind string, names ...string) template.HTML {
 
 func InitTemplates() {
 	glog.Info("Loading templates.")
+	cacheBustingNonce = time.Now().Unix()
 	tmpl = func() *template.Template {
 		return template.Must(template.New("base").Funcs(templateFunctions).ParseGlob("templates/*"))
 	}
