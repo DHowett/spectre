@@ -7,6 +7,11 @@
 @paste-line-height: @paste-font-size + 2pt;
 @paste-line-height-mobile: @paste-font-size-mobile + 2pt;
 
+@paste-title-font-size: 16pt;
+@paste-title-color: white;
+@paste-subtitle-font-size: 10pt;
+@paste-subtitle-color: #999;
+
 @minor-highlight: #333;
 @minor-highlight-border: #444;
 @major-highlight: #3e3e3e;
@@ -225,22 +230,22 @@ div.paste-toolbox {
 }
 
 span.paste-title {
-	font-size: 16pt;
-	color: white;
+	font-size: @paste-title-font-size;
+	color: @paste-title-color;
 	vertical-align: middle;
 	@media @media-phone {
-		font-size: 14pt;
+		font-size: (@paste-title-font-size - 2pt);
 		display: inline-block;
 		line-height: 1em;
 		margin-top: -4px;
 	}
 
 	.paste-subtitle {
-		font-size: 10pt;
-		color: #999;
+		font-size: @paste-subtitle-font-size;
+		color: @paste-subtitle-color;
 		@media @media-phone {
 			line-height: 1em;
-			font-size: 8pt;
+			font-size: (@paste-subtitle-font-size - 2pt);
 			margin-top: .2em;
 			display: block;
 		}
