@@ -80,6 +80,11 @@ input[type=password] {
 		.box-sizing(border-box);
 		height: 100%;
 		-webkit-overflow-scrolling: touch;
+
+		// This is to keep the code above the line bar.
+		position: relative;
+		z-index: 2;
+
 		@media @media-phone {
 			font-size: @paste-font-size-mobile;
 			line-height: @paste-line-height-mobile;
@@ -164,6 +169,9 @@ input[type=password] {
 	position: absolute;
 	height: @paste-line-height;
 	line-height: @paste-line-height;
+
+	// Below the code.
+	z-index: 1;
 
 	.box-sizing(border-box);
 

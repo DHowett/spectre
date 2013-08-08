@@ -118,7 +118,7 @@ $(function() {
 			var positionLinebar = function(linebar) {
 				linebar
 					.css("left", ln.outerWidth())
-					.css("top", $(this).position().top)
+					.css("top", $(this).position().top + $(this).parent().position().top)
 					.width($("#code").outerWidth())
 					.show();
 			}
