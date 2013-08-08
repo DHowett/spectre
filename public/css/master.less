@@ -7,6 +7,18 @@
 @paste-line-height: @paste-font-size + 2pt;
 @paste-line-height-mobile: @paste-font-size-mobile + 2pt;
 
+@minor-highlight: #333;
+@minor-highlight-border: #444;
+@major-highlight: #3e3e3e;
+@major-highlight-border: #555;
+
+@error-highlight: rgb(red(@major-highlight), 0, 0);
+@error-highlight-border: rgb(red(@major-highlight-border), 0, 0);
+
+@line-number-bar: @minor-highlight;
+@line-numbers: #555;
+@line-numbers-hover: #888;
+
 @media-tablet: ~"(min-width: 768px)";
 @media-phone: ~"(max-width: 767px)";
 
@@ -90,7 +102,7 @@ input[type=password] {
 			line-height: @paste-line-height-mobile;
 		}
 		&.code-line-numbers {
-			color: #555;
+			color: @line-numbers;
 			width: auto;
 			text-align: right;
 			padding-right: 0;
@@ -98,7 +110,7 @@ input[type=password] {
 			font-size: 8pt;
 			line-height: @paste-line-height;
 			float: left;
-			border-right: 1px solid #333;
+			border-right: 1px solid @line-number-bar;
 			speak: none;
 			cursor: pointer;
 			@media @media-phone {
@@ -110,7 +122,7 @@ input[type=password] {
 				.box-sizing(border-box);
 				display: block;
 				&:hover {
-					color: #888;
+					color: @line-numbers-hover;
 				}
 			}
 		}
@@ -161,7 +173,7 @@ input[type=password] {
 .line-highlight-bar {
 	clear: none;
 	display: block;
-	background-color: #333;
+	background-color: @minor-highlight;
 	right: 0;
 	bottom: 0;
 	top: 0;
@@ -181,9 +193,9 @@ input[type=password] {
 	}
 
 	&.line-highlight-bar-permanent {
-		background-color: #3e3e3e;
-		border-top: 1px solid #555;
-		border-bottom: 1px solid #555;
+		background-color: @major-highlight;
+		border-top: 1px solid @major-highlight-border;
+		border-bottom: 1px solid @major-highlight-border;
 	}
 
 }
@@ -195,7 +207,7 @@ ul.paste-list {
 	& > li {
 		padding: 4px;
 		&:hover {
-			background-color: #333;
+			background-color: @minor-highlight;
 		}
 		& > a {
 			text-decoration: none;
@@ -250,11 +262,11 @@ span.paste-title {
 		font-size: 125%;
 	}
 
-	border: 1px solid #444;
-	background-color: #333;
+	border: 1px solid @minor-highlight-border;
+	background-color: @minor-highlight;
 	&.well-error {
-		border-color: #700;
-		background-color: #400;
+		border-color: @error-highlight-border;
+		background-color: @error-highlight;
 	}
 }
 
