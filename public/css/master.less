@@ -1,28 +1,29 @@
-@toolbox-height: 42px;
-@toolbox-background: #222;
 @paste-background: #2a2a2a;
-@paste-text-color: #ebebeb;
+@paste-text-color: contrast(@paste-background, black, #ebebeb);
 @paste-font-size: 12pt;
 @paste-font-size-mobile: 10pt;
 @paste-line-height: @paste-font-size + 2pt;
 @paste-line-height-mobile: @paste-font-size-mobile + 2pt;
 
-@paste-title-font-size: 16pt;
-@paste-title-color: white;
-@paste-subtitle-font-size: 10pt;
-@paste-subtitle-color: #999;
+@toolbox-height: 42px;
+@toolbox-background: darken(@paste-background, 3%);
 
-@minor-highlight: #333;
-@minor-highlight-border: #444;
-@major-highlight: #3e3e3e;
-@major-highlight-border: #555;
+@paste-title-font-size: 16pt;
+@paste-title-color: contrast(@toolbox-background, black, white);
+@paste-subtitle-font-size: 10pt;
+@paste-subtitle-color: darken(@paste-title-color, 40%);
+
+@minor-highlight: lighten(@paste-background, 4%);
+@minor-highlight-border: lighten(@minor-highlight, 7%);
+@major-highlight: lighten(@minor-highlight, 4%);
+@major-highlight-border: lighten(@minor-highlight-border, 4%);
 
 @error-highlight: rgb(red(@major-highlight), 0, 0);
 @error-highlight-border: rgb(red(@major-highlight-border), 0, 0);
 
 @line-number-bar: @minor-highlight;
 @line-numbers: #555;
-@line-numbers-hover: #888;
+@line-numbers-hover: lighten(@line-numbers, 20%);
 
 @media-tablet: ~"(min-width: 768px)";
 @media-phone: ~"(max-width: 767px)";
