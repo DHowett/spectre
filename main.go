@@ -336,27 +336,24 @@ func throttleAuthForRequest(r *http.Request) bool {
 
 	tok := ip + "|" + id
 
-	var at *AuthThrottleEntry
-	v, _ := authThrottler.Store.Get(expirator.ExpirableID(tok))
-	if v != nil {
-		at = v.(*AuthThrottleEntry)
+	var at *int32
+	v, ok := ephStore.Get(tok)
+	if v != nil && ok {
+		at = v.(*int32)
 	} else {
-		at = &AuthThrottleEntry{ID: tok, Hits: 0}
-		authThrottler.Store.(*ExpiringAuthThrottleStore).Add(at)
+		var n int32
+		at = &n
+		ephStore.Put(tok, at, 1*time.Minute)
 	}
 
-	at.Hits++
+	*at++
 
-	if at.Hits >= 5 {
+	if *at >= 5 {
 		// If they've tried and failed too much, renew the throttle
 		// at five minutes, to make them cool off.
 
-		authThrottler.ExpireObject(at, 5*time.Minute)
+		ephStore.Put(tok, at, 5*time.Minute)
 		return true
-	}
-
-	if !authThrottler.ObjectHasExpiration(at) {
-		authThrottler.ExpireObject(at, 1*time.Minute)
 	}
 
 	return false
@@ -443,10 +440,10 @@ func pasteDestroyCallback(p *Paste) {
 
 var pasteStore *FilesystemPasteStore
 var pasteExpirator *expirator.Expirator
-var authThrottler *expirator.Expirator
 var sessionStore *sessions.FilesystemStore
 var clientOnlySessionStore *sessions.CookieStore
 var router *mux.Router
+var ephStore *EphemeralKeyValueStore
 
 type args struct {
 	root, port, bind *string
@@ -529,7 +526,7 @@ func init() {
 	pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 
 	pasteExpirator = expirator.NewExpirator(filepath.Join(*arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
-	authThrottler = expirator.NewExpirator("", NewExpiringAuthThrottleStore())
+	ephStore = NewEphemeralKeyValueStore()
 }
 
 func main() {
@@ -547,7 +544,6 @@ func main() {
 	}()
 
 	go pasteExpirator.Run()
-	go authThrottler.Run()
 
 	router = mux.NewRouter()
 
