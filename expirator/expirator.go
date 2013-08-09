@@ -9,18 +9,17 @@ import (
 
 type ExpirableID string
 
-type ExpirationHandle struct {
+type expirationHandle struct {
 	ExpirationTime  time.Time
 	ID              ExpirableID
 	expirationTimer *time.Timer
 }
 
 type Expirator struct {
-	Store ExpirableStore
-
+	store               ExpirableStore
 	dataPath            string
-	expirationMap       map[ExpirableID]*ExpirationHandle
-	expirationChannel   chan *ExpirationHandle
+	expirationMap       map[ExpirableID]*expirationHandle
+	expirationChannel   chan *expirationHandle
 	flushRequired       bool
 	urgentFlushRequired bool
 }
@@ -36,9 +35,9 @@ type ExpirableStore interface {
 
 func NewExpirator(path string, store ExpirableStore) *Expirator {
 	return &Expirator{
-		Store:             store,
+		store:             store,
 		dataPath:          path,
-		expirationChannel: make(chan *ExpirationHandle, 1000),
+		expirationChannel: make(chan *expirationHandle, 1000),
 	}
 }
 
@@ -57,7 +56,7 @@ func (e *Expirator) loadExpirations() {
 	}
 
 	gobDecoder := gob.NewDecoder(file)
-	tempMap := make(map[ExpirableID]*ExpirationHandle)
+	tempMap := make(map[ExpirableID]*expirationHandle)
 	gobDecoder.Decode(&tempMap)
 	file.Close()
 
@@ -91,11 +90,11 @@ func (e *Expirator) saveExpirations() {
 	e.flushRequired, e.urgentFlushRequired = false, false
 }
 
-func (e *Expirator) registerExpirationHandle(ex *ExpirationHandle) {
+func (e *Expirator) registerExpirationHandle(ex *expirationHandle) {
 	expiryFunc := func() { e.expirationChannel <- ex }
 
 	if e.expirationMap == nil {
-		e.expirationMap = make(map[ExpirableID]*ExpirationHandle)
+		e.expirationMap = make(map[ExpirableID]*expirationHandle)
 	}
 
 	if ex.expirationTimer != nil {
@@ -116,7 +115,7 @@ func (e *Expirator) registerExpirationHandle(ex *ExpirationHandle) {
 	}
 }
 
-func (e *Expirator) cancelExpirationHandle(ex *ExpirationHandle) {
+func (e *Expirator) cancelExpirationHandle(ex *expirationHandle) {
 	ex.expirationTimer.Stop()
 	delete(e.expirationMap, ex.ID)
 	e.urgentFlushRequired = true
@@ -145,12 +144,12 @@ func (e *Expirator) Run() {
 			}
 		case expiration := <-e.expirationChannel:
 			glog.Info("Expiring ", expiration.ID)
-			expirable, _ := e.Store.GetExpirable(expiration.ID)
+			expirable, _ := e.store.GetExpirable(expiration.ID)
 
 			delete(e.expirationMap, expiration.ID)
 
 			if expirable != nil {
-				e.Store.DestroyExpirable(expirable)
+				e.store.DestroyExpirable(expirable)
 			}
 
 			e.flushRequired = true
@@ -162,7 +161,7 @@ func (e *Expirator) ExpireObject(ex Expirable, dur time.Duration) {
 	id := ex.ExpirationID()
 	exh, ok := e.expirationMap[id]
 	if !ok {
-		exh = &ExpirationHandle{ID: id}
+		exh = &expirationHandle{ID: id}
 	}
 	exh.ExpirationTime = time.Now().Add(dur)
 	e.registerExpirationHandle(exh)
