@@ -255,8 +255,6 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 
-	pasteExpirator.CancelObjectExpiration(p)
-
 	oldId := p.ID.String()
 	p.Destroy()
 
@@ -494,6 +492,8 @@ func pasteDestroyCallback(p *Paste) {
 		ephStore.Delete(hash)
 		ephStore.Delete(tok)
 	}
+
+	pasteExpirator.CancelObjectExpiration(p)
 
 	defer renderCache.mu.Unlock()
 	renderCache.mu.Lock()
