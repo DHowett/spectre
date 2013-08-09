@@ -1,4 +1,4 @@
-package expirator
+package gotimeout
 
 import (
 	"encoding/gob"
