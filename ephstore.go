@@ -23,8 +23,6 @@ func NewEphemeralKeyValueStore() *EphemeralKeyValueStore {
 	}
 
 	v.expirator = expirator.NewExpirator("", v)
-
-	go v.expirator.Run()
 	return v
 }
 

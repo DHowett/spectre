@@ -611,8 +611,6 @@ func main() {
 		}
 	}()
 
-	go pasteExpirator.Run()
-
 	router = mux.NewRouter()
 
 	if getRouter := router.Methods("GET").Subrouter(); getRouter != nil {
