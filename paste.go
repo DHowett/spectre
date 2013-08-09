@@ -79,6 +79,7 @@ type Paste struct {
 	Language   string
 	Encrypted  bool
 	Expiration string
+	Committed  bool
 
 	store PasteStore
 	mtime time.Time
@@ -189,7 +190,7 @@ func (store *FilesystemPasteStore) Get(id PasteID, key []byte) (p *Paste, err er
 		return
 	}
 
-	paste := &Paste{ID: id, store: store, mtime: stat.ModTime()}
+	paste := &Paste{ID: id, Committed: true, store: store, mtime: stat.ModTime()}
 
 	hmac := getMetadata(filename, "hmac", "")
 	paste.encryptionMethod = getMetadata(filename, "encryption_version", "")
@@ -272,6 +273,8 @@ func (store *FilesystemPasteStore) Save(p *Paste) error {
 			return err
 		}
 	}
+
+	p.Committed = true
 
 	store.PasteUpdateCallback(p)
 	return nil
