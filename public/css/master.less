@@ -5,6 +5,8 @@
 @paste-line-height: @paste-font-size + 2pt;
 @paste-line-height-mobile: @paste-font-size-mobile + 2pt;
 
+@paste-content-padding: 9.5px;
+
 @toolbox-height: 42px;
 @toolbox-background: darken(@paste-background, 3%);
 
@@ -52,6 +54,12 @@ p {
 	margin: 0 0 10px;
 }
 
+h1, h2, h3, h4, h5, h6 {
+	margin: 10px 0;
+	line-height: 20px;
+	text-rendering: optimizelegibility; // Fix the character spacing for headings
+}
+
 ul, ol {
 	padding: 0;
 	margin: 0 0 10px 25px;
@@ -94,7 +102,7 @@ input[type=password] {
 		font-family: 'EnvyCodeRWeb', 'monospace';
 		font-size: @paste-font-size;
 		line-height: @paste-line-height;
-		padding: 9.5px;
+		padding: @paste-content-padding;
 		.box-sizing(border-box);
 		height: 100%;
 		-webkit-overflow-scrolling: touch;
@@ -208,7 +216,7 @@ input[type=password] {
 
 ul.paste-list {
 	list-style: none;
-	padding: 9.5px;
+	padding: @paste-content-padding;
 	margin: 0;
 	& > li {
 		padding: 4px;
@@ -251,6 +259,10 @@ span.paste-title {
 			display: block;
 		}
 	}
+}
+
+.content {
+	padding: @paste-content-padding;
 }
 
 .well {
