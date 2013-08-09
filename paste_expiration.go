@@ -8,7 +8,7 @@ type ExpiringPasteStore struct {
 	PasteStore
 }
 
-func (e *ExpiringPasteStore) GetExpirable(id expirator.ExpirableID) (expirator.Expirable, error) {
+func (e *ExpiringPasteStore) GetExpirable(id gotimeout.ExpirableID) (gotimeout.Expirable, error) {
 	v, err := e.PasteStore.Get(PasteID(id), nil)
 	if v == nil {
 		return nil, err
@@ -16,12 +16,12 @@ func (e *ExpiringPasteStore) GetExpirable(id expirator.ExpirableID) (expirator.E
 	return v, err
 }
 
-func (e *ExpiringPasteStore) DestroyExpirable(ex expirator.Expirable) {
+func (e *ExpiringPasteStore) DestroyExpirable(ex gotimeout.Expirable) {
 	if paste, ok := ex.(*Paste); ok {
 		e.PasteStore.Destroy(paste)
 	}
 }
 
-func (p *Paste) ExpirationID() expirator.ExpirableID {
-	return expirator.ExpirableID(p.ID)
+func (p *Paste) ExpirationID() gotimeout.ExpirableID {
+	return gotimeout.ExpirableID(p.ID)
 }

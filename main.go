@@ -507,11 +507,11 @@ func pasteDestroyCallback(p *Paste) {
 }
 
 var pasteStore *FilesystemPasteStore
-var pasteExpirator *expirator.Expirator
+var pasteExpirator *gotimeout.Expirator
 var sessionStore *sessions.FilesystemStore
 var clientOnlySessionStore *sessions.CookieStore
 var router *mux.Router
-var ephStore *EphemeralKeyValueStore
+var ephStore *gotimeout.EphemeralKeyValueStore
 
 type args struct {
 	root, port, bind *string
@@ -593,8 +593,8 @@ func init() {
 	pasteStore = NewFilesystemPasteStore(pastedir)
 	pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 
-	pasteExpirator = expirator.NewExpirator(filepath.Join(*arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
-	ephStore = NewEphemeralKeyValueStore()
+	pasteExpirator = gotimeout.NewExpirator(filepath.Join(*arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
+	ephStore = gotimeout.NewEphemeralKeyValueStore()
 }
 
 func main() {
