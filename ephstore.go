@@ -38,6 +38,11 @@ func (e *EphemeralKeyValueStore) Get(k string) (v EphemeralStoreValue, ok bool) 
 	return
 }
 
+func (e *EphemeralKeyValueStore) Delete(k string) {
+	e.expirator.CancelObjectExpiration(ephemeralExpirationProxy(k))
+	delete(e.values, k)
+}
+
 func (e *EphemeralKeyValueStore) GetExpirable(id expirator.ExpirableID) (expirator.Expirable, error) {
 	_, ok := e.values[string(id)]
 	if !ok {
