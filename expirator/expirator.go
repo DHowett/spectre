@@ -30,8 +30,8 @@ type Expirable interface {
 }
 
 type ExpirableStore interface {
-	Get(ExpirableID) (Expirable, error)
-	Destroy(Expirable)
+	GetExpirable(ExpirableID) (Expirable, error)
+	DestroyExpirable(Expirable)
 }
 
 func NewExpirator(path string, store ExpirableStore) *Expirator {
@@ -145,9 +145,9 @@ func (e *Expirator) Run() {
 			}
 		case expiration := <-e.expirationChannel:
 			glog.Info("Expiring ", expiration.ID)
-			expirable, _ := e.Store.Get(expiration.ID)
+			expirable, _ := e.Store.GetExpirable(expiration.ID)
 			if expirable != nil {
-				e.Store.Destroy(expirable)
+				e.Store.DestroyExpirable(expirable)
 			}
 
 			delete(e.expirationMap, expiration.ID)
