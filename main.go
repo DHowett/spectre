@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"flag"
+	"fmt"
 	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/mux"
@@ -23,6 +24,7 @@ import (
 )
 
 const PASTE_CACHE_MAX_ENTRIES int = 1000
+const PASTE_MAXIMUM_LENGTH int = 1048576 // 1 MB
 const MAX_EXPIRE_DURATION time.Duration = 15 * 24 * time.Hour
 
 type PasteAccessDeniedError struct {
@@ -41,6 +43,16 @@ func (e PasteAccessDeniedError) StatusCode() int {
 
 func (e PasteNotFoundError) StatusCode() int {
 	return http.StatusNotFound
+}
+
+type PasteTooLargeError int
+
+func (e PasteTooLargeError) Error() string {
+	return fmt.Sprintf("Paste length %d exceeds maximum length of %d.", e, PASTE_MAXIMUM_LENGTH)
+}
+
+func (e PasteTooLargeError) StatusCode() int {
+	return http.StatusBadRequest
 }
 
 type GenericStringError string
@@ -125,6 +137,10 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(body) > PASTE_MAXIMUM_LENGTH {
+		panic(PasteTooLargeError(len(body)))
+	}
+
 	pw, _ := p.Writer()
 	pw.Write([]byte(body))
 	if r.FormValue("lang") != "" {
@@ -157,6 +173,12 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	if len(strings.TrimSpace(body)) == 0 {
 		// 400 here, 200 above (one is displayed to the user, one could be an API response.)
 		RenderError(GenericStringError("Hey, put some text in that paste."), 400, w)
+		return
+	}
+
+	if len(body) > PASTE_MAXIMUM_LENGTH {
+		err := PasteTooLargeError(len(body))
+		RenderError(err, err.StatusCode(), w)
 		return
 	}
 
