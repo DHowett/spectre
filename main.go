@@ -1,12 +1,12 @@
 package main
 
 import (
-	"./expirator"
 	"bytes"
 	"crypto/md5"
 	"encoding/gob"
 	"flag"
 	"fmt"
+	"github.com/DHowett/gotimeout"
 	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/mux"
