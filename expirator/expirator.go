@@ -34,11 +34,13 @@ type ExpirableStore interface {
 }
 
 func NewExpirator(path string, store ExpirableStore) *Expirator {
-	return &Expirator{
+	e := &Expirator{
 		store:             store,
 		dataPath:          path,
 		expirationChannel: make(chan *expirationHandle, 1000),
 	}
+	go e.run()
+	return e
 }
 
 func (e *Expirator) canSave() bool {
@@ -123,7 +125,7 @@ func (e *Expirator) cancelExpirationHandle(ex *expirationHandle) {
 	glog.Info("Execution order for ", ex.ID, " belayed.")
 }
 
-func (e *Expirator) Run() {
+func (e *Expirator) run() {
 	go e.loadExpirations()
 	glog.Info("Launching Expirator.")
 	var flushTickerChan, urgentFlushTickerChan <-chan time.Time
