@@ -146,11 +146,13 @@ func (e *Expirator) Run() {
 		case expiration := <-e.expirationChannel:
 			glog.Info("Expiring ", expiration.ID)
 			expirable, _ := e.Store.GetExpirable(expiration.ID)
+
+			delete(e.expirationMap, expiration.ID)
+
 			if expirable != nil {
 				e.Store.DestroyExpirable(expirable)
 			}
 
-			delete(e.expirationMap, expiration.ID)
 			e.flushRequired = true
 		}
 	}
