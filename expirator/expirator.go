@@ -121,7 +121,7 @@ func (e *Expirator) cancelExpirationHandle(ex *ExpirationHandle) {
 	delete(e.expirationMap, ex.ID)
 	e.urgentFlushRequired = true
 
-	glog.Info("Execution order for ", ex.ID, " at ", ex.ExpirationTime, " belayed.")
+	glog.Info("Execution order for ", ex.ID, " belayed.")
 }
 
 func (e *Expirator) Run() {
