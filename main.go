@@ -3,6 +3,7 @@ package main
 import (
 	"./expirator"
 	"bytes"
+	"crypto/md5"
 	"encoding/gob"
 	"flag"
 	"fmt"
@@ -141,6 +142,16 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 		panic(PasteTooLargeError(len(body)))
 	}
 
+	if p.Committed {
+		// If this is an update (instead of a new paste), blow away the hash.
+		tok := "P|H|" + p.ID.String()
+		v, _ := ephStore.Get(tok)
+		if hash, ok := v.(string); ok {
+			ephStore.Delete(hash)
+			ephStore.Delete(tok)
+		}
+	}
+
 	pw, _ := p.Writer()
 	pw.Write([]byte(body))
 	if r.FormValue("lang") != "" {
@@ -183,9 +194,28 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	password := r.FormValue("password")
+	encrypted := password != ""
+
+	hasher := md5.New()
+	io.WriteString(hasher, body)
+	hashToken := "H|" + SourceIPForRequest(r) + "|" + base32Encoder.EncodeToString(hasher.Sum(nil))
+
+	if !encrypted {
+		v, _ := ephStore.Get(hashToken)
+		if hashedPaste, ok := v.(*Paste); ok {
+			pasteUpdate(hashedPaste, w, r)
+			return
+		}
+	}
+
 	p, err := pasteStore.New(password != "")
 	if err != nil {
 		panic(err)
+	}
+
+	if !encrypted {
+		ephStore.Put(hashToken, p, 5*time.Minute)
+		ephStore.Put("P|H|"+p.ID.String(), hashToken, 5*time.Minute)
 	}
 
 	key := p.EncryptionKeyWithPassword(password)
@@ -348,11 +378,16 @@ func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func throttleAuthForRequest(r *http.Request) bool {
+func SourceIPForRequest(r *http.Request) string {
 	ip := r.Header.Get("X-Forwarded-For")
 	if ip == "" {
 		ip = r.RemoteAddr[:strings.LastIndex(r.RemoteAddr, ":")]
 	}
+	return ip
+}
+
+func throttleAuthForRequest(r *http.Request) bool {
+	ip := SourceIPForRequest(r)
 
 	id := mux.Vars(r)["id"]
 
