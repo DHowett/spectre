@@ -130,6 +130,10 @@ func requiresEditPermission(fn ModelRenderFunc) ModelRenderFunc {
 }
 
 func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
+	pasteUpdateCore(o, w, r, false)
+}
+
+func pasteUpdateCore(o Model, w http.ResponseWriter, r *http.Request, newPaste bool) {
 	p := o.(*Paste)
 	body := r.FormValue("text")
 	if len(strings.TrimSpace(body)) == 0 {
@@ -142,7 +146,7 @@ func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 		panic(PasteTooLargeError(len(body)))
 	}
 
-	if p.Committed {
+	if !newPaste {
 		// If this is an update (instead of a new paste), blow away the hash.
 		tok := "P|H|" + p.ID.String()
 		v, _ := ephStore.Get(tok)
@@ -203,7 +207,7 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	if !encrypted {
 		v, _ := ephStore.Get(hashToken)
 		if hashedPaste, ok := v.(*Paste); ok {
-			pasteUpdate(hashedPaste, w, r)
+			pasteUpdateCore(hashedPaste, w, r, true)
 			return
 		}
 	}
@@ -245,13 +249,20 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 		sessions.Save(r, w)
 	}
 
-	pasteUpdate(p, w, r)
+	pasteUpdateCore(p, w, r, true)
 }
 
 func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 
 	pasteExpirator.CancelObjectExpiration(p)
+
+	tok := "P|H|" + p.ID.String()
+	v, _ := ephStore.Get(tok)
+	if hash, ok := v.(string); ok {
+		ephStore.Delete(hash)
+		ephStore.Delete(tok)
+	}
 
 	oldId := p.ID.String()
 	p.Destroy()
