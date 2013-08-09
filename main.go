@@ -257,13 +257,6 @@ func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 
 	pasteExpirator.CancelObjectExpiration(p)
 
-	tok := "P|H|" + p.ID.String()
-	v, _ := ephStore.Get(tok)
-	if hash, ok := v.(string); ok {
-		ephStore.Delete(hash)
-		ephStore.Delete(tok)
-	}
-
 	oldId := p.ID.String()
 	p.Destroy()
 
@@ -495,6 +488,13 @@ func renderPaste(p *Paste) template.HTML {
 }
 
 func pasteDestroyCallback(p *Paste) {
+	tok := "P|H|" + p.ID.String()
+	v, _ := ephStore.Get(tok)
+	if hash, ok := v.(string); ok {
+		ephStore.Delete(hash)
+		ephStore.Delete(tok)
+	}
+
 	defer renderCache.mu.Unlock()
 	renderCache.mu.Lock()
 	if renderCache.c == nil {
