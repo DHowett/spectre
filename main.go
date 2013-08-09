@@ -581,6 +581,7 @@ func main() {
 		getRouter.Handle("/paste", RedirectHandler("/"))
 		getRouter.HandleFunc("/session", http.HandlerFunc(sessionHandler))
 		getRouter.HandleFunc("/session/raw", http.HandlerFunc(sessionHandler))
+		getRouter.HandleFunc("/about", RenderTemplateHandler("about"))
 		getRouter.HandleFunc("/", RenderTemplateHandler("index"))
 	}
 	if postRouter := router.Methods("POST").Subrouter(); postRouter != nil {
