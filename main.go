@@ -511,7 +511,7 @@ var pasteExpirator *gotimeout.Expirator
 var sessionStore *sessions.FilesystemStore
 var clientOnlySessionStore *sessions.CookieStore
 var router *mux.Router
-var ephStore *gotimeout.EphemeralKeyValueStore
+var ephStore *gotimeout.Map
 
 type args struct {
 	root, port, bind *string
@@ -594,7 +594,7 @@ func init() {
 	pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 
 	pasteExpirator = gotimeout.NewExpirator(filepath.Join(*arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
-	ephStore = gotimeout.NewEphemeralKeyValueStore()
+	ephStore = gotimeout.NewMap()
 }
 
 func main() {
