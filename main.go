@@ -600,6 +600,15 @@ func init() {
 func main() {
 	InitTemplates()
 
+	go func() {
+		for {
+			select {
+			case err := <-pasteExpirator.ErrorChannel:
+				glog.Error("Expirator Error: ", err.Error())
+			}
+		}
+	}()
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGHUP)
 	go func() {
