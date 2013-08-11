@@ -552,26 +552,17 @@ func init() {
 
 	sesdir := filepath.Join(*arguments.root, "sessions")
 	os.Mkdir(sesdir, 0700)
-	var sessionKey []byte = nil
-	if sessionKeyFile, err := os.Open(filepath.Join(*arguments.root, "session.key")); err == nil {
-		buf := &bytes.Buffer{}
-		io.Copy(buf, sessionKeyFile)
-		sessionKey = buf.Bytes()
-		sessionKeyFile.Close()
-	} else {
+
+	sessionKey, err := SlurpFile(filepath.Join(*arguments.root, "session.key"))
+	if err != nil {
 		glog.Fatal("session.key not found. make one with seskey.go?")
 	}
 	sessionStore = sessions.NewFilesystemStore(sesdir, sessionKey)
 	sessionStore.Options.Path = "/"
 	sessionStore.Options.MaxAge = 86400 * 365
 
-	var clientOnlySessionEncryptionKey []byte = nil
-	if sessionKeyFile, err := os.Open(filepath.Join(*arguments.root, "client_session_enc.key")); err == nil {
-		buf := &bytes.Buffer{}
-		io.Copy(buf, sessionKeyFile)
-		clientOnlySessionEncryptionKey = buf.Bytes()
-		sessionKeyFile.Close()
-	} else {
+	clientOnlySessionEncryptionKey, err := SlurpFile(filepath.Join(*arguments.root, "client_session_enc.key"))
+	if err != nil {
 		glog.Fatal("client_session_enc.key not found. make one with seskey.go?")
 	}
 	clientOnlySessionStore = sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
