@@ -194,7 +194,7 @@ $(function() {
 	(function(){
 		if(codeeditor.length > 0) {
 			codeeditor.keydown(function(e) {
-				if(e.keyCode == 9) {
+				if(e.keyCode == 9 && !e.ctrlKey && !e.altKey && !e.shiftKey) {
 					var ends = [this.selectionStart, this.selectionEnd];
 					this.value = this.value.substring(0, ends[0]) + "\t" + this.value.substring(ends[1], this.value.length);
 					this.selectionStart = this.selectionEnd = ends[0] + 1;
