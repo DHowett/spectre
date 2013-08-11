@@ -512,15 +512,14 @@ var ephStore *gotimeout.Map
 var pasteRouter *mux.Router
 
 type args struct {
-	root, port, bind string
-	rebuild          bool
-	minified         bool
+	root, addr string
+	rebuild    bool
+	minified   bool
 }
 
 func (a *args) register() {
 	flag.StringVar(&a.root, "root", "./", "path to generated file storage")
-	flag.StringVar(&a.port, "port", "8080", "HTTP port")
-	flag.StringVar(&a.bind, "bind", "0.0.0.0", "bind address")
+	flag.StringVar(&a.addr, "addr", "0.0.0.0:8080", "bind address and port")
 	flag.BoolVar(&a.rebuild, "rebuild", false, "rebuild all templates for each request")
 	flag.BoolVar(&a.minified, "minified", false, "use min.js and min.css files (ala production mode)")
 }
@@ -622,7 +621,7 @@ func main() {
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./public")))
 	http.Handle("/", &fourOhFourConsumerHandler{router})
 
-	var addr string = arguments.bind + ":" + arguments.port
+	var addr string = arguments.addr
 	server := &http.Server{
 		Addr: addr,
 	}
