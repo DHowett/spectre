@@ -1,8 +1,8 @@
 all: sync .deploy reload_config
 .PHONY: sync reload_config
-public/css/master.css: public/css/master.less
+public/css/master.gen.css: public/css/master.less
 	lessc $< > $@
-public/css/all.min.css: $(foreach n,bootstrap master fonts fontello pygments ansi select2 select2-bootstrap,public/css/$(n).css)
+public/css/all.min.css: $(foreach n,bootstrap master.gen fonts fontello pygments ansi select2 select2-bootstrap,public/css/$(n).css)
 	-rm $@
 	for i in $^; do yui --type css $$i >> $@; done
 public/js/all.min.js: $(foreach n,jquery-2.0.3 bootstrap select2 application,public/js/$(n).js)
