@@ -156,8 +156,6 @@ func loadLanguageConfig() {
 }
 
 func init() {
-	loadLanguageConfig()
-
 	RegisterTemplateFunction("langByLexer", LanguageNamed)
 	RegisterTemplateFunction("languageOptionListHTML", LanguageOptionListHTML)
 

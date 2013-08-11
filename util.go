@@ -5,9 +5,12 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base32"
+	"github.com/golang/glog"
 	"io"
 	"launchpad.net/goyaml"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 type ReadCloser struct {
@@ -76,4 +79,29 @@ func YAMLUnmarshalFile(filename string, i interface{}) error {
 	}
 
 	return nil
+}
+
+type ReloadFunction func()
+
+var reloadFunctions = []ReloadFunction{}
+
+func RegisterReloadFunction(f ReloadFunction) {
+	reloadFunctions = append(reloadFunctions, f)
+}
+
+func ReloadAll() {
+	for _, f := range reloadFunctions {
+		f()
+	}
+}
+
+func init() {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGHUP)
+	go func() {
+		for _ = range sigChan {
+			glog.Info("Received SIGHUP")
+			ReloadAll()
+		}
+	}()
 }

@@ -15,12 +15,10 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -532,14 +530,6 @@ func (a *args) parse() {
 
 var arguments = &args{}
 
-type ReloadFunction func()
-
-var reloadFunctions = []ReloadFunction{}
-
-func RegisterReloadFunction(f ReloadFunction) {
-	reloadFunctions = append(reloadFunctions, f)
-}
-
 func init() {
 	// N.B. this should not be necessary.
 	gob.Register(map[PasteID][]byte(nil))
@@ -598,24 +588,13 @@ func init() {
 }
 
 func main() {
-	InitTemplates()
+	ReloadAll()
 
 	go func() {
 		for {
 			select {
 			case err := <-pasteExpirator.ErrorChannel:
 				glog.Error("Expirator Error: ", err.Error())
-			}
-		}
-	}()
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGHUP)
-	go func() {
-		for _ = range sigChan {
-			glog.Info("Received SIGHUP")
-			for _, f := range reloadFunctions {
-				f()
 			}
 		}
 	}()
