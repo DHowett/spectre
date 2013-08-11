@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"github.com/golang/glog"
 	"html/template"
 	"io"
 	"os/exec"
@@ -153,6 +154,8 @@ func loadLanguageConfig() {
 	for _, v := range languageConfig.Formatters {
 		v.fn = formatFunctions[v.Func]
 	}
+	glog.Info("Loaded ", len(languageConfig.languageMap), " languages.")
+	glog.Info("Loaded ", len(languageConfig.Formatters), " formatters.")
 }
 
 func init() {

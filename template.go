@@ -50,7 +50,6 @@ func assetFunction(kind string, names ...string) template.HTML {
 }
 
 func InitTemplates() {
-	glog.Info("Loading templates.")
 	cacheBustingNonce = time.Now().Unix()
 	tmpl = func() *template.Template {
 		return template.Must(template.New("base").Funcs(templateFunctions).ParseGlob("templates/*"))
@@ -62,6 +61,7 @@ func InitTemplates() {
 			return t
 		}
 	}
+	glog.Info("Loaded templates.")
 }
 
 func ExecuteTemplate(w io.Writer, name string, data interface{}) {
