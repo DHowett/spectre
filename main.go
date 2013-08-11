@@ -300,7 +300,7 @@ func lookupPasteWithRequest(r *http.Request) (Model, error) {
 	}
 
 	if enc {
-		url, _ := router.Get("paste_authenticate").URL("id", id.String())
+		url, _ := pasteRouter.Get("authenticate").URL("id", id.String())
 		if _, ok := err.(PasteInvalidKeyError); ok {
 			url.RawQuery = "i=1"
 		}
@@ -313,7 +313,7 @@ func lookupPasteWithRequest(r *http.Request) (Model, error) {
 }
 
 func pasteURL(routeType string, p *Paste) string {
-	url, _ := router.Get("paste_"+routeType).URL("id", p.ID.String())
+	url, _ := pasteRouter.Get(routeType).URL("id", p.ID.String())
 	return url.String()
 }
 
@@ -375,7 +375,7 @@ func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
 		sessions.Save(r, w)
 	}
 
-	url, _ := router.Get("paste_show").URL("id", id.String())
+	url, _ := pasteRouter.Get("show").URL("id", id.String())
 	w.Header().Set("Location", url.String())
 	w.WriteHeader(http.StatusSeeOther)
 }
@@ -510,8 +510,8 @@ var pasteStore *FilesystemPasteStore
 var pasteExpirator *gotimeout.Expirator
 var sessionStore *sessions.FilesystemStore
 var clientOnlySessionStore *sessions.CookieStore
-var router *mux.Router
 var ephStore *gotimeout.Map
+var pasteRouter *mux.Router
 
 type args struct {
 	root, port, bind *string
@@ -620,29 +620,34 @@ func main() {
 		}
 	}()
 
-	router = mux.NewRouter()
+	router := mux.NewRouter()
+	pasteRouter = router.PathPrefix("/paste").Subrouter()
 
-	if getRouter := router.Methods("GET").Subrouter(); getRouter != nil {
-		getRouter.Handle("/paste/new", RedirectHandler("/"))
-		getRouter.HandleFunc("/paste/{id}", RequiredModelObjectHandler(lookupPasteWithRequest, RenderTemplateForModel("paste_show"))).Name("paste_show")
-		getRouter.HandleFunc("/paste/{id}/raw", RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteRawHandler))).Name("paste_raw")
-		getRouter.HandleFunc("/paste/{id}/download", RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteDownloadHandler))).Name("paste_download")
-		getRouter.HandleFunc("/paste/{id}/edit", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_edit")))).Name("paste_edit")
-		getRouter.HandleFunc("/paste/{id}/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_delete_confirm")))).Name("paste_delete")
-		getRouter.HandleFunc("/paste/{id}/authenticate", RenderTemplateHandler("paste_authenticate")).Name("paste_authenticate")
-		getRouter.Handle("/paste/", RedirectHandler("/"))
-		getRouter.Handle("/paste", RedirectHandler("/"))
-		getRouter.HandleFunc("/session", http.HandlerFunc(sessionHandler))
-		getRouter.HandleFunc("/session/raw", http.HandlerFunc(sessionHandler))
-		getRouter.HandleFunc("/about", RenderTemplateHandler("about"))
-		getRouter.HandleFunc("/", RenderTemplateHandler("index"))
-	}
-	if postRouter := router.Methods("POST").Subrouter(); postRouter != nil {
-		postRouter.HandleFunc("/paste/{id}/edit", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteUpdate)))
-		postRouter.HandleFunc("/paste/{id}/delete", RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
-		postRouter.HandleFunc("/paste/{id}/authenticate", http.HandlerFunc(authenticatePastePOSTHandler)).Name("paste_authenticate")
-		postRouter.HandleFunc("/paste/new", http.HandlerFunc(pasteCreate))
-	}
+	pasteRouter.Methods("GET").Path("/new").Handler(RedirectHandler("/"))
+	pasteRouter.Methods("POST").Path("/new").Handler(http.HandlerFunc(pasteCreate))
+
+	pasteRouter.Methods("GET").Path("/{id}").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, RenderTemplateForModel("paste_show"))).Name("show")
+
+	pasteRouter.Methods("GET").Path("/{id}/raw").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteRawHandler))).Name("raw")
+
+	pasteRouter.Methods("GET").Path("/{id}/download").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteDownloadHandler))).Name("download")
+
+	pasteRouter.Methods("GET").Path("/{id}/edit").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_edit")))).Name("edit")
+	pasteRouter.Methods("POST").Path("/{id}/edit").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteUpdate)))
+
+	pasteRouter.Methods("GET").Path("/{id}/delete").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_delete_confirm")))).Name("delete")
+	pasteRouter.Methods("POST").Path("/{id}/delete").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
+
+	pasteRouter.Methods("GET").Path("/{id}/authenticate").Handler(RenderTemplateHandler("paste_authenticate")).Name("authenticate")
+	pasteRouter.Methods("POST").Path("/{id}/authenticate").Handler(http.HandlerFunc(authenticatePastePOSTHandler))
+
+	pasteRouter.Methods("GET").Path("/").Handler(RedirectHandler("/"))
+
+	router.Path("/paste").Handler(RedirectHandler("/"))
+	router.Path("/session").Handler(http.HandlerFunc(sessionHandler))
+	router.Path("/session/raw").Handler(http.HandlerFunc(sessionHandler))
+	router.Path("/about").Handler(RenderTemplateHandler("about"))
+	router.Path("/").Handler(RenderTemplateHandler("index"))
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./public")))
 	http.Handle("/", &fourOhFourConsumerHandler{router})
 
