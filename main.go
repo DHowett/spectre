@@ -512,16 +512,17 @@ var ephStore *gotimeout.Map
 var pasteRouter *mux.Router
 
 type args struct {
-	root, port, bind *string
-	rebuild          *bool
-	minified         *bool
+	root, port, bind string
+	rebuild          bool
+	minified         bool
 }
 
 func (a *args) register() {
-	a.root = flag.String("root", "./", "path to generated file storage")
-	a.port, a.bind = flag.String("port", "8080", "HTTP port"), flag.String("bind", "0.0.0.0", "bind address")
-	a.rebuild = flag.Bool("rebuild", false, "rebuild all templates for each request")
-	a.minified = flag.Bool("minified", false, "use min.js and min.css files (ala production mode)")
+	flag.StringVar(&a.root, "root", "./", "path to generated file storage")
+	flag.StringVar(&a.port, "port", "8080", "HTTP port")
+	flag.StringVar(&a.bind, "bind", "0.0.0.0", "bind address")
+	flag.BoolVar(&a.rebuild, "rebuild", false, "rebuild all templates for each request")
+	flag.BoolVar(&a.minified, "minified", false, "use min.js and min.css files (ala production mode)")
 }
 
 func (a *args) parse() {
@@ -550,10 +551,10 @@ func init() {
 	})
 	RegisterTemplateFunction("requestVariable", requestVariable)
 
-	sesdir := filepath.Join(*arguments.root, "sessions")
+	sesdir := filepath.Join(arguments.root, "sessions")
 	os.Mkdir(sesdir, 0700)
 
-	sessionKey, err := SlurpFile(filepath.Join(*arguments.root, "session.key"))
+	sessionKey, err := SlurpFile(filepath.Join(arguments.root, "session.key"))
 	if err != nil {
 		glog.Fatal("session.key not found. make one with seskey.go?")
 	}
@@ -561,7 +562,7 @@ func init() {
 	sessionStore.Options.Path = "/"
 	sessionStore.Options.MaxAge = 86400 * 365
 
-	clientOnlySessionEncryptionKey, err := SlurpFile(filepath.Join(*arguments.root, "client_session_enc.key"))
+	clientOnlySessionEncryptionKey, err := SlurpFile(filepath.Join(arguments.root, "client_session_enc.key"))
 	if err != nil {
 		glog.Fatal("client_session_enc.key not found. make one with seskey.go?")
 	}
@@ -569,12 +570,12 @@ func init() {
 	clientOnlySessionStore.Options.Path = "/"
 	clientOnlySessionStore.Options.MaxAge = 0
 
-	pastedir := filepath.Join(*arguments.root, "pastes")
+	pastedir := filepath.Join(arguments.root, "pastes")
 	os.Mkdir(pastedir, 0700)
 	pasteStore = NewFilesystemPasteStore(pastedir)
 	pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 
-	pasteExpirator = gotimeout.NewExpirator(filepath.Join(*arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
+	pasteExpirator = gotimeout.NewExpirator(filepath.Join(arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
 	ephStore = gotimeout.NewMap()
 }
 
@@ -621,7 +622,7 @@ func main() {
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./public")))
 	http.Handle("/", &fourOhFourConsumerHandler{router})
 
-	var addr string = *arguments.bind + ":" + *arguments.port
+	var addr string = arguments.bind + ":" + arguments.port
 	server := &http.Server{
 		Addr: addr,
 	}
