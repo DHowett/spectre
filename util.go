@@ -134,7 +134,7 @@ func ReloadAll() {
 	}
 }
 
-var environment string
+var environment string = EnvironmentDevelopment
 
 func Env() string {
 	return environment
