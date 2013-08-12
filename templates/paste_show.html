@@ -6,7 +6,7 @@
 	<span class="paste-title">
 		<strong>Paste {{.Obj.ID}}</strong>
 		<span class="paste-subtitle">{{with langByLexer .Obj.Language}}{{.Title}}{{else}}({{.Obj.Language}}){{end}}
-		{{if .Obj.Encrypted}}<i class="icon-lock"></i>{{end}}
+		{{if .Obj.Encrypted}}<i class="icon-lock"></i>{{end}}{{if pasteWillExpire .Obj}}<i class="icon-clock"></i>{{end}}
 		</span>
 	</span>
 	<div class="paste-toolbox-buttons pull-right" id="desktop-paste-control-container">

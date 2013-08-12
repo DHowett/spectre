@@ -532,6 +532,9 @@ func init() {
 	RegisterTemplateFunction("editAllowed", func(ri *RenderContext) bool { return isEditAllowed(ri.Obj.(*Paste), ri.Request) })
 	RegisterTemplateFunction("render", renderPaste)
 	RegisterTemplateFunction("pasteURL", pasteURL)
+	RegisterTemplateFunction("pasteWillExpire", func(p *Paste) bool {
+		return p.Expiration != "" && p.Expiration != "-1"
+	})
 	RegisterTemplateFunction("pasteBody", func(p *Paste) string {
 		reader, _ := p.Reader()
 		defer reader.Close()
