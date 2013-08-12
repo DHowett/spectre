@@ -557,6 +557,7 @@ func init() {
 		glog.Fatal("client_session_enc.key not found. make one with seskey.go?")
 	}
 	clientOnlySessionStore = sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
+	clientOnlySessionStore.Options.Secure = true
 	clientOnlySessionStore.Options.Path = "/"
 	clientOnlySessionStore.Options.MaxAge = 0
 
