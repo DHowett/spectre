@@ -186,6 +186,7 @@ $(function() {
 				});
 			});
 			$(window).on("resize", function(e) {
+				$(linebar).width(code.outerWidth());
 				$(permabar).width(code.outerWidth());
 			});
 			$(document).on("media-query-changed", function() {
