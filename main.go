@@ -530,6 +530,7 @@ func init() {
 	arguments.parse()
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
+	RegisterTemplateFunction("encryptionAllowed", func(ri *RenderContext) bool { return RequestIsHTTPS(ri.Request) })
 	RegisterTemplateFunction("editAllowed", func(ri *RenderContext) bool { return isEditAllowed(ri.Obj.(*Paste), ri.Request) })
 	RegisterTemplateFunction("render", renderPaste)
 	RegisterTemplateFunction("pasteURL", pasteURL)
@@ -600,8 +601,26 @@ func main() {
 	pasteRouter.Methods("GET").Path("/{id}/delete").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_delete_confirm")))).Name("delete")
 	pasteRouter.Methods("POST").Path("/{id}/delete").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
 
-	pasteRouter.Methods("GET").Path("/{id}/authenticate").Handler(RenderTemplateHandler("paste_authenticate")).Name("authenticate")
-	pasteRouter.Methods("POST").Path("/{id}/authenticate").Handler(http.HandlerFunc(authenticatePastePOSTHandler))
+	httpsMatcher := func(r *http.Request, rm *mux.RouteMatch) bool {
+		return RequestIsHTTPS(r)
+	}
+	pasteRouter.Methods("GET").
+		MatcherFunc(httpsMatcher).
+		Path("/{id}/authenticate").
+		Handler(RenderTemplateHandler("paste_authenticate")).
+		Name("authenticate")
+	pasteRouter.Methods("POST").
+		MatcherFunc(httpsMatcher).
+		Path("/{id}/authenticate").
+		Handler(http.HandlerFunc(authenticatePastePOSTHandler))
+
+	nonHttpsMatcher := func(r *http.Request, rm *mux.RouteMatch) bool {
+		return !RequestIsHTTPS(r)
+	}
+	pasteRouter.Methods("GET").
+		MatcherFunc(nonHttpsMatcher).
+		Path("/{id}/authenticate").
+		Handler(RenderTemplateHandler("paste_authenticate_disallowed"))
 
 	pasteRouter.Methods("GET").Path("/").Handler(RedirectHandler("/"))
 

@@ -25,3 +25,21 @@
 </div>
 {{template "footer" .}}
 {{end}}
+
+{{define "page_paste_authenticate_disallowed"}}
+{{template "header" "Authenticate"}}
+<div class="paste">
+<div class="paste-toolbox">
+	{{template "home-button"}}
+	<span class="paste-title">
+		<i class="icon-lock"></i><strong>Paste {{requestVariable . "id"}}</strong>
+		<span class="paste-subtitle">Authentication Required</span>
+	</span>
+</div>
+<div class="well well-error">
+<p>Paste <strong>{{requestVariable . "id"}}</strong> is password-protected.<br>
+<em>Unfortunately, you're not using an encrypted connection and you cannot be allowed access to it.</em></p>
+</div>
+</div>
+{{template "footer" .}}
+{{end}}
