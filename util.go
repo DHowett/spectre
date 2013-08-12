@@ -9,8 +9,10 @@ import (
 	"github.com/golang/glog"
 	"io"
 	"launchpad.net/goyaml"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
@@ -91,6 +93,22 @@ func SlurpFile(path string) (out []byte, err error) {
 		file.Close()
 	}
 	return
+}
+
+func RequestIsHTTPS(r *http.Request) bool {
+	proto := strings.ToLower(r.Header.Get("X-Forwarded-Proto"))
+	if proto == "" {
+		proto = strings.ToLower(r.URL.Scheme)
+	}
+	return proto == "https"
+}
+
+func SourceIPForRequest(r *http.Request) string {
+	ip := r.Header.Get("X-Forwarded-For")
+	if ip == "" {
+		ip = r.RemoteAddr[:strings.LastIndex(r.RemoteAddr, ":")]
+	}
+	return ip
 }
 
 type ReloadFunction func()

@@ -378,14 +378,6 @@ func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func SourceIPForRequest(r *http.Request) string {
-	ip := r.Header.Get("X-Forwarded-For")
-	if ip == "" {
-		ip = r.RemoteAddr[:strings.LastIndex(r.RemoteAddr, ":")]
-	}
-	return ip
-}
-
 func throttleAuthForRequest(r *http.Request) bool {
 	ip := SourceIPForRequest(r)
 
