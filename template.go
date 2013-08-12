@@ -20,7 +20,7 @@ var cacheBustingNonce int64
 func assetFunction(kind string, names ...string) template.HTML {
 	var out string
 	if kind == "js" {
-		if arguments.minified {
+		if Env() == EnvironmentProduction {
 			names = []string{"all.min"}
 		}
 
@@ -28,7 +28,7 @@ func assetFunction(kind string, names ...string) template.HTML {
 			out += fmt.Sprintf("<script src=\"/js/%s.js?%d\"></script>", n, cacheBustingNonce)
 		}
 	} else if kind == "css" {
-		if arguments.minified {
+		if Env() == EnvironmentProduction {
 			names = []string{"all.min"}
 		}
 
@@ -37,7 +37,7 @@ func assetFunction(kind string, names ...string) template.HTML {
 		}
 	} else if kind == "less" {
 		// Do not use less/less.js in production.
-		if arguments.minified {
+		if Env() == EnvironmentProduction {
 			return template.HTML("")
 		}
 

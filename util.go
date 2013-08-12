@@ -16,6 +16,11 @@ import (
 	"syscall"
 )
 
+const (
+	EnvironmentDevelopment string = "dev"
+	EnvironmentProduction  string = "production"
+)
+
 type ReadCloser struct {
 	io.Reader
 	io.Closer
@@ -96,6 +101,10 @@ func SlurpFile(path string) (out []byte, err error) {
 }
 
 func RequestIsHTTPS(r *http.Request) bool {
+	if Env() == EnvironmentDevelopment {
+		return true
+	}
+
 	proto := strings.ToLower(r.Header.Get("X-Forwarded-Proto"))
 	if proto == "" {
 		proto = strings.ToLower(r.URL.Scheme)
@@ -125,7 +134,18 @@ func ReloadAll() {
 	}
 }
 
+var environment string
+
+func Env() string {
+	return environment
+}
+
 func init() {
+	environment = os.Getenv("GHOSTBIN_ENV")
+	if environment != EnvironmentProduction {
+		environment = EnvironmentDevelopment
+	}
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGHUP)
 	go func() {

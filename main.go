@@ -506,14 +506,12 @@ var pasteRouter *mux.Router
 type args struct {
 	root, addr string
 	rebuild    bool
-	minified   bool
 }
 
 func (a *args) register() {
 	flag.StringVar(&a.root, "root", "./", "path to generated file storage")
 	flag.StringVar(&a.addr, "addr", "0.0.0.0:8080", "bind address and port")
 	flag.BoolVar(&a.rebuild, "rebuild", false, "rebuild all templates for each request")
-	flag.BoolVar(&a.minified, "minified", false, "use min.js and min.css files (ala production mode)")
 }
 
 func (a *args) parse() {
