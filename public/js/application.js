@@ -179,9 +179,11 @@ $(function() {
 					var n = lineFromHash(window.location.hash);
 					if(n) {
 						var linespan = $("span:nth-child("+n+")", lineNumberTrough);
-						setSelectedLineNumber(n);
-						positionLinebar.call(linespan.get(0), permabar);
-						linespan.scrollMinimal();
+						if(linespan.length > 0) {
+							setSelectedLineNumber(n);
+							positionLinebar.call(linespan.get(0), permabar);
+							linespan.scrollMinimal();
+						}
 					}
 				});
 			});
