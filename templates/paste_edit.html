@@ -14,18 +14,18 @@
 		<div id="paste-controls">
 			<button id="expirationButton" title="Expiration" type="button" class="btn btn-inverse">
 				<i class="icon-clock icon-large"></i>
-				<span class="visible-phone">Expiration</span>
+				<span class="button-title">Expiration</span>
 				<span class="button-data-label"></span>
 			</button>
 			{{if not .Obj}}{{if encryptionAllowed .}}<button id="encryptionButton" title="Encryption" type="button" class="btn btn-inverse">
 				<i id="encryptionIcon" class="icon-lock-open-alt icon-large"></i>
-				<span class="visible-phone">Encryption</span>
+				<span class="button-title">Encryption</span>
 				<span class="button-data-label"></span>
 			</button>{{end}}{{end}}
 			{{template "s2langbox" .Obj}}
 			{{if .Obj}}<button title="Delete" type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
 				<i class="icon-trash icon-large"></i>
-				<span class="visible-phone">Delete</span>
+				<span class="button-title">Delete</span>
 			</button>{{end}}
 		</div>
 		<button title="Save" type="submit" class="btn btn-primary">
