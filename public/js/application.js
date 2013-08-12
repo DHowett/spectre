@@ -64,6 +64,8 @@ $(function() {
 		var encModal = $("#encryptModal")
 		if(encModal.length == 0) return;
 
+		var encDataLabel = $("encryptionButton .button-data-label");
+
 		encModal.modal({show: false});
 
 		encModal.find("input[type='password']").keypress(function(e) {
@@ -77,9 +79,13 @@ $(function() {
 			$(this).find("input").eq(0).focus().select();
 		});
 
-		encModal.on("hidden", function() {
-			encrypted = $(this).find("input").val().length > 0;
+		var setEncrypted = function(encrypted) {
 			$("#encryptionIcon").removeClass("icon-lock icon-lock-open-alt").addClass(encrypted ? "icon-lock" : "icon-lock-open-alt");
+			encDataLabel.text(encrypted ? "On" : "");
+		};
+
+		encModal.on("hidden", function() {
+			setEncrypted($(this).find("input").val().length > 0);
 		});
 
 		$("#encryptionButton").on("click", function() {
@@ -87,17 +93,22 @@ $(function() {
 		});
 	})();
 	(function(){
-		var expModal = $("#expireModal")
+		var expModal = $("#expireModal");
 		if(expModal.length == 0) return;
-
-		var expInput = $("input[name='expire']")
 
 		expModal.modal({show: false});
 
-		expModal.find("button[data-value='"+expInput.val()+"']").button('toggle');
-		expModal.find("button[data-value]").on("click", function() {
+		var expInput = $("input[name='expire']");
+		var expDataLabel = $("#expirationButton .button-data-label");
+
+		var setExpirationSelected = function() {
+			$(this).button('toggle');
 			expInput.val($(this).data("value"));
-		})
+			expDataLabel.text($(this).data("display-value"));
+		};
+
+		setExpirationSelected.call(expModal.find("button[data-value='"+expInput.val()+"']"));
+		expModal.find("button[data-value]").on("click", setExpirationSelected)
 
 		$("#expirationButton").on("click", function() {
 			expModal.modal("show");

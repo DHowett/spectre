@@ -15,10 +15,12 @@
 			<button id="expirationButton" title="Expiration" type="button" class="btn btn-inverse">
 				<i class="icon-clock icon-large"></i>
 				<span class="visible-phone">Expiration</span>
+				<span class="button-data-label"></span>
 			</button>
 			{{if not .Obj}}{{if encryptionAllowed .}}<button id="encryptionButton" title="Encryption" type="button" class="btn btn-inverse">
 				<i id="encryptionIcon" class="icon-lock-open-alt icon-large"></i>
 				<span class="visible-phone">Encryption</span>
+				<span class="button-data-label"></span>
 			</button>{{end}}{{end}}
 			{{template "s2langbox" .Obj}}
 			{{if .Obj}}<button title="Delete" type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
@@ -46,11 +48,11 @@
 	<div class="modal-body">
 		<p>How long should this paste be allowed to roam the Earth?</p>
 		<div data-toggle="buttons-radio" class="btn-trough">
-			<button type="button" class="btn" data-value="-1">Forever</button>
-			<button type="button" class="btn" data-value="10m">Ten Minutes</button>
-			<button type="button" class="btn" data-value="1h">an Hour</button>
-			<button type="button" class="btn" data-value="24h">a Day</button>
-			<button type="button" class="btn" data-value="336h">a Fortnight</button>
+			<button type="button" class="btn" data-value="-1" data-display-value="">Forever</button>
+			<button type="button" class="btn" data-value="10m" data-display-value="10m">Ten Minutes</button>
+			<button type="button" class="btn" data-value="1h" data-display-value="1h">an Hour</button>
+			<button type="button" class="btn" data-value="24h" data-display-value="1d">a Day</button>
+			<button type="button" class="btn" data-value="336h" data-display-value="14d">a Fortnight</button>
 		</div>
 	</div>
 	<div class="modal-footer">

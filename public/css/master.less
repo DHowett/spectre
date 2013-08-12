@@ -352,6 +352,21 @@ form {
 	}
 }
 
+.button-data-label {
+	display: none;
+	&:not(:empty) {
+		display: inline;
+		@media @media-phone {
+			&:before {
+				content: "[";
+			}
+			&:after {
+				content: "]";
+			}
+		}
+	}
+}
+
 @media @media-phone {
 	#phone-paste-control-container.well {
 		padding: 4px;
