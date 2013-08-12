@@ -4,8 +4,10 @@
 <div class="paste-toolbox unselectable">
 	{{template "home-button"}}
 	<span class="paste-title">
-		{{if .Obj.Encrypted}}<i class="icon-lock"></i>{{end}}<strong>Paste {{.Obj.ID}}</strong>
-		<span class="paste-subtitle">{{with langByLexer .Obj.Language}}{{.Title}}{{else}}({{.Obj.Language}}){{end}}</span>
+		<strong>Paste {{.Obj.ID}}</strong>
+		<span class="paste-subtitle">{{with langByLexer .Obj.Language}}{{.Title}}{{else}}({{.Obj.Language}}){{end}}
+		{{if .Obj.Encrypted}}<i class="icon-lock"></i>{{end}}
+		</span>
 	</span>
 	<div class="paste-toolbox-buttons pull-right" id="desktop-paste-control-container">
 		<div id="paste-controls">
