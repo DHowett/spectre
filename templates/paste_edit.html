@@ -1,27 +1,27 @@
 {{define "page_paste_edit"}}
 {{template "header" .Obj.ID}}
-{{template "paste_edit_partial" .Obj}}
+{{template "paste_edit_partial" .}}
 {{template "footer" .}}
 {{end}}
 
 {{define "paste_edit_partial"}}
-<form action="{{if .}}{{pasteURL "edit" .}}{{else}}/paste/new{{end}}" method="post">
+<form action="{{if .Obj}}{{pasteURL "edit" .Obj}}{{else}}/paste/new{{end}}" method="post">
 <div class="clearfix paste">
 <div class="paste-toolbox">
 	{{template "home-button"}}
-	<span class="paste-title"><strong>{{if .}}Paste {{.ID}}{{else}}New Paste{{end}}</strong></span>
+	<span class="paste-title"><strong>{{if .Obj}}Paste {{.Obj.ID}}{{else}}New Paste{{end}}</strong></span>
 	<div class="paste-toolbox-buttons pull-right" id="desktop-paste-control-container">
 		<div id="paste-controls">
 			<button id="expirationButton" title="Expiration" type="button" class="btn btn-inverse">
 				<i class="icon-clock icon-large"></i>
 				<span class="visible-phone">Expiration</span>
 			</button>
-			{{if not .}}<button id="encryptionButton" title="Encryption" type="button" class="btn btn-inverse">
+			{{if not .Obj}}{{if encryptionAllowed .}}<button id="encryptionButton" title="Encryption" type="button" class="btn btn-inverse">
 				<i id="encryptionIcon" class="icon-lock-open-alt icon-large"></i>
 				<span class="visible-phone">Encryption</span>
-			</button>{{end}}
-			{{template "s2langbox" .}}
-			{{if .}}<button title="Delete" type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
+			</button>{{end}}{{end}}
+			{{template "s2langbox" .Obj}}
+			{{if .Obj}}<button title="Delete" type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
 				<i class="icon-trash icon-large"></i>
 				<span class="visible-phone">Delete</span>
 			</button>{{end}}
@@ -33,11 +33,11 @@
 </div>
 <div class="code code-line-numbers unselectable" id="line-numbers" aria-hidden="true"></div>
 <div class="textarea-height-wrapper">
-<textarea id="code-editor" autofocus="autofocus" tabindex="1" class="code" name="text" rows="20" wrap="off">{{if .}}{{pasteBody .}}{{end}}</textarea>
+<textarea id="code-editor" autofocus="autofocus" tabindex="1" class="code" name="text" rows="20" wrap="off">{{if .Obj}}{{pasteBody .Obj}}{{end}}</textarea>
 </div>
 </div>
 <div class="well visible-phone" id="phone-paste-control-container"></div>
-<input type="hidden" name="expire" value="{{if .}}{{.Expiration}}{{else}}-1{{end}}">
+<input type="hidden" name="expire" value="{{if .Obj}}{{.Obj.Expiration}}{{else}}-1{{end}}">
 <div id="expireModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
 	<div class="modal-header">
 		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
@@ -57,7 +57,7 @@
 		<button data-dismiss="modal" class="btn" aria-hidden="true">Okay</button>
 	</div>
 </div>
-{{if not .}}<div id="encryptModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+{{if not .Obj}}{{if encryptionAllowed .}}<div id="encryptModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
 	<div class="modal-header">
 		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
 		<h3>Encrypt Paste</h3>
@@ -72,16 +72,16 @@
 	<div class="modal-footer">
 		<button data-dismiss="modal" class="btn" aria-hidden="true">Okay</button>
 	</div>
-</div>{{end}}
+</div>{{end}}{{end}}
 </form>
-{{if .}}<div id="deleteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
-	<form name="deleteForm" action="{{pasteURL "delete" .}}" method="post">
+{{if .Obj}}<div id="deleteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<form name="deleteForm" action="{{pasteURL "delete" .Obj}}" method="post">
 	<div class="modal-header">
 		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
 		<h3>Confirm Deletion</h3>
 	</div>
 	<div class="modal-body">
-		<p>Are you sure you want to delete paste <strong>{{.ID}}</strong>?</p>
+		<p>Are you sure you want to delete paste <strong>{{.Obj.ID}}</strong>?</p>
 	</div>
 	<div class="modal-footer">
 		<button type="submit" class="btn btn-danger">Destroy! Annihilate!</button>
