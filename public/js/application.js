@@ -73,16 +73,14 @@ $(function() {
 			}
 		});
 
-		encModal.on("shown", function() {
-			$(this).find("input").eq(0).focus().select();
-		});
-
 		var setEncrypted = function(encrypted) {
 			$("#encryptionIcon").removeClass("icon-lock icon-lock-open-alt").addClass(encrypted ? "icon-lock" : "icon-lock-open-alt");
 			$("#encryptionButton .button-data-label").text(encrypted ? "On" : "");
 		};
 
-		encModal.on("hidden", function() {
+		encModal.on("shown", function() {
+			$(this).find("input").eq(0).focus().select();
+		}).on("hidden", function() {
 			setEncrypted($(this).find("input").val().length > 0);
 		});
 
