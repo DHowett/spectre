@@ -62,30 +62,24 @@ func (e GenericStringError) Error() string {
 
 func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	reader, _ := p.Reader()
-	defer reader.Close()
-	io.Copy(w, reader)
-}
-
-func getPasteDownloadHandler(o Model, w http.ResponseWriter, r *http.Request) {
-	p := o.(*Paste)
-	lang := LanguageNamed(p.Language)
 	mime := "text/plain"
 	ext := "txt"
-	if lang != nil {
-		if len(lang.MIMETypes) > 0 {
-			mime = lang.MIMETypes[0]
+	if mux.CurrentRoute(r).GetName() == "download" {
+		lang := LanguageNamed(p.Language)
+		if lang != nil {
+			if len(lang.MIMETypes) > 0 {
+				mime = lang.MIMETypes[0]
+			}
+
+			if len(lang.Extensions) > 0 {
+				ext = lang.Extensions[0]
+			}
 		}
 
-		if len(lang.Extensions) > 0 {
-			ext = lang.Extensions[0]
-		}
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+p.ID.String()+"."+ext+"\"")
+		w.Header().Set("Content-Transfer-Encoding", "binary")
 	}
-
-	w.Header().Set("Content-Disposition", "attachment; filename=\""+p.ID.String()+"."+ext+"\"")
 	w.Header().Set("Content-Type", mime+"; charset=utf-8")
-	w.Header().Set("Content-Transfer-Encoding", "binary")
 
 	reader, _ := p.Reader()
 	defer reader.Close()
@@ -592,7 +586,7 @@ func main() {
 
 	pasteRouter.Methods("GET").Path("/{id}/raw").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteRawHandler))).Name("raw")
 
-	pasteRouter.Methods("GET").Path("/{id}/download").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteDownloadHandler))).Name("download")
+	pasteRouter.Methods("GET").Path("/{id}/download").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteRawHandler))).Name("download")
 
 	pasteRouter.Methods("GET").Path("/{id}/edit").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_edit")))).Name("edit")
 	pasteRouter.Methods("POST").Path("/{id}/edit").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteUpdate)))
