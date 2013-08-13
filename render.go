@@ -65,6 +65,11 @@ func RequiredModelObjectHandler(lookup ModelLookupFunc, fn ModelRenderFunc) http
 
 		if obj, err := lookup(r); err != nil {
 			if dle, ok := err.(DeferLookupError); ok {
+				http.SetCookie(w, &http.Cookie{
+					Name:  "destination",
+					Value: r.URL.String(),
+					Path:  "/",
+				})
 				w.Header().Set("Location", dle.Interstitial.String())
 				w.WriteHeader(http.StatusFound)
 			} else {

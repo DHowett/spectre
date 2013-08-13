@@ -374,7 +374,11 @@ func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url, _ := pasteRouter.Get("show").URL("id", id.String())
-	w.Header().Set("Location", url.String())
+	dest := url.String()
+	if destCookie, err := r.Cookie("destination"); err != nil {
+		dest = destCookie.Value
+	}
+	w.Header().Set("Location", dest)
 	w.WriteHeader(http.StatusSeeOther)
 }
 
