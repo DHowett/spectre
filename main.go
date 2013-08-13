@@ -579,20 +579,43 @@ func main() {
 	router := mux.NewRouter()
 	pasteRouter = router.PathPrefix("/paste").Subrouter()
 
-	pasteRouter.Methods("GET").Path("/new").Handler(RedirectHandler("/"))
-	pasteRouter.Methods("POST").Path("/new").Handler(http.HandlerFunc(pasteCreate))
+	pasteRouter.Methods("GET").
+		Path("/new").
+		Handler(RedirectHandler("/"))
 
-	pasteRouter.Methods("GET").Path("/{id}").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, RenderTemplateForModel("paste_show"))).Name("show")
+	pasteRouter.Methods("POST").
+		Path("/new").
+		Handler(http.HandlerFunc(pasteCreate))
 
-	pasteRouter.Methods("GET").Path("/{id}/raw").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteRawHandler))).Name("raw")
+	pasteRouter.Methods("GET").
+		Path("/{id}").
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, RenderTemplateForModel("paste_show"))).
+		Name("show")
 
-	pasteRouter.Methods("GET").Path("/{id}/download").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteRawHandler))).Name("download")
+	pasteRouter.Methods("GET").
+		Path("/{id}/raw").
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteRawHandler))).
+		Name("raw")
+	pasteRouter.Methods("GET").
+		Path("/{id}/download").
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteRawHandler))).
+		Name("download")
 
-	pasteRouter.Methods("GET").Path("/{id}/edit").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_edit")))).Name("edit")
-	pasteRouter.Methods("POST").Path("/{id}/edit").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteUpdate)))
+	pasteRouter.Methods("GET").
+		Path("/{id}/edit").
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_edit")))).
+		Name("edit")
+	pasteRouter.Methods("POST").
+		Path("/{id}/edit").
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteUpdate)))
 
-	pasteRouter.Methods("GET").Path("/{id}/delete").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_delete_confirm")))).Name("delete")
-	pasteRouter.Methods("POST").Path("/{id}/delete").Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
+	pasteRouter.Methods("GET").
+		Path("/{id}/delete").
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_delete_confirm")))).
+		Name("delete")
+	pasteRouter.Methods("POST").
+		Path("/{id}/delete").
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
 
 	httpsMatcher := func(r *http.Request, rm *mux.RouteMatch) bool {
 		return RequestIsHTTPS(r)
