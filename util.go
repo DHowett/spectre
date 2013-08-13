@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"github.com/golang/glog"
+	"github.com/gorilla/mux"
 	"io"
 	"launchpad.net/goyaml"
 	"net/http"
@@ -118,6 +119,14 @@ func SourceIPForRequest(r *http.Request) string {
 		ip = r.RemoteAddr[:strings.LastIndex(r.RemoteAddr, ":")]
 	}
 	return ip
+}
+
+func HTTPSMuxMatcher(r *http.Request, rm *mux.RouteMatch) bool {
+	return RequestIsHTTPS(r)
+}
+
+func NonHTTPSMuxMatcher(r *http.Request, rm *mux.RouteMatch) bool {
+	return !RequestIsHTTPS(r)
 }
 
 type ReloadFunction func()

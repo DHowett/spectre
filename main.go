@@ -617,24 +617,18 @@ func main() {
 		Path("/{id}/delete").
 		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
 
-	httpsMatcher := func(r *http.Request, rm *mux.RouteMatch) bool {
-		return RequestIsHTTPS(r)
-	}
 	pasteRouter.Methods("GET").
-		MatcherFunc(httpsMatcher).
+		MatcherFunc(HTTPSMuxMatcher).
 		Path("/{id}/authenticate").
 		Handler(RenderTemplateHandler("paste_authenticate")).
 		Name("authenticate")
 	pasteRouter.Methods("POST").
-		MatcherFunc(httpsMatcher).
+		MatcherFunc(HTTPSMuxMatcher).
 		Path("/{id}/authenticate").
 		Handler(http.HandlerFunc(authenticatePastePOSTHandler))
 
-	nonHttpsMatcher := func(r *http.Request, rm *mux.RouteMatch) bool {
-		return !RequestIsHTTPS(r)
-	}
 	pasteRouter.Methods("GET").
-		MatcherFunc(nonHttpsMatcher).
+		MatcherFunc(NonHTTPSMuxMatcher).
 		Path("/{id}/authenticate").
 		Handler(RenderTemplateHandler("paste_authenticate_disallowed"))
 
