@@ -60,13 +60,6 @@ func (e GenericStringError) Error() string {
 	return string(e)
 }
 
-func sessionOk(r *http.Request) (b bool) {
-	//ua := r.Header.Get("User-Agent")
-	b = true
-	//b = !strings.Contains(ua, "curl")
-	return
-}
-
 func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -223,29 +216,27 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	key := p.EncryptionKeyWithPassword(password)
 	p.SetEncryptionKey(key)
 
-	if sessionOk(r) {
-		session, _ := sessionStore.Get(r, "session")
-		pastes, ok := session.Values["pastes"].([]string)
-		if !ok {
-			pastes = []string{}
-		}
-
-		pastes = append(pastes, p.ID.String())
-		session.Values["pastes"] = pastes
-
-		if key != nil {
-			cliSession, _ := clientOnlySessionStore.Get(r, "c_session")
-			pasteKeys, ok := cliSession.Values["paste_keys"].(map[PasteID][]byte)
-			if !ok {
-				pasteKeys = map[PasteID][]byte{}
-			}
-
-			pasteKeys[p.ID] = key
-			cliSession.Values["paste_keys"] = pasteKeys
-		}
-
-		sessions.Save(r, w)
+	session, _ := sessionStore.Get(r, "session")
+	pastes, ok := session.Values["pastes"].([]string)
+	if !ok {
+		pastes = []string{}
 	}
+
+	pastes = append(pastes, p.ID.String())
+	session.Values["pastes"] = pastes
+
+	if key != nil {
+		cliSession, _ := clientOnlySessionStore.Get(r, "c_session")
+		pasteKeys, ok := cliSession.Values["paste_keys"].(map[PasteID][]byte)
+		if !ok {
+			pasteKeys = map[PasteID][]byte{}
+		}
+
+		pasteKeys[p.ID] = key
+		cliSession.Values["paste_keys"] = pasteKeys
+	}
+
+	sessions.Save(r, w)
 
 	pasteUpdateCore(p, w, r, true)
 }
