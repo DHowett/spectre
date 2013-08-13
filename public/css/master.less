@@ -27,8 +27,8 @@
 @line-numbers: #555;
 @line-numbers-hover: lighten(@line-numbers, 20%);
 
-@media-tablet: ~"(min-width: 768px)";
-@media-phone: ~"(max-width: 767px)";
+@media-tablet: ~"screen and (min-width: 768px)";
+@media-phone: ~"screen and (max-width: 767px)";
 
 .box-sizing (@box) {
 	-webkit-box-sizing: @box;
@@ -128,6 +128,9 @@ input[type=password] {
 			cursor: pointer;
 			@media @media-phone {
 				line-height: @paste-line-height-mobile;
+			}
+			@media print {
+				display: none;
 			}
 			span {
 				padding: 0 4px;
@@ -234,6 +237,9 @@ div.paste-toolbox {
 	@media @media-tablet {
 		height: @toolbox-height;
 		.box-sizing(border-box);
+	}
+	@media print {
+		display: none;
 	}
 }
 
