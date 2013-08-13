@@ -52,7 +52,7 @@ func assetFunction(kind string, names ...string) template.HTML {
 func InitTemplates() {
 	cacheBustingNonce = time.Now().Unix()
 	tmpl = func() *template.Template {
-		return template.Must(template.New("base").Funcs(templateFunctions).ParseGlob("templates/*"))
+		return template.Must(template.New("base").Funcs(templateFunctions).ParseGlob("templates/*.html"))
 	}
 	if !arguments.rebuild {
 		glog.Info("Caching templates.")
