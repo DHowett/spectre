@@ -9,9 +9,13 @@
 	</span>
 </div>
 <ul class="paste-list">
-{{range .Obj}}
-<li><a href="{{pasteURL "show" .}}"><span class="paste-title">{{if .Encrypted}}<i class="icon-lock"> </i>{{end}}<strong>{{.ID}}</strong> <span class="paste-subtitle">{{with langByLexer .Language}}{{.Title}}{{else}}({{.Language}}){{end}}</span></span></a></li>
-{{end}}
+{{range .Obj}}<li>
+	<a href="{{pasteURL "show" .}}"><span class="paste-title"><strong>{{.ID}}</strong>
+		<span class="paste-subtitle">{{with langByLexer .Language}}{{.Title}}{{else}}({{.Language}}){{end}}
+			{{if .Encrypted}}<i class="icon-lock"></i>{{end}}{{if pasteWillExpire .}}<i class="icon-clock"></i>{{end}}
+		</span>
+	</span></a>
+</li>{{end}}
 </ul>
 </div>
 {{template "footer" .}}
