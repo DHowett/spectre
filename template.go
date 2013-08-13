@@ -33,7 +33,7 @@ func assetFunction(kind string, names ...string) template.HTML {
 		}
 
 		for _, n := range names {
-			out += fmt.Sprintf("<link rel=\"stylesheet\" href=\"/css/%s.css?%d\" type=\"text/css\" media=\"screen\">", n, cacheBustingNonce)
+			out += fmt.Sprintf("<link rel=\"stylesheet\" href=\"/css/%s.css?%d\" type=\"text/css\" media=\"all\">", n, cacheBustingNonce)
 		}
 	} else if kind == "less" {
 		// Do not use less/less.js in production.
@@ -42,7 +42,7 @@ func assetFunction(kind string, names ...string) template.HTML {
 		}
 
 		for _, n := range names {
-			out += "<link rel=\"stylesheet/less\" href=\"/css/" + n + ".less\" type=\"text/css\" media=\"screen\">"
+			out += "<link rel=\"stylesheet/less\" href=\"/css/" + n + ".less\" type=\"text/css\" media=\"all\">"
 		}
 		out += "<script src=\"/js/less.js\" type=\"text/javascript\"></script>"
 	}
