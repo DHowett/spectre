@@ -64,8 +64,6 @@ $(function() {
 		var encModal = $("#encryptModal")
 		if(encModal.length == 0) return;
 
-		var encDataLabel = $("encryptionButton .button-data-label");
-
 		encModal.modal({show: false});
 
 		encModal.find("input[type='password']").keypress(function(e) {
@@ -81,7 +79,7 @@ $(function() {
 
 		var setEncrypted = function(encrypted) {
 			$("#encryptionIcon").removeClass("icon-lock icon-lock-open-alt").addClass(encrypted ? "icon-lock" : "icon-lock-open-alt");
-			encDataLabel.text(encrypted ? "On" : "");
+			$("#encryptionButton .button-data-label").text(encrypted ? "On" : "");
 		};
 
 		encModal.on("hidden", function() {
