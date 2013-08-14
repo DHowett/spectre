@@ -104,7 +104,10 @@ $(function() {
 		};
 
 		setExpirationSelected.call(expModal.find("button[data-value='"+expInput.val()+"']"));
-		expModal.find("button[data-value]").on("click", setExpirationSelected)
+		expModal.find("button[data-value]").on("click", function() {
+			setExpirationSelected.call(this);
+			expModal.modal("hide");
+		});
 
 		$("#expirationButton").on("click", function() {
 			expModal.modal("show");
