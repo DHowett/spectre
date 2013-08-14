@@ -42,7 +42,7 @@
 <input type="hidden" name="expire" value="{{if .Obj}}{{.Obj.Expiration}}{{else}}-1{{end}}">
 <div id="expireModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
 	<div class="modal-header">
-		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+		<button type="button" class="close" data-dismiss="modal" aria-hidden="true"><i class="icon-cancel"></i></button>
 		<h3>Expiration</h3>
 	</div>
 	<div class="modal-body">
@@ -61,7 +61,7 @@
 </div>
 {{if not .Obj}}{{if encryptionAllowed .}}<div id="encryptModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
 	<div class="modal-header">
-		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+		<button type="button" class="close" data-dismiss="modal" aria-hidden="true"><i class="icon-cancel"></i></button>
 		<h3>Encrypt Paste</h3>
 	</div>
 	<div class="modal-body">
