@@ -69,6 +69,12 @@
       "css": "save",
       "code": 59393,
       "src": "fontawesome"
+    },
+    {
+      "uid": "f2aa28a2548ed3d2be718d087b65ee21",
+      "css": "key",
+      "code": 59403,
+      "src": "fontawesome"
     }
   ]
 }
