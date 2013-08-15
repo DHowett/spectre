@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"github.com/golang/glog"
+	"github.com/knieriem/markdown"
 	"html/template"
 	"io"
 	"os/exec"
@@ -114,6 +115,13 @@ func commandFormatter(formatter *Formatter, stream io.Reader, args ...string) (o
 	return
 }
 
+func markdownFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
+	buf := &bytes.Buffer{}
+	p := markdown.NewParser(&markdown.Extensions{FilterHTML: true})
+	p.Markdown(stream, markdown.ToHTML(buf))
+	return buf.String(), nil
+}
+
 func plainTextFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
 	buf := &bytes.Buffer{}
 	io.Copy(buf, stream)
@@ -123,6 +131,7 @@ func plainTextFormatter(formatter *Formatter, stream io.Reader, args ...string) 
 var formatFunctions map[string]FormatFunc = map[string]FormatFunc{
 	"commandFormatter": commandFormatter,
 	"plainText":        plainTextFormatter,
+	"markdown":         markdownFormatter,
 }
 
 func FormatPaste(p *Paste) (string, error) {

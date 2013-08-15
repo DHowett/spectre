@@ -17,10 +17,7 @@ formatters:
     func: plainText
   markdown:
     name: markdown
-    func: commandFormatter
-    args:
-    - ./bin/Markdown.pl
-    - "--html4tags"
+    func: markdown
   ansi:
     name: ansi
     func: commandFormatter
@@ -36,9 +33,11 @@ languageGroups:
   - name: ansi
     title: ANSI
     formatter: ansi
-  #- name: markdown
-  #  title: Markdown
-  #  formatter: markdown
+  - name: markdown
+    title: Markdown
+    formatter: markdown
+    display_style: markdown
+    suppress_line_numbers: YES
   - name: irc
     title: IRC Log
 - title: Common Programming Languages
