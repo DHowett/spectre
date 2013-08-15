@@ -15,6 +15,8 @@ type Language struct {
 	Names                  []string
 	Extensions             []string
 	MIMETypes              []string `yaml:"mimetypes"`
+	DisplayStyle           string   `yaml:"display_style"`
+	SuppressLineNumbers    bool     `yaml:"suppress_line_numbers"`
 }
 
 type LanguageList []*Language
