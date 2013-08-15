@@ -96,24 +96,27 @@ input[type=password] {
 		min-height: 0;
 	}
 
-	.code {
-		white-space: pre;
+	.code, code {
 		font-family: 'EnvyCodeRWeb', 'monospace';
 		font-size: @paste-font-size;
 		line-height: @paste-line-height;
+		-webkit-overflow-scrolling: touch;
+		@media @media-phone {
+			font-size: @paste-font-size-mobile;
+			line-height: @paste-line-height-mobile;
+		}
+	}
+
+	.code {
+		white-space: pre;
 		padding: @paste-content-padding;
 		.box-sizing(border-box);
 		height: 100%;
-		-webkit-overflow-scrolling: touch;
 
 		// This is to keep the code above the line bar.
 		position: relative;
 		z-index: 2;
 
-		@media @media-phone {
-			font-size: @paste-font-size-mobile;
-			line-height: @paste-line-height-mobile;
-		}
 		&.code-line-numbers {
 			color: @line-numbers;
 			width: auto;
