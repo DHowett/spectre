@@ -38,6 +38,8 @@ languageGroups:
     formatter: markdown
     display_style: markdown
     suppress_line_numbers: YES
+    extensions: [md]
+    mimetypes: [text/x-markdown]
   - name: irc
     title: IRC Log
 - title: Common Programming Languages
