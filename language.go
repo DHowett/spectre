@@ -117,8 +117,11 @@ func commandFormatter(formatter *Formatter, stream io.Reader, args ...string) (o
 
 func markdownFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
 	buf := &bytes.Buffer{}
-	p := markdown.NewParser(&markdown.Extensions{FilterHTML: true})
-	p.Markdown(stream, markdown.ToHTML(buf))
+	markdownParser := markdown.NewParser(&markdown.Extensions{
+		Smart:      true,
+		FilterHTML: true,
+	})
+	markdownParser.Markdown(stream, markdown.ToHTML(buf))
 	return buf.String(), nil
 }
 
