@@ -35,8 +35,9 @@ $(function() {
 		if(controls.length == 0) return;
 
 		if(langbox.length > 0) {
+			var curLanguage = langbox.data("selected");
 			langbox.select2();
-			langbox.select2("val", langbox.data("selected"));
+			langbox.select2("val", curLanguage === "unknown" ? "text" : curLanguage);
 		}
 
 		var mql = window.matchMedia("screen and (max-width: 767px)");

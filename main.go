@@ -65,7 +65,7 @@ func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	mime := "text/plain"
 	ext := "txt"
 	if mux.CurrentRoute(r).GetName() == "download" {
-		lang := LanguageNamed(p.Language)
+		lang := p.Language
 		if lang != nil {
 			if len(lang.MIMETypes) > 0 {
 				mime = lang.MIMETypes[0]
@@ -144,7 +144,7 @@ func pasteUpdateCore(o Model, w http.ResponseWriter, r *http.Request, newPaste b
 	pw, _ := p.Writer()
 	pw.Write([]byte(body))
 	if r.FormValue("lang") != "" {
-		p.Language = r.FormValue("lang")
+		p.Language = LanguageNamed(r.FormValue("lang"))
 	}
 
 	expireIn := r.FormValue("expire")

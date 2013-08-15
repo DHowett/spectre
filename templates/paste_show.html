@@ -5,7 +5,7 @@
 	{{template "home-button"}}
 	<span class="paste-title">
 		<strong>Paste {{.Obj.ID}}</strong>
-		<span class="paste-subtitle">{{with langByLexer .Obj.Language}}{{.Title}}{{else}}({{.Obj.Language}}){{end}}
+		<span class="paste-subtitle">{{.Obj.Language.Title}}
 		{{if .Obj.Encrypted}}<i class="icon-lock"></i>{{end}}{{if pasteWillExpire .Obj}}<i class="icon-clock"></i>{{end}}
 		</span>
 	</span>

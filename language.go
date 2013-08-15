@@ -34,7 +34,7 @@ func (l LanguageList) Swap(i, j int) {
 func LanguageNamed(name string) *Language {
 	v, ok := languageConfig.languageMap[name]
 	if !ok {
-		return nil
+		return unknownLanguage
 	}
 	return v
 }
@@ -69,6 +69,11 @@ type _LanguageConfiguration struct {
 }
 
 var languageConfig _LanguageConfiguration
+var unknownLanguage *Language = &Language{
+	Title:     "Unknown",
+	Name:      "unknown",
+	Formatter: "text",
+}
 
 type FormatFunc func(*Formatter, io.Reader, ...string) (string, error)
 
@@ -121,13 +126,13 @@ var formatFunctions map[string]FormatFunc = map[string]FormatFunc{
 func FormatPaste(p *Paste) (string, error) {
 	var formatter *Formatter
 	var ok bool
-	if formatter, ok = languageConfig.Formatters[p.Language]; !ok {
+	if formatter, ok = languageConfig.Formatters[p.Language.Formatter]; !ok {
 		formatter = languageConfig.Formatters["default"]
 	}
 
 	reader, _ := p.Reader()
 	defer reader.Close()
-	return formatter.Format(reader, p.Language)
+	return formatter.Format(reader, p.Language.Name)
 }
 
 func loadLanguageConfig() {
