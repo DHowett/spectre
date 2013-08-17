@@ -2,22 +2,26 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/golang/glog"
 	"github.com/knieriem/markdown"
 	"html/template"
 	"io"
+	"os"
 	"os/exec"
 	"sort"
 	"strings"
+	"time"
 )
 
 type Language struct {
-	Title, Name, Formatter string
-	Names                  []string
-	Extensions             []string
-	MIMETypes              []string `yaml:"mimetypes"`
-	DisplayStyle           string   `yaml:"display_style"`
-	SuppressLineNumbers    bool     `yaml:"suppress_line_numbers"`
+	Title, Name         string   `json:",omitempty"`
+	Formatter           string   `json:"-"`
+	Names               []string `json:",omitempty"`
+	Extensions          []string `json:"-"`
+	MIMETypes           []string `json:"-" yaml:"mimetypes"`
+	DisplayStyle        string   `json:"-" yaml:"display_style"`
+	SuppressLineNumbers bool     `json:"-" yaml:"suppress_line_numbers"`
 }
 
 type LanguageList []*Language
@@ -42,25 +46,6 @@ func LanguageNamed(name string) *Language {
 	return v
 }
 
-var languageOptionCache string
-
-func LanguageOptionListHTML() template.HTML {
-	if languageOptionCache != "" {
-		return template.HTML(languageOptionCache)
-	}
-
-	var out string
-	for _, group := range languageConfig.LanguageGroups {
-		out += "<optgroup label=\"" + group.Title + "\">"
-		for _, l := range group.Languages {
-			out += "<option value=\"" + l.Name + "\">" + l.Title + "</option>"
-		}
-		out += "</optgroup>"
-	}
-	languageOptionCache = out
-	return template.HTML(languageOptionCache)
-}
-
 type _LanguageConfiguration struct {
 	LanguageGroups []*struct {
 		Title     string
@@ -68,7 +53,9 @@ type _LanguageConfiguration struct {
 	} `yaml:"languageGroups"`
 	Formatters map[string]*Formatter
 
-	languageMap map[string]*Language
+	languageMap  map[string]*Language
+	modtime      time.Time
+	languageJSON []byte
 }
 
 var languageConfig _LanguageConfiguration
@@ -168,18 +155,19 @@ func loadLanguageConfig() {
 		sort.Sort(g.Languages)
 	}
 
-	languageOptionCache = ""
-
 	for _, v := range languageConfig.Formatters {
 		v.fn = formatFunctions[v.Func]
 	}
 	glog.Info("Loaded ", len(languageConfig.languageMap), " languages.")
 	glog.Info("Loaded ", len(languageConfig.Formatters), " formatters.")
+
+	fi, _ := os.Stat("languages.yml")
+	languageConfig.modtime = fi.ModTime()
+	languageConfig.languageJSON, _ = json.Marshal(languageConfig.LanguageGroups)
 }
 
 func init() {
 	RegisterTemplateFunction("langByLexer", LanguageNamed)
-	RegisterTemplateFunction("languageOptionListHTML", LanguageOptionListHTML)
 
 	RegisterReloadFunction(loadLanguageConfig)
 }

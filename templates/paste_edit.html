@@ -93,6 +93,4 @@
 </div>{{end}}
 {{end}}
 
-{{define "s2langbox"}}{{ $lang := or .Language.Name "text" }}<select class="dropdown" id="langbox" name="lang" data-selected="{{$lang}}">
-{{languageOptionListHTML}}
-</select>{{end}}
+{{define "s2langbox"}}{{ $lang := or .Language.Name "text" }}<input type="hidden" class="dropdown" id="langbox" name="lang" data-selected="{{$lang}}">{{end}}

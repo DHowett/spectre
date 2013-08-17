@@ -28,6 +28,36 @@
 	};
 })(jQuery);
 
+function loadLanguages() {
+	var _s2Languages = {
+		more: false,
+		results: [],
+	};
+	var langmap = {};
+	$.ajax({
+		url: "/languages.json",
+		async: false,
+		dataType: "json",
+		cache: true,
+		success: function(_languages) {
+			$.each(_languages, function(i,cat) {
+				var s2cat = cat;
+				s2cat["text"] = cat.Title;
+				s2cat["children"] = cat.Languages;
+				$.each(cat.Languages, function(i, lang) {
+					lang["id"] = lang.Name;
+					lang["text"] = lang.Title;
+
+					langmap[lang.Name] = lang;
+					if(lang.Names) $.each(lang.Names, function(i, n) { langmap[n] = lang; });
+				});
+				_s2Languages.results.push(s2cat);
+			});
+		}
+	});
+	return [_s2Languages, langmap];
+}
+
 $(function() {
 	(function(){
 		var controls = $("#paste-controls");
@@ -35,8 +65,24 @@ $(function() {
 		if(controls.length == 0) return;
 
 		if(langbox.length > 0) {
+			var langData = loadLanguages();
 			var curLanguage = langbox.data("selected");
-			langbox.select2();
+			langbox.select2({
+				data: langData[0],
+				matcher: function(term, text, lang) {
+					// The ifs here are blown apart so that we might short-circuit.
+					if(!lang.Name) return false;
+					if(lang.Title.toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
+					if(lang.Name.toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
+					for(i in lang.Names) {
+						if(lang.Names[i].toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
+					}
+					return false;
+				},
+				initSelection: function(e, cb) {
+					cb(langData[1][e.val()]);
+				},
+			});
 			langbox.select2("val", curLanguage === "unknown" ? "text" : curLanguage);
 		}
 
