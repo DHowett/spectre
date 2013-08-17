@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"net/http"
 )
 
 type fourOhFourConsumerWriter struct {
 	http.ResponseWriter
 	statusCode int
+	tripped    bool
 }
 
 func (w *fourOhFourConsumerWriter) WriteHeader(status int) {
@@ -18,7 +20,8 @@ func (w *fourOhFourConsumerWriter) WriteHeader(status int) {
 }
 
 func (w *fourOhFourConsumerWriter) Write(p []byte) (int, error) {
-	if w.statusCode == http.StatusNotFound {
+	if w.statusCode == http.StatusNotFound && bytes.Equal(p, []byte("404 page not found\n")) {
+		w.tripped = true
 		return len(p), nil
 	}
 	return w.ResponseWriter.Write(p)
@@ -31,8 +34,7 @@ type fourOhFourConsumerHandler struct {
 func (h *fourOhFourConsumerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	writer := &fourOhFourConsumerWriter{ResponseWriter: w}
 	h.Handler.ServeHTTP(writer, r)
-	if writer.statusCode == http.StatusNotFound {
+	if writer.tripped {
 		ExecuteTemplate(writer.ResponseWriter, "page_404", &RenderContext{nil, r})
 	}
 }
-
