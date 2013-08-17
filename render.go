@@ -11,6 +11,10 @@ type RenderContext struct {
 	Request *http.Request
 }
 
+type CustomTemplateError interface {
+	ErrorTemplateName() string
+}
+
 type HTTPError interface {
 	StatusCode() int
 }
@@ -28,7 +32,11 @@ type ModelLookupFunc func(*http.Request) (Model, error)
 
 func RenderError(e error, statusCode int, w http.ResponseWriter) {
 	w.WriteHeader(statusCode)
-	ExecuteTemplate(w, "page_error", &RenderContext{e, nil})
+	tmpl := "page_error"
+	if cte, ok := e.(CustomTemplateError); ok {
+		tmpl = cte.ErrorTemplateName()
+	}
+	ExecuteTemplate(w, tmpl, &RenderContext{e, nil})
 }
 
 func errorRecoveryHandler(w http.ResponseWriter) {

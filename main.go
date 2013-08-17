@@ -44,6 +44,10 @@ func (e PasteNotFoundError) StatusCode() int {
 	return http.StatusNotFound
 }
 
+func (e PasteNotFoundError) ErrorTemplateName() string {
+	return "page_paste_not_found"
+}
+
 type PasteTooLargeError int
 
 func (e PasteTooLargeError) Error() string {

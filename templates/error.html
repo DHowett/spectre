@@ -31,3 +31,20 @@
 </div>
 {{template "footer" .}}
 {{end}}
+
+{{define "page_paste_not_found"}}
+{{template "header" "404"}}
+<div class="paste">
+<div class="paste-toolbox">
+	{{template "home-button"}}
+	<span class="paste-title">
+		<i class="icon-warning"></i> <strong>Ghost got your paste?</strong>
+	</span>
+</div>
+<div class="well well-error">
+	{{.Obj.Error}}
+	<a href="/">Go to the homepage and try again.</a>
+</div>
+</div>
+{{template "footer" .}}
+{{end}}
