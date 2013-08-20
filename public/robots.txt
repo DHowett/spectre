@@ -1,2 +1,4 @@
 User-Agent: *
-Disallow: /
+Disallow: /paste
+Disallow: /session
+Disallow: /languages.json
