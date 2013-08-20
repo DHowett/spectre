@@ -37,20 +37,20 @@ func assetFunction(kind string, names ...string) template.HTML {
 	return template.HTML(buf.String())
 }
 
-func assetDirectory(path string) {
+func assetDirectory(assetMap map[string]*asset, path string) {
 	dir, _ := assetFilesystem.Open(path)
 	fis, _ := dir.Readdir(0)
 	for _, v := range fis {
 		name := v.Name()
 		newPath := filepath.Join(path, name)
 		if v.IsDir() {
-			assetDirectory(newPath)
+			assetDirectory(assetMap, newPath)
 		} else {
 			bits := strings.Split(name, ".")
 			kind := bits[len(bits)-1]
 			name := strings.Join(bits[:len(bits)-1], ".")
 			if name != "" {
-				assets[name+"-"+kind] = &asset{
+				assetMap[name+"-"+kind] = &asset{
 					Path:  newPath,
 					Name:  name,
 					Kind:  kind,
@@ -62,8 +62,9 @@ func assetDirectory(path string) {
 }
 
 func InitAssets() {
-	assets = make(map[string]*asset)
-	assetDirectory("/")
+	newAssetMap := make(map[string]*asset)
+	assetDirectory(newAssetMap, "/")
+	assets = newAssetMap
 }
 
 func AssetFilesystem() http.FileSystem {
