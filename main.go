@@ -642,7 +642,7 @@ func main() {
 	router.Path("/session").Handler(http.HandlerFunc(sessionHandler))
 	router.Path("/session/raw").Handler(http.HandlerFunc(sessionHandler))
 	router.Path("/about").Handler(RenderTemplateHandler("about"))
-	router.Path("/languages.json").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.Methods("GET", "HEAD").Path("/languages.json").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 		if t, err := time.Parse(http.TimeFormat, r.Header.Get("If-Modified-Since")); err == nil && languageConfig.modtime.Before(t.Add(1*time.Second)) {
@@ -654,11 +654,9 @@ func main() {
 		}
 		w.Header().Set("Last-Modified", languageConfig.modtime.UTC().Format(http.TimeFormat))
 
-		w.Write(languageConfig.languageJSON)
-	}))
-	router.Methods("HEAD").Path("/languages.json").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Header().Set("Last-Modified", languageConfig.modtime.UTC().Format(http.TimeFormat))
+		if r.Method == "GET" {
+			w.Write(languageConfig.languageJSON)
+		}
 	}))
 	router.Path("/").Handler(RenderTemplateHandler("index"))
 	router.PathPrefix("/").Handler(http.FileServer(AssetFilesystem()))
