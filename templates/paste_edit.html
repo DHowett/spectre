@@ -5,7 +5,7 @@
 {{end}}
 
 {{define "paste_edit_partial"}}
-<form action="{{if .Obj}}{{pasteURL "edit" .Obj}}{{else}}/paste/new{{end}}" method="post">
+<form id="pasteForm" action="{{if .Obj}}{{pasteURL "edit" .Obj}}{{else}}/paste/new{{end}}" method="post">
 <div class="clearfix paste">
 <div class="paste-toolbox">
 	{{template "home-button"}}
@@ -76,6 +76,18 @@
 	</div>
 </div>{{end}}{{end}}
 </form>
+{{if not .Obj}}<div id="emptyPasteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+		<h3>Empty Paste</h3>
+	</div>
+	<div class="modal-body">
+		<p>Where would I be if I let you paste emptiness into the void?</p>
+	</div>
+	<div class="modal-footer">
+		<button data-dismiss="modal" class="btn" aria-hidden="true">Sorry</button>
+	</div>
+</div>{{end}}
 {{if .Obj}}<div id="deleteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
 	<form name="deleteForm" action="{{pasteURL "delete" .Obj}}" method="post">
 	<div class="modal-header">

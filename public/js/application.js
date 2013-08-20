@@ -261,6 +261,13 @@ $(function() {
 					return false;
 				}
 			});
+			$("#pasteForm").on('submit', function(e) {
+				// Only one of these will exist.
+				if(codeeditor.val().length == 0) {
+					$("#deleteModal, #emptyPasteModal").modal("show");
+					return false;
+				}
+			});
 		}
 	})();
 	(function(){
