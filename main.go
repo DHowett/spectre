@@ -58,12 +58,6 @@ func (e PasteTooLargeError) StatusCode() int {
 	return http.StatusBadRequest
 }
 
-type GenericStringError string
-
-func (e GenericStringError) Error() string {
-	return string(e)
-}
-
 func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 	mime := "text/plain"
@@ -176,7 +170,7 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	body := r.FormValue("text")
 	if len(strings.TrimSpace(body)) == 0 {
 		// 400 here, 200 above (one is displayed to the user, one could be an API response.)
-		RenderError(GenericStringError("Hey, put some text in that paste."), 400, w)
+		RenderError(fmt.Errorf("Hey, put some text in that paste."), 400, w)
 		return
 	}
 
@@ -336,7 +330,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 
 func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
 	if throttleAuthForRequest(r) {
-		RenderError(GenericStringError("Cool it."), 420, w)
+		RenderError(fmt.Errorf("Cool it."), 420, w)
 		return
 	}
 
