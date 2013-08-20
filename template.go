@@ -1,11 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"github.com/golang/glog"
 	"html/template"
 	"io"
-	"time"
 )
 
 var templateFunctions template.FuncMap = template.FuncMap{}
@@ -15,42 +13,7 @@ func RegisterTemplateFunction(name string, function interface{}) {
 	templateFunctions[name] = function
 }
 
-var cacheBustingNonce int64
-
-func assetFunction(kind string, names ...string) template.HTML {
-	var out string
-	if kind == "js" {
-		if Env() == EnvironmentProduction {
-			names = []string{"all.min"}
-		}
-
-		for _, n := range names {
-			out += fmt.Sprintf("<script src=\"/js/%s.js?%d\"></script>", n, cacheBustingNonce)
-		}
-	} else if kind == "css" {
-		if Env() == EnvironmentProduction {
-			names = []string{"all.min"}
-		}
-
-		for _, n := range names {
-			out += fmt.Sprintf("<link rel=\"stylesheet\" href=\"/css/%s.css?%d\" type=\"text/css\" media=\"all\">", n, cacheBustingNonce)
-		}
-	} else if kind == "less" {
-		// Do not use less/less.js in production.
-		if Env() == EnvironmentProduction {
-			return template.HTML("")
-		}
-
-		for _, n := range names {
-			out += "<link rel=\"stylesheet/less\" href=\"/css/" + n + ".less\" type=\"text/css\" media=\"all\">"
-		}
-		out += "<script src=\"/js/less.js\" type=\"text/javascript\"></script>"
-	}
-	return template.HTML(out)
-}
-
 func InitTemplates() {
-	cacheBustingNonce = time.Now().Unix()
 	tmpl = func() *template.Template {
 		return template.Must(template.New("base").Funcs(templateFunctions).ParseGlob("templates/*.html"))
 	}
@@ -70,7 +33,6 @@ func ExecuteTemplate(w io.Writer, name string, data interface{}) {
 
 func init() {
 	RegisterTemplateFunction("equal", func(t1, t2 string) bool { return t1 == t2 })
-	RegisterTemplateFunction("assets", assetFunction)
 
 	RegisterReloadFunction(InitTemplates)
 }

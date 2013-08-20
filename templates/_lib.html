@@ -21,3 +21,7 @@
 {{define "home-button"}}
 <a title="Home" href="/" id="home" class="btn btn-inverse"><i class="icon-home icon-large"></i></a>
 {{end}}
+
+{{define "asset_js"}}{{range .}}<script src="{{.Path}}?{{.Mtime.Unix}}" type="text/javascript"></script>{{end}}{{end}}
+{{define "asset_css"}}{{range .}}<link rel="stylesheet" href="{{.Path}}?{{.Mtime.Unix}}" type="text/css" media="all">{{end}}{{end}}
+{{define "asset_less"}}{{range .}}<link rel="stylesheet/less" href="{{.Path}}?{{.Mtime.Unix}}" type="text/css" media="all">{{end}}<script src="/js/less.js" type="text/javascript"></script>{{end}}

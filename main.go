@@ -657,7 +657,7 @@ func main() {
 		w.Write(languageConfig.languageJSON)
 	}))
 	router.Path("/").Handler(RenderTemplateHandler("index"))
-	router.PathPrefix("/").Handler(http.FileServer(http.Dir("./public")))
+	router.PathPrefix("/").Handler(http.FileServer(AssetFilesystem()))
 	http.Handle("/", &fourOhFourConsumerHandler{router})
 
 	var addr string = arguments.addr
