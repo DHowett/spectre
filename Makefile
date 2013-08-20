@@ -8,7 +8,7 @@ public/css/all.min.css: $(foreach n,bootstrap master.gen fonts fontello pygments
 public/js/all.min.js: $(foreach n,jquery-2.0.3 bootstrap select2 application,public/js/$(n).js)
 	uglifyjs $^ -m > $@
 sync: $(wildcard *.yml) public/css/all.min.css public/js/all.min.js
-	rsync -avv *.yml ./templates ./public uv:ghostbin/ --delete
+	rsync -avvHAX *.yml ./templates ./public uv:ghostbin/ --delete
 .deploy: paste.linux
 	gnutar cj $^ | pv -prac -N upload | ssh uv "cd ghostbin; tar xj && mv paste.linux ghostbin && restart ghostbin"
 	touch .deploy
