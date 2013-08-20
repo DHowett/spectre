@@ -656,6 +656,10 @@ func main() {
 
 		w.Write(languageConfig.languageJSON)
 	}))
+	router.Methods("HEAD").Path("/languages.json").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Last-Modified", languageConfig.modtime.UTC().Format(http.TimeFormat))
+	}))
 	router.Path("/").Handler(RenderTemplateHandler("index"))
 	router.PathPrefix("/").Handler(http.FileServer(AssetFilesystem()))
 	http.Handle("/", &fourOhFourConsumerHandler{router})
