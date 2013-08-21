@@ -267,8 +267,8 @@ $(function() {
 				}
 			});
 			$("#pasteForm").on('submit', function() {
-				// Only one of these will exist.
-				if(codeeditor.val().length === 0) {
+				if((codeeditor.val().match(/[^\s]/)||[]).length == 0) {
+					// Only one of these will exist.
 					$("#deleteModal, #emptyPasteModal").modal("show");
 					return false;
 				}
