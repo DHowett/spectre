@@ -6,7 +6,7 @@
 
 {{define "paste_edit_partial"}}
 <form id="pasteForm" action="{{if .Obj}}{{pasteURL "edit" .Obj}}{{else}}/paste/new{{end}}" method="post">
-<div class="clearfix paste">
+<div class="sizefix clearfix">
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title"><strong>{{if .Obj}}Paste {{.Obj.ID}}{{else}}New Paste{{end}}</strong></span>

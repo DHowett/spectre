@@ -4,7 +4,7 @@
 <form name="deleteForm" action="{{pasteURL "delete" .Obj}}" method="post">
 <strong>Confirm</strong><br>
 <p>Are you sure you want to delete paste {{.Obj.ID}}?</p>
-<div class="paste paste-miniature">
+<div class="paste-miniature">
 <div class="code">{{render .Obj}}</div>
 </div>
 <button type="submit" class="btn btn-danger btn-phone-expand">Destroy! Annihilate!</button>

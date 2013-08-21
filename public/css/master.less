@@ -46,7 +46,13 @@ html, body {
 }
 
 body {
+	min-height: 100%;
 	background-color: @paste-background;
+	color: @paste-text-color;
+	position: relative;
+	@media @media-phone {
+		min-height: 0;
+	}
 }
 
 p {
@@ -77,130 +83,129 @@ input[type=password] {
 	margin-bottom: 0px;
 }
 
-.paste {
+.sizefix {
+	width: 100%;
 	min-height: 100%;
-	background-color: @paste-background;
-	color: @paste-text-color;
 	position: relative;
-	&.paste-miniature {
-		min-height: 0;
-		margin: 0px 0px 5px;
-		border-radius: 4px;
-		.code {
-			font-size: 8pt;
-			padding: 4px;
-		}
-	}
-
 	@media @media-phone {
 		min-height: 0;
 	}
+}
 
-	.code, code {
-		font-family: 'EnvyCodeRWeb', 'monospace';
-		font-size: @paste-font-size;
+.paste-miniature {
+	min-height: 0;
+	margin: 0px 0px 5px;
+	border-radius: 4px;
+	border: 1px solid @minor-highlight-border;
+	.code {
+		font-size: 8pt;
+		padding: 4px;
+	}
+}
+
+.code, code {
+	font-family: 'EnvyCodeRWeb', 'monospace';
+	font-size: @paste-font-size;
+	line-height: @paste-line-height;
+	-webkit-overflow-scrolling: touch;
+	@media @media-phone {
+		font-size: @paste-font-size-mobile;
+		line-height: @paste-line-height-mobile;
+	}
+}
+
+code.ghost {
+	white-space: pre;
+	display: block;
+}
+
+.code {
+	white-space: pre;
+	padding: @paste-content-padding;
+	.box-sizing(border-box);
+
+	// This is to keep the code above the line bar.
+	position: relative;
+	z-index: 2;
+
+	&.code-line-numbers {
+		color: @line-numbers;
+		width: auto;
+		text-align: right;
+		padding-right: 0;
+		padding-left: 0;
+		font-size: 8pt;
 		line-height: @paste-line-height;
-		-webkit-overflow-scrolling: touch;
+		float: left;
+		border-right: 1px solid @line-number-bar;
+		speak: none;
+		cursor: pointer;
 		@media @media-phone {
-			font-size: @paste-font-size-mobile;
 			line-height: @paste-line-height-mobile;
 		}
-	}
-
-	code.ghost {
-		white-space: pre;
-		display: block;
-	}
-
-	.code {
-		white-space: pre;
-		padding: @paste-content-padding;
-		.box-sizing(border-box);
-		height: 100%;
-
-		// This is to keep the code above the line bar.
-		position: relative;
-		z-index: 2;
-
-		&.code-line-numbers {
-			color: @line-numbers;
-			width: auto;
-			text-align: right;
-			padding-right: 0;
-			padding-left: 0;
-			font-size: 8pt;
-			line-height: @paste-line-height;
-			float: left;
-			border-right: 1px solid @line-number-bar;
-			speak: none;
-			cursor: pointer;
-			@media @media-phone {
-				line-height: @paste-line-height-mobile;
-			}
-			@media print {
-				display: none;
-			}
-			span {
-				padding: 0 4px;
-				margin: 0;
-				.box-sizing(border-box);
-				display: block;
-				&:hover {
-					color: @line-numbers-hover;
-				}
+		@media print {
+			display: none;
+		}
+		span {
+			padding: 0 4px;
+			margin: 0;
+			.box-sizing(border-box);
+			display: block;
+			&:hover {
+				color: @line-numbers-hover;
 			}
 		}
 	}
+}
 
-	div.code {
-		overflow-x: auto;
-		text-overflow: clip;
-	}
+div.code {
+	overflow-x: auto;
+	text-overflow: clip;
+}
 
-	textarea.code {
-		word-wrap: normal;
-		overflow-x: auto;
-		overflow-y: hidden;
-		/* Fix the text field's appearance */
-		background-color: inherit;
-		color: inherit;
-		border: none;
-		margin-bottom: 0px;
-		width: 100%;
+textarea.code {
+	word-wrap: normal;
+	overflow-x: auto;
+	overflow-y: hidden;
+	/* Fix the text field's appearance */
+	background-color: inherit;
+	color: inherit;
+	border: none;
+	margin-bottom: 0px;
+	width: 100%;
 
+	outline: none none !important;
+	box-shadow: none;
+	-webkit-appearance: none;
+	&:focus {
 		outline: none none !important;
 		box-shadow: none;
 		-webkit-appearance: none;
-		&:focus {
-			outline: none none !important;
-			box-shadow: none;
-			-webkit-appearance: none;
-		}
 	}
+}
 
-	.textarea-height-wrapper {
+.textarea-height-wrapper {
+	display: block;
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: @toolbox-height;
+	bottom: 0;
+	textarea {
 		display: block;
-		position: absolute;
-		left: 0;
-		right: 0;
-		top: @toolbox-height;
-		bottom: 0;
-		textarea {
-			display: block;
-			width: 100%;
-			height: 100%;
-			.box-sizing(border-box);
-		}
+		width: 100%;
+		height: 100%;
+		.box-sizing(border-box);
 	}
+}
 
-	.code-markdown {
-		font-family: inherit;
-		white-space: normal;
-		code {
-			display: inline;
-			padding: 0;
-			margin: 0;
-		}
+.code-markdown {
+	font-family: inherit;
+	white-space: normal;
+	code {
+		display: inline;
+		padding: 0;
+		margin: 0;
 	}
 }
 

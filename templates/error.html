@@ -1,6 +1,5 @@
 {{define "page_error"}}
 {{template "header" "Error"}}
-<div class="paste">
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
@@ -11,13 +10,11 @@
 	{{.Obj.Error}}<br>
 	<a href="/">Go to the homepage and try again.</a>
 </div>
-</div>
 {{template "footer" .}}
 {{end}}
 
 {{define "page_404"}}
 {{template "header" "404"}}
-<div class="paste">
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
@@ -28,13 +25,11 @@
 	The file you were looking for{{if .Request}}, "{{.Request.URL.Path}}",{{end}} could not be found.<br>
 	<a href="/">Go to the homepage and try again.</a>
 </div>
-</div>
 {{template "footer" .}}
 {{end}}
 
 {{define "page_paste_not_found"}}
 {{template "header" "404"}}
-<div class="paste">
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
@@ -62,7 +57,6 @@
                          \ /
                           V</code>
 	<a href="/">Go to the homepage and try again.</a>
-</div>
 </div>
 {{template "footer" .}}
 {{end}}
