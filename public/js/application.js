@@ -1,8 +1,9 @@
 /* From http://stackoverflow.com/questions/4217962/scroll-to-an-element-using-jquery */
 (function($){
+	"use strict";
 	$.fn.fillWithLineNumbers = function(lines, callback) {
-		var lineNumberTrough = $(this[0])
-		if(lines == lineNumberTrough.data("lines")) return;
+		var lineNumberTrough = $(this[0]);
+		if(lines === (0+lineNumberTrough.data("lines"))) return;
 
 		var n="";
 		var i = 0;
@@ -29,6 +30,7 @@
 })(jQuery);
 
 function loadLanguages() {
+	"use strict";
 	var _s2Languages = {
 		more: false,
 		results: [],
@@ -42,14 +44,16 @@ function loadLanguages() {
 		success: function(_languages) {
 			$.each(_languages, function(i,cat) {
 				var s2cat = cat;
-				s2cat["text"] = cat.Title;
-				s2cat["children"] = cat.Languages;
+				s2cat.text = cat.Title;
+				s2cat.children = cat.Languages;
 				$.each(cat.Languages, function(i, lang) {
-					lang["id"] = lang.Name;
-					lang["text"] = lang.Title;
+					lang.id = lang.Name;
+					lang.text = lang.Title;
 
 					langmap[lang.Name] = lang;
-					if(lang.Names) $.each(lang.Names, function(i, n) { langmap[n] = lang; });
+					if(lang.Names) {
+						$.each(lang.Names, function(i, n) { langmap[n] = lang; });
+					}
 				});
 				_s2Languages.results.push(s2cat);
 			});
@@ -59,10 +63,11 @@ function loadLanguages() {
 }
 
 $(function() {
+	"use strict";
 	(function(){
 		var controls = $("#paste-controls");
 		var langbox = $("#langbox");
-		if(controls.length == 0) return;
+		if(controls.length === 0) return;
 
 		if(langbox.length > 0) {
 			var langData = loadLanguages();
@@ -74,7 +79,7 @@ $(function() {
 					if(!lang.Name) return false;
 					if(lang.Title.toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
 					if(lang.Name.toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
-					for(i in lang.Names) {
+					for(var i in lang.Names) {
 						if(lang.Names[i].toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
 					}
 					return false;
@@ -87,11 +92,11 @@ $(function() {
 		}
 
 		var mql = window.matchMedia("screen and (max-width: 767px)");
-		var lastMqlMatch = undefined;
+		var lastMqlMatch;
 		var mqlListener = function(mql) {
 			if(mql.matches === lastMqlMatch) return;
 			controls.detach();
-			var newParent = undefined;
+			var newParent;
 			if(mql.matches) {
 				newParent = $("#phone-paste-control-container");
 			} else {
@@ -108,13 +113,13 @@ $(function() {
 		mql.addListener(mqlListener);
 	})();
 	(function(){
-		var encModal = $("#encryptModal")
-		if(encModal.length == 0) return;
+		var encModal = $("#encryptModal");
+		if(encModal.length === 0) return;
 
 		encModal.modal({show: false});
 
 		encModal.find("input[type='password']").keypress(function(e) {
-			if(e.which == 13) {
+			if(e.which === 13) {
 				encModal.modal("hide");
 				return false;
 			}
@@ -137,7 +142,7 @@ $(function() {
 	})();
 	(function(){
 		var expModal = $("#expireModal");
-		if(expModal.length == 0) return;
+		if(expModal.length === 0) return;
 
 		expModal.modal({show: false});
 
@@ -166,7 +171,7 @@ $(function() {
 	var code = $("#code"), codeeditor = $("#code-editor");
 
 	(function(){
-		if(lineNumberTrough.length == 0) return;
+		if(lineNumberTrough.length === 0) return;
 
 		if(code.length > 0) {
 			var linebar = $(document.createElement('div'))
@@ -184,26 +189,26 @@ $(function() {
 					.css("top", $(this).position().top + $(this).parent().position().top)
 					.width(code.outerWidth())
 					.show();
-			}
+			};
 
 			var setSelectedLineNumber = function(line) {
-				if(typeof line != 'undefined') {
+				if(typeof line !== 'undefined') {
 					permabar.data("cur-line", line);
 					history.replaceState({"line":line}, "", "#L"+line);
 				} else {
 					permabar.removeData("cur-line");
 					history.replaceState(null, "", "#");
 				}
-			}
+			};
 
 			var lineFromHash = function(hash) {
 				if(!hash) return undefined;
 				var v = hash.match(/^#L(\d+)/);
-				if(typeof v != 'undefined' && v.length > 0) {
+				if(typeof v !== 'undefined' && v.length > 0) {
 					return v[1];
 				}
 				return undefined;
-			}
+			};
 
 			lineNumberTrough.fillWithLineNumbers((code.text().match(/\n/g)||[]).length+1, function() {
 				lineNumberTrough.children().mouseenter(function() {
@@ -212,7 +217,7 @@ $(function() {
 					linebar.hide();
 				}).click(function() {
 					var line = $(this).text();
-					if(permabar.data("cur-line") == line) {
+					if((0+permabar.data("cur-line")) === line) {
 						setSelectedLineNumber(undefined);
 						permabar.hide();
 						return;
@@ -221,7 +226,7 @@ $(function() {
 					positionLinebar.call(this, permabar);
 				});
 
-				$(window).on("load popstate", function(e) {
+				$(window).on("load popstate", function() {
 					var n = lineFromHash(window.location.hash);
 					if(n) {
 						var linespan = $("span:nth-child("+n+")", lineNumberTrough);
@@ -233,7 +238,7 @@ $(function() {
 					}
 				});
 			});
-			$(window).on("resize", function(e) {
+			$(window).on("resize", function() {
 				$(linebar).width(code.outerWidth());
 				$(permabar).width(code.outerWidth());
 			});
@@ -254,16 +259,16 @@ $(function() {
 	(function(){
 		if(codeeditor.length > 0) {
 			codeeditor.keydown(function(e) {
-				if(e.keyCode == 9 && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+				if(e.keyCode === 9 && !e.ctrlKey && !e.altKey && !e.shiftKey) {
 					var ends = [this.selectionStart, this.selectionEnd];
 					this.value = this.value.substring(0, ends[0]) + "\t" + this.value.substring(ends[1], this.value.length);
 					this.selectionStart = this.selectionEnd = ends[0] + 1;
 					return false;
 				}
 			});
-			$("#pasteForm").on('submit', function(e) {
+			$("#pasteForm").on('submit', function() {
 				// Only one of these will exist.
-				if(codeeditor.val().length == 0) {
+				if(codeeditor.val().length === 0) {
 					$("#deleteModal, #emptyPasteModal").modal("show");
 					return false;
 				}
