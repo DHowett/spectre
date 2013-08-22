@@ -22,7 +22,7 @@
 {{end}}
 
 {{define "paste_edit_partial"}}
-<form id="pasteForm" action="{{if .Obj}}{{pasteURL "edit" .Obj}}{{else}}/paste/new{{end}}" method="post">
+<form id="pasteForm" action="{{if .Obj}}{{pasteURL "edit" .Obj}}{{else}}/paste/new{{end}}" method="post" data-context="{{if .Obj}}edit{{else}}new{{end}}">
 <div class="sizefix clearfix">
 <div class="paste-toolbox">
 	{{template "home-button"}}

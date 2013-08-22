@@ -86,6 +86,7 @@ $(function() {
 	if(pasteForm.length > 0) {
 		// Initialize the form.
 		var langbox = pasteForm.find("#langbox");
+		var context = pasteForm.data("context");
 
 		Ghostbin.loadLanguages();
 
