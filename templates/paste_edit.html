@@ -1,6 +1,23 @@
 {{define "page_paste_edit"}}
 {{template "header" .Obj.ID}}
 {{template "paste_edit_partial" .}}
+
+<div id="deleteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<form name="deleteForm" action="{{pasteURL "delete" .Obj}}" method="post">
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+		<h3>Confirm Deletion</h3>
+	</div>
+	<div class="modal-body">
+		<p>Are you sure you want to delete paste <strong>{{.Obj.ID}}</strong>?</p>
+	</div>
+	<div class="modal-footer">
+		<button type="submit" class="btn btn-danger">Destroy! Annihilate!</button>
+		<button data-dismiss="modal" class="btn" aria-hidden="true">Nevermind</button>
+	</div>
+	</form>
+</div>
+
 {{template "footer" .}}
 {{end}}
 
@@ -40,6 +57,7 @@
 </div>
 <div class="well visible-phone" id="phone-paste-control-container"></div>
 <input type="hidden" name="expire" value="{{if .Obj}}{{.Obj.Expiration}}{{else}}-1{{end}}">
+<input type="hidden" name="password" value="">
 <div id="expireModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
 	<div class="modal-header">
 		<button type="button" class="close" data-dismiss="modal" aria-hidden="true"><i class="icon-cancel"></i></button>
@@ -59,50 +77,7 @@
 		<button data-dismiss="modal" class="btn" aria-hidden="true">Cancel</button>
 	</div>
 </div>
-{{if not .Obj}}{{if encryptionAllowed .}}<div id="encryptModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
-	<div class="modal-header">
-		<button type="button" class="close" data-dismiss="modal" aria-hidden="true"><i class="icon-cancel"></i></button>
-		<h3>Encrypt Paste</h3>
-	</div>
-	<div class="modal-body">
-		<p>Enter a password with which to encrypt this paste, or leave it blank to eschew encryption.</p>
-		<div class="input-prepend phone-expand">
-			<span class="add-on"><i class="icon-key"> </i></span>
-			<div class="input-wrapper"><input type="password" name="password" autocomplete="off" placeholder="password"></div>
-		</div>
-	</div>
-	<div class="modal-footer">
-		<button data-dismiss="modal" class="btn" aria-hidden="true">Okay</button>
-	</div>
-</div>{{end}}{{end}}
 </form>
-{{if not .Obj}}<div id="emptyPasteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
-	<div class="modal-header">
-		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
-		<h3>You try the save button.</h3>
-	</div>
-	<div class="modal-body">
-		<p>You paste nothingness into the void.</p><p><strong>You are eaten by a grue.</strong></p>
-	</div>
-	<div class="modal-footer">
-		<button data-dismiss="modal" class="btn" aria-hidden="true">Play Again</button>
-	</div>
-</div>{{end}}
-{{if .Obj}}<div id="deleteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
-	<form name="deleteForm" action="{{pasteURL "delete" .Obj}}" method="post">
-	<div class="modal-header">
-		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
-		<h3>Confirm Deletion</h3>
-	</div>
-	<div class="modal-body">
-		<p>Are you sure you want to delete paste <strong>{{.Obj.ID}}</strong>?</p>
-	</div>
-	<div class="modal-footer">
-		<button type="submit" class="btn btn-danger">Destroy! Annihilate!</button>
-		<button data-dismiss="modal" class="btn" aria-hidden="true">Nevermind</button>
-	</div>
-	</form>
-</div>{{end}}
 {{end}}
 
 {{define "s2langbox"}}{{ $lang := or .Language.Name "text" }}<input type="hidden" class="dropdown" id="langbox" name="lang" data-selected="{{$lang}}">{{end}}

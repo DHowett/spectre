@@ -1,6 +1,36 @@
 {{define "page_index"}}
 {{template "header"}}
 {{template "paste_edit_partial" .}}
+
+{{if encryptionAllowed .}}<div id="encryptModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal" aria-hidden="true"><i class="icon-cancel"></i></button>
+		<h3>Encrypt Paste</h3>
+	</div>
+	<div class="modal-body">
+		<p>Enter a password with which to encrypt this paste, or leave it blank to eschew encryption.</p>
+		<div class="input-prepend phone-expand">
+			<span class="add-on"><i class="icon-key"> </i></span>
+			<div class="input-wrapper"><input type="password" name="password" autocomplete="off" placeholder="password"></div>
+		</div>
+	</div>
+	<div class="modal-footer">
+		<button data-dismiss="modal" class="btn" aria-hidden="true">Okay</button>
+	</div>
+</div>{{end}}
+<div id="emptyPasteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+		<h3>You try the save button.</h3>
+	</div>
+	<div class="modal-body">
+		<p>You paste nothingness into the void.</p><p><strong>You are eaten by a grue.</strong></p>
+	</div>
+	<div class="modal-footer">
+		<button data-dismiss="modal" class="btn" aria-hidden="true">Play Again</button>
+	</div>
+</div>
+
 {{template "index_local_customizations"}}
 {{template "footer" .}}
 {{end}}

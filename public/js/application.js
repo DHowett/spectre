@@ -117,8 +117,10 @@ $(function() {
 		if(encModal.length === 0) return;
 
 		encModal.modal({show: false});
+		var modalPasswordField = encModal.find("input[type='password']"),
+		    pastePasswordField = $("#pasteForm").find("input[name='password']");
 
-		encModal.find("input[type='password']").keypress(function(e) {
+		modalPasswordField.keypress(function(e) {
 			if(e.which === 13) {
 				encModal.modal("hide");
 				return false;
@@ -130,9 +132,12 @@ $(function() {
 			$("#encryptionButton .button-data-label").text(encrypted ? "On" : "");
 		};
 
-		encModal.on("shown", function() {
+		encModal.on("show", function() {
+			modalPasswordField.val(pastePasswordField.val());
+		}).on("shown", function() {
 			$(this).find("input").eq(0).focus().select();
 		}).on("hidden", function() {
+			pastePasswordField.val(modalPasswordField.val());
 			setEncrypted($(this).find("input").val().length > 0);
 		});
 
