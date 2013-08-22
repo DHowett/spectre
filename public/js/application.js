@@ -30,12 +30,12 @@
 })(jQuery);
 
 (function(ctx) {
+	"use strict";
 	ctx.Ghostbin = function() {
 		var _s2Languages;
 		var _languageMap;
 		return {
 			loadLanguages: function() {
-				"use strict";
 				var s2Languages = {
 					more: false,
 					results: [],
@@ -133,8 +133,8 @@ $(function() {
 		if(encModal.length === 0) return;
 
 		encModal.modal({show: false});
-		var modalPasswordField = encModal.find("input[type='password']"),
-		    pastePasswordField = $("#pasteForm").find("input[name='password']");
+		var	modalPasswordField = encModal.find("input[type='password']"),
+			pastePasswordField = $("#pasteForm").find("input[name='password']");
 
 		modalPasswordField.keypress(function(e) {
 			if(e.which === 13) {
@@ -288,7 +288,7 @@ $(function() {
 				}
 			});
 			$("#pasteForm").on('submit', function() {
-				if((codeeditor.val().match(/[^\s]/)||[]).length == 0) {
+				if((codeeditor.val().match(/[^\s]/)||[]).length === 0) {
 					// Only one of these will exist.
 					$("#deleteModal, #emptyPasteModal").modal("show");
 					return false;
