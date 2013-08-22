@@ -75,6 +75,18 @@
 				if(typeof name === "undefined") return undefined;
 				return _languageMap[name];
 			},
+			defaultLanguage: function() {
+				return this.languageNamed(localStorage["defaultLanguage"]);
+			},
+			setDefaultLanguage: function(lang) {
+				localStorage["defaultLanguage"] = lang.Name;
+			},
+			defaultExpiration: function() {
+				return localStorage["defaultExpiration"] || "-1";
+			},
+			setDefaultExpiration: function(value) {
+				localStorage["defaultExpiration"] = value;
+			},
 		};
 	}();
 })(window);
@@ -104,8 +116,13 @@ $(function() {
 			},
 		});
 		var lang = Ghostbin.languageNamed(langbox.data("selected")) ||
+				Ghostbin.defaultLanguage() ||
 				Ghostbin.languageNamed("text");
 		langbox.select2("data", lang);
+
+		if(context === "new") {
+			pasteForm.find("input[name='expire']").val(Ghostbin.defaultExpiration());
+		}
 	}
 
 	(function(){

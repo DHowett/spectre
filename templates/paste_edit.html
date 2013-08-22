@@ -80,4 +80,4 @@
 </form>
 {{end}}
 
-{{define "s2langbox"}}{{ $lang := or .Language.Name "text" }}<input type="hidden" class="dropdown" id="langbox" name="lang" data-selected="{{$lang}}">{{end}}
+{{define "s2langbox"}}<input type="hidden" class="dropdown" id="langbox" name="lang"{{if .Language}} data-selected="{{.Language.Name}}"{{end}}>{{end}}
