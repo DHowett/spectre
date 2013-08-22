@@ -183,6 +183,11 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	encrypted := password != ""
 
+	if encrypted && !RequestIsHTTPS(r) {
+		RenderError(fmt.Errorf("I refuse to accept passwords over HTTP."), 400, w)
+		return
+	}
+
 	hasher := md5.New()
 	io.WriteString(hasher, body)
 	hashToken := "H|" + SourceIPForRequest(r) + "|" + base32Encoder.EncodeToString(hasher.Sum(nil))
