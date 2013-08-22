@@ -72,6 +72,7 @@
 				return _s2Languages;
 			},
 			languageNamed: function(name) {
+				if(typeof name === "undefined") return undefined;
 				return _languageMap[name];
 			},
 		};
@@ -80,32 +81,35 @@
 
 $(function() {
 	"use strict";
+
+	var pasteForm = $("#pasteForm");
+	if(pasteForm.length > 0) {
+		// Initialize the form.
+		var langbox = pasteForm.find("#langbox");
+
+		Ghostbin.loadLanguages();
+
+		langbox.select2({
+			data: Ghostbin.languagesForSelect2(),
+			matcher: function(term, text, lang) {
+				// The ifs here are blown apart so that we might short-circuit.
+				if(!lang.Name) return false;
+				if(lang.Title.toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
+				if(lang.Name.toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
+				for(var i in lang.Names) {
+					if(lang.Names[i].toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
+				}
+				return false;
+			},
+		});
+		var lang = Ghostbin.languageNamed(langbox.data("selected")) ||
+				Ghostbin.languageNamed("text");
+		langbox.select2("data", lang);
+	}
+
 	(function(){
 		var controls = $("#paste-controls");
-		var langbox = $("#langbox");
 		if(controls.length === 0) return;
-
-		if(langbox.length > 0) {
-			Ghostbin.loadLanguages();
-			var curLanguage = langbox.data("selected");
-			langbox.select2({
-				data: Ghostbin.languagesForSelect2(),
-				matcher: function(term, text, lang) {
-					// The ifs here are blown apart so that we might short-circuit.
-					if(!lang.Name) return false;
-					if(lang.Title.toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
-					if(lang.Name.toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
-					for(var i in lang.Names) {
-						if(lang.Names[i].toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
-					}
-					return false;
-				},
-				initSelection: function(e, cb) {
-					cb(Ghostbin.languageNamed(e.val()));
-				},
-			});
-			langbox.select2("val", curLanguage === "unknown" ? "text" : curLanguage);
-		}
 
 		var mql = window.matchMedia("screen and (max-width: 767px)");
 		var lastMqlMatch;
@@ -134,7 +138,7 @@ $(function() {
 
 		encModal.modal({show: false});
 		var	modalPasswordField = encModal.find("input[type='password']"),
-			pastePasswordField = $("#pasteForm").find("input[name='password']");
+			pastePasswordField = pasteForm.find("input[name='password']");
 
 		modalPasswordField.keypress(function(e) {
 			if(e.which === 13) {
@@ -167,7 +171,7 @@ $(function() {
 
 		expModal.modal({show: false});
 
-		var expInput = $("input[name='expire']");
+		var expInput = pasteForm.find("input[name='expire']");
 		var expDataLabel = $("#expirationButton .button-data-label");
 
 		var setExpirationSelected = function() {
