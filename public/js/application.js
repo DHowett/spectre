@@ -29,9 +29,9 @@
 	};
 })(jQuery);
 
-(function(ctx) {
+(function(window) {
 	"use strict";
-	ctx.Ghostbin = function() {
+	window.Ghostbin = function() {
 		var _s2Languages;
 		var _languageMap;
 		return {
