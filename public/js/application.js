@@ -29,38 +29,54 @@
 	};
 })(jQuery);
 
-function loadLanguages() {
-	"use strict";
-	var _s2Languages = {
-		more: false,
-		results: [],
-	};
-	var langmap = {};
-	$.ajax({
-		url: "/languages.json",
-		async: false,
-		dataType: "json",
-		cache: true,
-		success: function(_languages) {
-			$.each(_languages, function(i,cat) {
-				var s2cat = cat;
-				s2cat.text = cat.Title;
-				s2cat.children = cat.Languages;
-				$.each(cat.Languages, function(i, lang) {
-					lang.id = lang.Name;
-					lang.text = lang.Title;
+(function(ctx) {
+	ctx.Ghostbin = function() {
+		var _s2Languages;
+		var _languageMap;
+		return {
+			loadLanguages: function() {
+				"use strict";
+				var s2Languages = {
+					more: false,
+					results: [],
+				};
+				var langmap = {};
+				$.ajax({
+					url: "/languages.json",
+					async: false,
+					dataType: "json",
+					cache: true,
+					success: function(_languages) {
+						$.each(_languages, function(i,cat) {
+							var s2cat = cat;
+							s2cat.text = cat.Title;
+							s2cat.children = cat.Languages;
+							$.each(cat.Languages, function(i, lang) {
+								lang.id = lang.Name;
+								lang.text = lang.Title;
 
-					langmap[lang.Name] = lang;
-					if(lang.Names) {
-						$.each(lang.Names, function(i, n) { langmap[n] = lang; });
+								langmap[lang.Name] = lang;
+								if(lang.Names) {
+									$.each(lang.Names, function(i, n) { langmap[n] = lang; });
+								}
+							});
+							s2Languages.results.push(s2cat);
+						});
 					}
 				});
-				_s2Languages.results.push(s2cat);
-			});
-		}
-	});
-	return [_s2Languages, langmap];
-}
+				_languageMap = langmap;
+				_s2Languages = s2Languages;
+				return;
+			},
+			languagesForSelect2: function() {
+				return _s2Languages;
+			},
+			languageNamed: function(name) {
+				return _languageMap[name];
+			},
+		};
+	}();
+})(window);
 
 $(function() {
 	"use strict";
@@ -70,10 +86,10 @@ $(function() {
 		if(controls.length === 0) return;
 
 		if(langbox.length > 0) {
-			var langData = loadLanguages();
+			Ghostbin.loadLanguages();
 			var curLanguage = langbox.data("selected");
 			langbox.select2({
-				data: langData[0],
+				data: Ghostbin.languagesForSelect2(),
 				matcher: function(term, text, lang) {
 					// The ifs here are blown apart so that we might short-circuit.
 					if(!lang.Name) return false;
@@ -85,7 +101,7 @@ $(function() {
 					return false;
 				},
 				initSelection: function(e, cb) {
-					cb(langData[1][e.val()]);
+					cb(Ghostbin.languageNamed(e.val()));
 				},
 			});
 			langbox.select2("val", curLanguage === "unknown" ? "text" : curLanguage);
