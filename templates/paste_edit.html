@@ -29,6 +29,12 @@
 	<span class="paste-title"><strong>{{if .Obj}}Paste {{.Obj.ID}}{{else}}New Paste{{end}}</strong></span>
 	<div class="paste-toolbox-buttons pull-right" id="desktop-paste-control-container">
 		<div id="paste-controls">
+			{{if not .Obj}}
+			<button id="optionsButton" title="Options" type="button" class="btn btn-inverse">
+				<i class="icon-wrench icon-large"></i>
+				<span class="button-title">Options</span>
+			</button>
+			{{end}}
 			<button id="expirationButton" title="Expiration" type="button" class="btn btn-inverse">
 				<i class="icon-clock icon-large"></i>
 				<span class="button-title">Expiration</span>

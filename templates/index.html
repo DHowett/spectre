@@ -30,6 +30,24 @@
 		<button data-dismiss="modal" class="btn" aria-hidden="true">Play Again</button>
 	</div>
 </div>
+<div id="optionsModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+		<h3>Options</h3>
+	</div>
+	<div class="modal-body">
+		<h4>Persistence</h4>
+		<label class="checkbox">
+			<input name="saveLanguage" type="checkbox" data-gb-key="saveLanguage"> Remember my last-used language
+		</label>
+		<label class="checkbox">
+			<input name="saveExpiration" type="checkbox" data-gb-key="saveExpiration"> Remember my last-used expiration
+		</label>
+	</div>
+	<div class="modal-footer">
+		<button data-dismiss="modal" class="btn" aria-hidden="true">Okay</button>
+	</div>
+</div>
 
 {{template "index_local_customizations"}}
 {{template "footer" .}}
