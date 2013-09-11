@@ -123,6 +123,7 @@ $(function() {
 	"use strict";
 
 	var pasteForm = $("#pasteForm");
+	var code = $("#code"), codeeditor = $("#code-editor");
 	if(pasteForm.length > 0) {
 		// Initialize the form.
 		var langbox = pasteForm.find("#langbox");
@@ -179,6 +180,9 @@ $(function() {
 						Ghostbin.clearDefaultLanguage();
 					}
 				}
+			} else {
+				$("#deleteModal, #emptyPasteModal").modal("show");
+				return false;
 			}
 		});
 	}
@@ -259,7 +263,6 @@ $(function() {
 
 	// Common for the following functions.
 	var lineNumberTrough = $("#line-numbers");
-	var code = $("#code"), codeeditor = $("#code-editor");
 
 	(function(){
 		if(lineNumberTrough.length === 0) return;
@@ -354,13 +357,6 @@ $(function() {
 					var ends = [this.selectionStart, this.selectionEnd];
 					this.value = this.value.substring(0, ends[0]) + "\t" + this.value.substring(ends[1], this.value.length);
 					this.selectionStart = this.selectionEnd = ends[0] + 1;
-					return false;
-				}
-			});
-			$("#pasteForm").on('submit', function() {
-				if((codeeditor.val().match(/[^\s]/)||[]).length === 0) {
-					// Only one of these will exist.
-					$("#deleteModal, #emptyPasteModal").modal("show");
 					return false;
 				}
 			});
