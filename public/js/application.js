@@ -89,16 +89,31 @@
 				return _languageMap[name];
 			},
 			defaultLanguage: function() {
-				return this.languageNamed(localStorage["defaultLanguage"]);
+				return this.languageNamed(this.getPreference("defaultLanguage"));
 			},
 			setDefaultLanguage: function(lang) {
-				localStorage["defaultLanguage"] = lang.Name;
+				this.setPreference("defaultLanguage", lang.Name);
+			},
+			clearDefaultLanguage: function() {
+				this.clearPreference("defaultLanguage");
 			},
 			defaultExpiration: function() {
-				return localStorage["defaultExpiration"] || "-1";
+				return this.getPreference("defaultExpiration", "-1");
 			},
 			setDefaultExpiration: function(value) {
-				localStorage["defaultExpiration"] = value;
+				this.setPreference("defaultExpiration", value);
+			},
+			clearDefaultExpiration: function() {
+				this.clearPreference("defaultExpiration");
+			},
+			setPreference: function(k, v) {
+				localStorage[k] = v;
+			},
+			getPreference: function(k, dflt) {
+				return localStorage[k] || dflt;
+			},
+			clearPreference: function(k) {
+				delete localStorage[k];
 			},
 		};
 	}();
@@ -135,7 +150,37 @@ $(function() {
 
 		if(context === "new") {
 			pasteForm.find("input[name='expire']").val(Ghostbin.defaultExpiration());
+
+			var optModal = $("#optionsModal");
+			optModal.modal({show: false});
+
+			optModal.find("input[type='checkbox']").on("change", function() {
+				Ghostbin.setPreference($(this).data("gb-key"), this.checked ? "true" : "false");
+			}).each(function() {
+				this.checked = Ghostbin.getPreference($(this).data("gb-key"), "false") === "true";
+			});
+
+			$("#optionsButton").on("click", function() {
+				optModal.modal("show");
+			});
 		}
+		pasteForm.on('submit', function() {
+			if((codeeditor.val().match(/[^\s]/)||[]).length !== 0) {
+				if(context === "new") {
+					if(Ghostbin.getPreference("saveExpiration", "false") === "true") {
+						Ghostbin.setDefaultExpiration(pasteForm.find("input[name='expire']").val());
+					} else {
+						Ghostbin.clearDefaultExpiration();
+					}
+
+					if(Ghostbin.getPreference("saveLanguage", "false") === "true") {
+						Ghostbin.setDefaultLanguage(langbox.select2("data"));
+					} else {
+						Ghostbin.clearDefaultLanguage();
+					}
+				}
+			}
+		});
 	}
 
 	(function(){
