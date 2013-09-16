@@ -30,6 +30,11 @@
 @media-tablet: ~"screen and (min-width: 768px)";
 @media-phone: ~"screen and (max-width: 767px)";
 
+// Suppress default styling on Firefox for Android
+button, button:active, textarea, textarea:focus, input, input:focus {
+	background-image: none;
+}
+
 .box-sizing (@box) {
 	-webkit-box-sizing: @box;
 	-moz-box-sizing: @box;
