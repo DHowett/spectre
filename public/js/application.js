@@ -362,7 +362,15 @@ $(function() {
 			});
 		}
 	})();
-	(function(){
-		$('[autofocus]:not(:focus)').eq(0).focus();
-	})();
+
+	$('[autofocus]:not(:focus)').eq(0).focus();
+	$('[title]').tooltip({
+		trigger: "hover",
+		placement: "bottom",
+		container: "body",
+		delay: {
+			show: 250,
+			hide: 50,
+		},
+	});
 });
