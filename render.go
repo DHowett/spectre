@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/golang/glog"
+	"math/rand"
 	"net/http"
 	"net/url"
 )
@@ -86,5 +88,26 @@ func RequiredModelObjectHandler(lookup ModelLookupFunc, fn ModelRenderFunc) http
 		} else {
 			fn(obj, w, r)
 		}
+	})
+}
+
+var ghosts []string
+
+func init() {
+	RegisterReloadFunction(func() {
+		ghosts = []string{}
+		err := YAMLUnmarshalFile("ghosts.yml", &ghosts)
+		if err != nil {
+			glog.Error(err)
+		}
+		for i, v := range ghosts {
+			ghosts[i] = " " + v[1:]
+		}
+	})
+	RegisterTemplateFunction("randomGhost", func() string {
+		if len(ghosts) == 0 {
+			return "[no ghosts found :(]"
+		}
+		return ghosts[rand.Intn(len(ghosts))]
 	})
 }
