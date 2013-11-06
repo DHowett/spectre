@@ -147,7 +147,7 @@ func pasteUpdateCore(o Model, w http.ResponseWriter, r *http.Request, newPaste b
 
 	expireIn := r.FormValue("expire")
 	if expireIn != "" && expireIn != "-1" {
-		dur, _ := time.ParseDuration(expireIn)
+		dur, _ := ParseDuration(expireIn)
 		if dur > MAX_EXPIRE_DURATION {
 			dur = MAX_EXPIRE_DURATION
 		}
