@@ -657,6 +657,24 @@ func main() {
 			w.Write(languageConfig.languageJSON)
 		}
 	}))
+
+	launchTime := time.Now()
+	router.Methods("GET").Path("/stats").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		stats := make(map[string]string)
+		ms := &runtime.MemStats{}
+		runtime.ReadMemStats(ms)
+		stats["mem_alloc"] = fmt.Sprintf("%v", ByteSize(ms.Alloc))
+		if renderCache.c == nil {
+			stats["cached"] = "(no cache)"
+		} else {
+			stats["cached"] = fmt.Sprintf("%d", renderCache.c.Len())
+		}
+		dur := time.Now().Sub(launchTime)
+		dur = dur - (dur % time.Second)
+		stats["uptime"] = fmt.Sprintf("%v", dur)
+		stats["expiring"] = fmt.Sprintf("%d", pasteExpirator.Len())
+		ExecuteTemplate(w, "page_stats", stats)
+	}))
 	router.Path("/").Handler(RenderTemplateHandler("index"))
 	router.PathPrefix("/").Handler(http.FileServer(AssetFilesystem()))
 	http.Handle("/", &fourOhFourConsumerHandler{router})
