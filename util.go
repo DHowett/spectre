@@ -155,6 +155,8 @@ func init() {
 		environment = EnvironmentDevelopment
 	}
 
+	RegisterTemplateFunction("env", func() string { return environment })
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGHUP)
 	go func() {

@@ -19,11 +19,7 @@ var assetFilesystem http.FileSystem
 
 func assetFunction(kind string, names ...string) template.HTML {
 	if Env() == EnvironmentProduction {
-		if kind == "less" {
-			return template.HTML("")
-		} else {
-			names = []string{"all.min"}
-		}
+		names = []string{"all.min"}
 	}
 
 	foundAssets := make([]*asset, len(names))
