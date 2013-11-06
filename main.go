@@ -23,7 +23,7 @@ import (
 )
 
 const PASTE_CACHE_MAX_ENTRIES int = 1000
-const PASTE_MAXIMUM_LENGTH int = 1048576 // 1 MB
+const PASTE_MAXIMUM_LENGTH ByteSize = 1048576 // 1 MB
 const MAX_EXPIRE_DURATION time.Duration = 15 * 24 * time.Hour
 
 type PasteAccessDeniedError struct {
@@ -48,10 +48,10 @@ func (e PasteNotFoundError) ErrorTemplateName() string {
 	return "page_paste_not_found"
 }
 
-type PasteTooLargeError int
+type PasteTooLargeError ByteSize
 
 func (e PasteTooLargeError) Error() string {
-	return fmt.Sprintf("Paste length %d exceeds maximum length of %d.", e, PASTE_MAXIMUM_LENGTH)
+	return fmt.Sprintf("Your input (%v) exceeds the maximum paste length, which is %v.", ByteSize(e), PASTE_MAXIMUM_LENGTH)
 }
 
 func (e PasteTooLargeError) StatusCode() int {
@@ -125,8 +125,9 @@ func pasteUpdateCore(o Model, w http.ResponseWriter, r *http.Request, newPaste b
 		return
 	}
 
-	if len(body) > PASTE_MAXIMUM_LENGTH {
-		panic(PasteTooLargeError(len(body)))
+	pasteLen := ByteSize(len(body))
+	if pasteLen > PASTE_MAXIMUM_LENGTH {
+		panic(PasteTooLargeError(pasteLen))
 	}
 
 	if !newPaste {
@@ -174,8 +175,9 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(body) > PASTE_MAXIMUM_LENGTH {
-		err := PasteTooLargeError(len(body))
+	pasteLen := ByteSize(len(body))
+	if pasteLen > PASTE_MAXIMUM_LENGTH {
+		err := PasteTooLargeError(pasteLen)
 		RenderError(err, err.StatusCode(), w)
 		return
 	}
