@@ -1,5 +1,5 @@
-{{define "page_paste_show"}}
-{{template "header" .Obj.ID}}
+{{define "paste_show_title"}}{{.Obj.ID}}{{end}}
+{{define "paste_show_body"}}
 <div class="paste-toolbox unselectable">
 	{{template "home-button"}}
 	<span class="paste-title">
@@ -29,5 +29,4 @@
 {{if not .Obj.Language.SuppressLineNumbers}}<div class="code code-line-numbers unselectable" id="line-numbers" aria-hidden="true"></div>{{end}}
 <div class="code{{if .Obj.Language.DisplayStyle}} code-{{.Obj.Language.DisplayStyle}}{{end}}" id="code">{{render .Obj}}</div>
 <div class="well visible-phone unselectable" id="phone-paste-control-container"></div>
-{{template "footer" .}}
 {{end}}

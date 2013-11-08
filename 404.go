@@ -35,6 +35,6 @@ func (h *fourOhFourConsumerHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	writer := &fourOhFourConsumerWriter{ResponseWriter: w}
 	h.Handler.ServeHTTP(writer, r)
 	if writer.tripped {
-		ExecuteTemplate(writer.ResponseWriter, "page_404", &RenderContext{nil, r})
+		RenderPage(writer.ResponseWriter, r, "404", nil)
 	}
 }

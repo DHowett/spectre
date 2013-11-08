@@ -28,7 +28,7 @@ func assetFunction(kind string, names ...string) template.HTML {
 	}
 
 	buf := &bytes.Buffer{}
-	ExecuteTemplate(buf, "asset_"+kind, foundAssets)
+	ExecuteTemplate(buf, "asset_"+kind, &RenderContext{Obj: foundAssets})
 
 	return template.HTML(buf.String())
 }

@@ -1,5 +1,5 @@
-{{define "page_paste_delete_confirm"}}
-{{template "header" "Delete?"}}
+{{define "paste_delete_confirm_title"}}Delete?{{end}}
+{{define "paste_delete_confirm_body"}}
 <div class="well">
 <form name="deleteForm" action="{{pasteURL "delete" .Obj}}" method="post">
 <strong>Confirm</strong><br>
@@ -11,5 +11,4 @@
 <a href="{{pasteURL "show" .Obj}}" class="btn btn-phone-expand">Nevermind</a>
 </form>
 </div>
-{{template "footer" .}}
 {{end}}

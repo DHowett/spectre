@@ -45,7 +45,7 @@ func (e PasteNotFoundError) StatusCode() int {
 }
 
 func (e PasteNotFoundError) ErrorTemplateName() string {
-	return "page_paste_not_found"
+	return "paste_not_found"
 }
 
 type PasteTooLargeError ByteSize
@@ -331,7 +331,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.Write([]byte(strings.Join(ids, " ")))
 	} else {
-		ExecuteTemplate(w, "page_session_pastes", &RenderContext{pastes, r})
+		RenderPage(w, r, "session", pastes)
 	}
 }
 
@@ -594,7 +594,7 @@ func main() {
 
 	pasteRouter.Methods("GET").
 		Path("/{id}").
-		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, RenderTemplateForModel("paste_show"))).
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, RenderPageForModel("paste_show"))).
 		Name("show")
 
 	pasteRouter.Methods("GET").
@@ -608,7 +608,7 @@ func main() {
 
 	pasteRouter.Methods("GET").
 		Path("/{id}/edit").
-		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_edit")))).
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderPageForModel("paste_edit")))).
 		Name("edit")
 	pasteRouter.Methods("POST").
 		Path("/{id}/edit").
@@ -616,7 +616,7 @@ func main() {
 
 	pasteRouter.Methods("GET").
 		Path("/{id}/delete").
-		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderTemplateForModel("paste_delete_confirm")))).
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(RenderPageForModel("paste_delete_confirm")))).
 		Name("delete")
 	pasteRouter.Methods("POST").
 		Path("/{id}/delete").
@@ -625,7 +625,7 @@ func main() {
 	pasteRouter.Methods("GET").
 		MatcherFunc(HTTPSMuxMatcher).
 		Path("/{id}/authenticate").
-		Handler(RenderTemplateHandler("paste_authenticate")).
+		Handler(RenderPageHandler("paste_authenticate")).
 		Name("authenticate")
 	pasteRouter.Methods("POST").
 		MatcherFunc(HTTPSMuxMatcher).
@@ -635,14 +635,14 @@ func main() {
 	pasteRouter.Methods("GET").
 		MatcherFunc(NonHTTPSMuxMatcher).
 		Path("/{id}/authenticate").
-		Handler(RenderTemplateHandler("paste_authenticate_disallowed"))
+		Handler(RenderPageHandler("paste_authenticate_disallowed"))
 
 	pasteRouter.Methods("GET").Path("/").Handler(RedirectHandler("/"))
 
 	router.Path("/paste").Handler(RedirectHandler("/"))
 	router.Path("/session").Handler(http.HandlerFunc(sessionHandler))
 	router.Path("/session/raw").Handler(http.HandlerFunc(sessionHandler))
-	router.Path("/about").Handler(RenderTemplateHandler("about"))
+	router.Path("/about").Handler(RenderPageHandler("about"))
 	router.Methods("GET", "HEAD").Path("/languages.json").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
@@ -675,9 +675,9 @@ func main() {
 		dur = dur - (dur % time.Second)
 		stats["uptime"] = fmt.Sprintf("%v", dur)
 		stats["expiring"] = fmt.Sprintf("%d", pasteExpirator.Len())
-		ExecuteTemplate(w, "page_stats", stats)
+		RenderPage(w, r, "stats", stats)
 	}))
-	router.Path("/").Handler(RenderTemplateHandler("index"))
+	router.Path("/").Handler(RenderPageHandler("index"))
 	router.PathPrefix("/").Handler(http.FileServer(AssetFilesystem()))
 	http.Handle("/", &fourOhFourConsumerHandler{router})
 

@@ -2,16 +2,13 @@ package main
 
 import (
 	"github.com/golang/glog"
+	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
 )
 
 type Model interface{}
-type RenderContext struct {
-	Obj     interface{}
-	Request *http.Request
-}
 
 type CustomTemplateError interface {
 	ErrorTemplateName() string
@@ -34,11 +31,11 @@ type ModelLookupFunc func(*http.Request) (Model, error)
 
 func RenderError(e error, statusCode int, w http.ResponseWriter) {
 	w.WriteHeader(statusCode)
-	tmpl := "page_error"
+	page := "error"
 	if cte, ok := e.(CustomTemplateError); ok {
-		tmpl = cte.ErrorTemplateName()
+		page = cte.ErrorTemplateName()
 	}
-	ExecuteTemplate(w, tmpl, &RenderContext{e, nil})
+	RenderPage(w, nil, page, e)
 }
 
 func errorRecoveryHandler(w http.ResponseWriter) {
@@ -55,18 +52,22 @@ func errorRecoveryHandler(w http.ResponseWriter) {
 // renderModelWith takes a template name and
 // returns a function that takes a single model object,
 // which when called will render the given template using that object.
-func RenderTemplateForModel(template string) ModelRenderFunc {
+func RenderPageForModel(page string) ModelRenderFunc {
 	// We don't defer the error handler here because it happened a step up
 	return func(o Model, w http.ResponseWriter, r *http.Request) {
-		ExecuteTemplate(w, "page_"+template, &RenderContext{o, r})
+		RenderPage(w, r, page, o)
 	}
 }
 
-func RenderTemplateHandler(template string) http.HandlerFunc {
+func RenderPageHandler(page string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer errorRecoveryHandler(w)
-		ExecuteTemplate(w, "page_"+template, &RenderContext{nil, r})
+		RenderPage(w, r, page, nil)
 	})
+}
+
+func RenderPage(w io.Writer, r *http.Request, page string, obj interface{}) {
+	ExecuteTemplate(w, "tmpl_page", &RenderContext{Request: r, Page: page, Obj: obj})
 }
 
 func RequiredModelObjectHandler(lookup ModelLookupFunc, fn ModelRenderFunc) http.HandlerFunc {

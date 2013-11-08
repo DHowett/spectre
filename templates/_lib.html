@@ -1,29 +1,47 @@
-{{define "header"}}
-<!DOCTYPE HTML>
+{{define "tmpl_page"}}<!DOCTYPE HTML>
 <html lang="en">
 <head>
 	<meta charset="utf-8">
 
-	<title>{{if .}}{{.}} - {{end}}Ghostbin</title>
+	{{with subtemplate . "title"}}
+	<title>{{.}} - Ghostbin</title>
+	{{else}}
+	<title>Ghostbin</title>
+	{{end}}
 	<meta name="viewport" content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0">
 	<meta name="apple-mobile-web-app-capable" content="yes">
 	<meta name="apple-mobile-web-app-status-bar-style" content="black">
 	{{assets "css" "bootstrap" "fonts" "fontello" "pygments" "ansi" "select2" "select2-bootstrap"}}
 	{{assets "js" "jquery-2.0.3" "bootstrap" "select2" "application"}}
 	{{if equal env "dev"}}{{assets "less" "master"}}{{end}}
+	{{subtemplate . "head"}}
 </head>
-<body>
+{{with subtemplate . "body"}}
+<body>{{.}}</body>
+{{else}}
+<body>{{template "missing_page_body" .}}</body>
 {{end}}
-
-{{define "footer"}}
-</body>
-</html>
-{{end}}
+</html>{{end}}
 
 {{define "home-button"}}
 <a title="Home" href="/" id="home" class="btn btn-inverse"><i class="icon-home icon-large"></i></a>
 {{end}}
 
-{{define "asset_js"}}{{range .}}<script src="{{.Path}}?{{.Mtime.Unix}}" type="text/javascript"></script>{{end}}{{end}}
-{{define "asset_css"}}{{range .}}<link rel="stylesheet" href="{{.Path}}?{{.Mtime.Unix}}" type="text/css" media="all">{{end}}{{end}}
-{{define "asset_less"}}{{range .}}<link rel="stylesheet/less" href="{{.Path}}?{{.Mtime.Unix}}" type="text/css" media="all">{{end}}<script src="/js/less.js" type="text/javascript"></script>{{end}}
+{{define "missing_page_body"}}
+<div class="paste-toolbox">
+	{{template "home-button"}}
+	<span class="paste-title">
+		<strong>Wat Machine</strong>
+	</span>
+</div>
+<div class="content">
+<p>
+<strong>AIEEEEEE!</strong><br>
+It looks like you've stumbled upon a page (<strong>{{.Page}}</strong>) that should exist, but doesn't have a template?
+</p>
+</div>
+{{end}}
+
+{{define "asset_js"}}{{range .Obj}}<script src="{{.Path}}?{{.Mtime.Unix}}" type="text/javascript"></script>{{end}}{{end}}
+{{define "asset_css"}}{{range .Obj}}<link rel="stylesheet" href="{{.Path}}?{{.Mtime.Unix}}" type="text/css" media="all">{{end}}{{end}}
+{{define "asset_less"}}{{range .Obj}}<link rel="stylesheet/less" href="{{.Path}}?{{.Mtime.Unix}}" type="text/css" media="all">{{end}}<script src="/js/less.js" type="text/javascript"></script>{{end}}

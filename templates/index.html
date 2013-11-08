@@ -1,5 +1,4 @@
-{{define "page_index"}}
-{{template "header"}}
+{{define "index_body"}}
 {{template "paste_edit_partial" .}}
 
 {{if encryptionAllowed .}}<div id="encryptModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
@@ -50,7 +49,5 @@
 		<button data-dismiss="modal" class="btn" aria-hidden="true">Okay</button>
 	</div>
 </div>
-
 {{template "index_local_customizations"}}
-{{template "footer" .}}
 {{end}}

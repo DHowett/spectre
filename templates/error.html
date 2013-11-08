@@ -1,45 +1,34 @@
-{{define "page_error"}}
-{{template "header" "Error"}}
-<div class="paste-toolbox">
+{{define "partial_warning_title"}}<div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
-		<i class="icon-warning"></i> <strong>Something's Wrong :(</strong>
+		<i class="icon-warning"></i> <strong>{{.}}</strong>
 	</span>
-</div>
+</div>{{end}}
+
+{{define "error_title"}}Error{{end}}
+{{define "error_body"}}
+{{template "partial_warning_title" "Something's Wrong :("}}
 <div class="well well-error">
 	{{.Obj.Error}}<br>
 	<a href="/">Go to the homepage and try again.</a>
 </div>
-{{template "footer" .}}
 {{end}}
 
-{{define "page_404"}}
-{{template "header" "404"}}
-<div class="paste-toolbox">
-	{{template "home-button"}}
-	<span class="paste-title">
-		<i class="icon-warning"></i> <strong>404 - File Not Found :(</strong>
-	</span>
-</div>
+{{define "404_title"}}404{{end}}
+{{define "404_body"}}
+{{template "partial_warning_title" "404 - File Not Found :("}}
 <div class="well well-error">
 	The file you were looking for{{if .Request}}, "{{.Request.URL.Path}}",{{end}} could not be found.<br>
 	<a href="/">Go to the homepage and try again.</a>
 </div>
-{{template "footer" .}}
 {{end}}
 
-{{define "page_paste_not_found"}}
-{{template "header" "404"}}
-<div class="paste-toolbox">
-	{{template "home-button"}}
-	<span class="paste-title">
-		<i class="icon-warning"></i> <strong>Ghost got your paste?</strong>
-	</span>
-</div>
+{{define "paste_not_found_title"}}404{{end}}
+{{define "paste_not_found_body"}}
+{{template "partial_warning_title" "Ghost got your paste?"}}
 <div class="well well-error">
 	{{.Obj.Error}}
 	<code class="code ghost">{{randomGhost}}</code>
 	<a href="/">Go to the homepage and try again.</a>
 </div>
-{{template "footer" .}}
 {{end}}

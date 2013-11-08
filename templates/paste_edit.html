@@ -1,7 +1,6 @@
-{{define "page_paste_edit"}}
-{{template "header" .Obj.ID}}
+{{define "paste_edit_title"}}{{.Obj.ID}}{{end}}
+{{define "paste_edit_body"}}
 {{template "paste_edit_partial" .}}
-
 <div id="deleteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
 	<form name="deleteForm" action="{{pasteURL "delete" .Obj}}" method="post">
 	<div class="modal-header">
@@ -17,8 +16,6 @@
 	</div>
 	</form>
 </div>
-
-{{template "footer" .}}
 {{end}}
 
 {{define "paste_edit_partial"}}

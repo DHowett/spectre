@@ -1,5 +1,5 @@
-{{define "page_paste_authenticate"}}
-{{template "header" "Authenticate"}}
+{{define "paste_authenticate_title"}}Authenticate{{end}}
+{{define "paste_authenticate_body"}}
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
@@ -21,11 +21,10 @@
 <button type="submit" class="btn btn-phone-expand">Okay!</button>
 </form>
 </div>
-{{template "footer" .}}
 {{end}}
 
-{{define "page_paste_authenticate_disallowed"}}
-{{template "header" "Authenticate"}}
+{{define "paste_authenticate_disallowed_title"}}Authenticate{{end}}
+{{define "paste_authenticate_disallowed_body"}}
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
@@ -37,5 +36,4 @@
 <p>Paste <strong>{{requestVariable . "id"}}</strong> is password-protected.<br>
 <em>Unfortunately, you're not using an encrypted connection and you cannot be allowed access to it.</em></p>
 </div>
-{{template "footer" .}}
 {{end}}
