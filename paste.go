@@ -259,7 +259,7 @@ func (store *FilesystemPasteStore) Get(id PasteID, key []byte) (p *Paste, err er
 
 func (store *FilesystemPasteStore) Save(p *Paste) error {
 	filename := store.filenameForID(p.ID)
-	if err := putMetadata(filename, "language", p.Language.Name); err != nil {
+	if err := putMetadata(filename, "language", p.Language.ID); err != nil {
 		return err
 	}
 

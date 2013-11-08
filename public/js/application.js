@@ -62,15 +62,14 @@
 					success: function(_languages) {
 						$.each(_languages, function(i,cat) {
 							var s2cat = cat;
-							s2cat.text = cat.Title;
-							s2cat.children = cat.Languages;
-							$.each(cat.Languages, function(i, lang) {
-								lang.id = lang.Name;
-								lang.text = lang.Title;
+							s2cat.text = cat.name;
+							s2cat.children = cat.languages;
+							$.each(cat.languages, function(i, lang) {
+								lang.text = lang.name;
 
-								langmap[lang.Name] = lang;
-								if(lang.Names) {
-									$.each(lang.Names, function(i, n) { langmap[n] = lang; });
+								langmap[lang.id] = lang;
+								if(lang.alt_ids) {
+									$.each(lang.alt_ids, function(i, n) { langmap[n] = lang; });
 								}
 							});
 							s2Languages.results.push(s2cat);
@@ -92,7 +91,7 @@
 				return this.languageNamed(this.getPreference("defaultLanguage"));
 			},
 			setDefaultLanguage: function(lang) {
-				this.setPreference("defaultLanguage", lang.Name);
+				this.setPreference("defaultLanguage", lang.id);
 			},
 			clearDefaultLanguage: function() {
 				this.clearPreference("defaultLanguage");
@@ -135,11 +134,11 @@ $(function() {
 			data: Ghostbin.languagesForSelect2(),
 			matcher: function(term, text, lang) {
 				// The ifs here are blown apart so that we might short-circuit.
-				if(!lang.Name) return false;
-				if(lang.Title.toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
-				if(lang.Name.toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
-				for(var i in lang.Names) {
-					if(lang.Names[i].toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
+				if(!lang.id) return false;
+				if(lang.name.toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
+				if(lang.id.toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
+				for(var i in lang.alt_ids) {
+					if(lang.alt_ids[i].toUpperCase().indexOf((''+term).toUpperCase()) >= 0) return true;
 				}
 				return false;
 			},

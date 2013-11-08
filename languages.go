@@ -15,9 +15,10 @@ import (
 )
 
 type Language struct {
-	Title, Name         string   `json:",omitempty"`
+	Name                string   `json:"name,omitempty"`
+	ID                  string   `json:"id,omitempty" yaml:"id"`
 	Formatter           string   `json:"-"`
-	Names               []string `json:",omitempty"`
+	AlternateIDs        []string `json:"alt_ids,omitempty" yaml:"alt_ids"`
 	Extensions          []string `json:"-"`
 	MIMETypes           []string `json:"-" yaml:"mimetypes"`
 	DisplayStyle        string   `json:"-" yaml:"display_style"`
@@ -31,7 +32,7 @@ func (l LanguageList) Len() int {
 }
 
 func (l LanguageList) Less(i, j int) bool {
-	return l[i].Title < l[j].Title
+	return l[i].Name < l[j].Name
 }
 
 func (l LanguageList) Swap(i, j int) {
@@ -48,8 +49,8 @@ func LanguageNamed(name string) *Language {
 
 type _LanguageConfiguration struct {
 	LanguageGroups []*struct {
-		Title     string
-		Languages LanguageList
+		Name      string       `json:"name,omitempty"`
+		Languages LanguageList `json:"languages,omitempty"`
 	} `yaml:"languageGroups"`
 	Formatters map[string]*Formatter
 
@@ -60,8 +61,8 @@ type _LanguageConfiguration struct {
 
 var languageConfig _LanguageConfiguration
 var unknownLanguage *Language = &Language{
-	Title:     "Unknown",
-	Name:      "unknown",
+	Name:      "Unknown",
+	ID:        "unknown",
 	Formatter: "text",
 }
 
@@ -133,7 +134,7 @@ func FormatPaste(p *Paste) (string, error) {
 
 	reader, _ := p.Reader()
 	defer reader.Close()
-	return formatter.Format(reader, p.Language.Name)
+	return formatter.Format(reader, p.Language.ID)
 }
 
 func loadLanguageConfig() {
@@ -147,8 +148,8 @@ func loadLanguageConfig() {
 	languageConfig.languageMap = make(map[string]*Language)
 	for _, g := range languageConfig.LanguageGroups {
 		for _, v := range g.Languages {
-			languageConfig.languageMap[v.Name] = v
-			for _, langname := range v.Names {
+			languageConfig.languageMap[v.ID] = v
+			for _, langname := range v.AlternateIDs {
 				languageConfig.languageMap[langname] = v
 			}
 		}
