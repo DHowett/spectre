@@ -1,4 +1,6 @@
 #!/bin/bash
+VERSION=1.0
+
 function usage() {
 	prog=$(basename "$0")
 	echo "Syntax: $prog [-p] <filename> [language]" >&2
@@ -28,7 +30,7 @@ if [[ ! -d "${rcdir}" ]]; then
 fi
 
 
-export -a curl_opts=("-c" "${rcdir}/cookie.jar" "-b" "${rcdir}/cookie.jar" "-f" "-s")
+export -a curl_opts=("-c" "${rcdir}/cookie.jar" "-b" "${rcdir}/cookie.jar" "-A" "ghost.sh/${VERSION}" "-f" "-s")
 
 force=0
 passworded=0
