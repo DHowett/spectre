@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/gob"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/DHowett/gotimeout"
@@ -56,6 +57,27 @@ func (e PasteTooLargeError) Error() string {
 
 func (e PasteTooLargeError) StatusCode() int {
 	return http.StatusBadRequest
+}
+
+func getPasteJSONHandler(o Model, w http.ResponseWriter, r *http.Request) {
+	p := o.(*Paste)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	reader, _ := p.Reader()
+	defer reader.Close()
+	buf := &bytes.Buffer{}
+	io.Copy(buf, reader)
+
+	pasteMap := map[string]interface{}{
+		"id":         p.ID,
+		"language":   p.Language,
+		"encrypted":  p.Encrypted,
+		"expiration": p.Expiration,
+		"body":       string(buf.Bytes()),
+	}
+
+	json, _ := json.Marshal(pasteMap)
+	w.Write(json)
 }
 
 func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
@@ -595,6 +617,11 @@ func main() {
 	pasteRouter.Methods("POST").
 		Path("/new").
 		Handler(http.HandlerFunc(pasteCreate))
+
+	pasteRouter.Methods("GET").
+		Path("/{id}.json").
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, ModelRenderFunc(getPasteJSONHandler))).
+		Name("show")
 
 	pasteRouter.Methods("GET").
 		Path("/{id}").
