@@ -86,6 +86,11 @@ input[type=password] {
 	margin-bottom: 0;
 }
 
+[class^="icon-"]:before, [class*=" icon-"]:before {
+	-moz-osx-font-smoothing: grayscale;
+	-webkit-font-smoothing: antialiased;
+}
+
 .input-prepend {
 	color: rgb(51, 51, 51);
 	margin-bottom: 0px;
@@ -113,6 +118,8 @@ input[type=password] {
 
 .code, code {
 	font-family: 'EnvyCodeRWeb', 'monospace';
+	-moz-osx-font-smoothing: grayscale;
+	-webkit-font-smoothing: antialiased;
 	font-size: @paste-font-size;
 	line-height: @paste-line-height;
 	-webkit-overflow-scrolling: touch;
