@@ -146,6 +146,10 @@ func pasteUpdateCore(o Model, w http.ResponseWriter, r *http.Request, newPaste b
 		p.Language = LanguageNamed(r.FormValue("lang"))
 	}
 
+	if p.Language == nil {
+		p.Language = unknownLanguage
+	}
+
 	expireIn := r.FormValue("expire")
 	if expireIn != "" && expireIn != "-1" {
 		dur, _ := ParseDuration(expireIn)
