@@ -142,7 +142,7 @@ func NewFilesystemPasteStore(path string) *FilesystemPasteStore {
 }
 
 func (store *FilesystemPasteStore) GenerateNewPasteID(encrypted bool) (PasteID, error) {
-	nbytes, idlen := 3, 5
+	nbytes, idlen := 4, 5
 	if encrypted {
 		nbytes, idlen = 5, 8
 	}
