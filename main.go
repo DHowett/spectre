@@ -106,6 +106,46 @@ func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, reader)
 }
 
+var grants map[string]PasteID = map[string]PasteID{}
+
+func pasteGrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
+	p := o.(*Paste)
+
+	grantKey, _ := generateRandomBase32String(20, 32)
+	grants[grantKey] = p.ID
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	url, _ := pasteRouter.Get("grant_accept").URL("grantkey", grantKey)
+	s := "<html><body><a href=\"" + url.String() + "\">grant link</a></html></body>"
+	w.Write([]byte(s))
+}
+
+func grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
+	v := mux.Vars(r)
+	grantKey := v["grantkey"]
+	sID, ok := grants[grantKey]
+	if !ok {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write([]byte("Hey."))
+		return
+	}
+	pID := PasteID(sID)
+
+	session, _ := sessionStore.Get(r, "session")
+	pastes, ok := session.Values["pastes"].([]string)
+	if !ok {
+		pastes = []string{}
+	}
+
+	pastes = append(pastes, pID.String())
+	session.Values["pastes"] = pastes
+	sessions.Save(r, w)
+
+	delete(grants, grantKey)
+
+	w.Header().Set("Location", pasteURL("show", &Paste{ID: pID}))
+	w.WriteHeader(http.StatusSeeOther)
+}
+
 func isEditAllowed(p *Paste, r *http.Request) bool {
 	session, _ := sessionStore.Get(r, "session")
 	pastes, ok := session.Values["pastes"].([]string)
@@ -627,6 +667,15 @@ func main() {
 		Path("/{id}").
 		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, RenderPageForModel("paste_show"))).
 		Name("show")
+
+	pasteRouter.Methods("GET").
+		Path("/{id}/grant").
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(ModelRenderFunc(pasteGrantHandler)))).
+		Name("grant")
+	pasteRouter.Methods("GET").
+		Path("/grant/{grantkey}/accept").
+		Handler(http.HandlerFunc(grantAcceptHandler)).
+		Name("grant_accept")
 
 	pasteRouter.Methods("GET").
 		Path("/{id}/raw").
