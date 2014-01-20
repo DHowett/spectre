@@ -48,6 +48,17 @@
 		var _s2Languages;
 		var _languageMap;
 		return {
+			formatDuration: function(seconds) {
+				seconds = seconds | 0;
+				if(seconds < 60) {
+					return ""+seconds+"s";
+				} else if(seconds < 3600) {
+					return ""+((seconds/60)|0)+"m"+((seconds%60)|0)+"s";
+				} else { 
+					// if(seconds < 86400) {
+					return ""+((seconds/3600)|0)+"h"+(((seconds%3600)/60)|0)+"m"+((seconds%60)|0)+"s";
+				}
+			},
 			loadLanguages: function() {
 				var s2Languages = {
 					more: false,
@@ -367,6 +378,28 @@ $(function() {
 		trigger: "hover",
 		placement: "bottom",
 		container: "body",
+		delay: {
+			show: 250,
+			hide: 50,
+		},
+	});
+	var pageLoadTime = Math.floor(new Date().getTime() / 1000);
+	$('#expirationIcon').tooltip({
+		trigger: "hover",
+		placement: "bottom",
+		container: "body",
+		title: function() {
+			var refTime = (0+$(this).data("reftime"));
+			var curTime = Math.floor(new Date().getTime() / 1000);
+			var adjust = pageLoadTime - refTime; // For the purpose of illustration, assume computer clock is faster.
+			var remaining = ((0+$(this).data("value")) + adjust - curTime);
+			if(remaining > 0) {
+				return "Expires in " + window.Ghostbin.formatDuration(remaining);
+			} else {
+				var r = Math.random();
+				return (r <= 0.5) ? "Wha-! It's going to explode! Get out while you still can!" : "He's dead, Jim.";
+			}
+		},
 		delay: {
 			show: 250,
 			hide: 50,

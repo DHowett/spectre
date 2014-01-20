@@ -109,10 +109,8 @@ func (p *Paste) LastModified() time.Time {
 	return p.mtime
 }
 
-func (p *Paste) TimeUntilExpiration() time.Duration {
-	duration := p.exptime.Sub(time.Now())
-	// Clamp to full seconds.
-	return duration - (duration % time.Second)
+func (p *Paste) ExpirationTime() time.Time {
+	return p.exptime
 }
 
 func (p *Paste) SetEncryptionKey(key []byte) {

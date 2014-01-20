@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"time"
 )
 
 type RenderContext struct {
@@ -56,6 +57,10 @@ func init() {
 			return template.HTML("")
 		}
 		return template.HTML(buf.String())
+	})
+
+	RegisterTemplateFunction("now", func() time.Time {
+		return time.Now()
 	})
 
 	RegisterReloadFunction(InitTemplates)
