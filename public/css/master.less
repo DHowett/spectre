@@ -281,7 +281,12 @@ div.paste-toolbox {
 	}
 }
 
+[data-placeholder]:not(:focus):not([data-div-placeholder-content]):before {
+	content: attr(data-placeholder);
+}
+
 span.paste-title {
+	position: relative;
 	font-size: @paste-title-font-size;
 	color: @paste-title-color;
 	vertical-align: middle;

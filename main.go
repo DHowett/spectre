@@ -96,7 +96,11 @@ func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		w.Header().Set("Content-Disposition", "attachment; filename=\""+p.ID.String()+"."+ext+"\"")
+		filename := p.ID.String()
+		if p.Title != "" {
+			filename = p.Title
+		}
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"."+ext+"\"")
 		w.Header().Set("Content-Transfer-Encoding", "binary")
 	}
 	w.Header().Set("Content-Type", mime+"; charset=utf-8")
@@ -226,6 +230,8 @@ func pasteUpdateCore(o Model, w http.ResponseWriter, r *http.Request, newPaste b
 	}
 
 	p.Expiration = expireIn
+
+	p.Title = r.FormValue("title")
 
 	pw.Close() // Saves p
 

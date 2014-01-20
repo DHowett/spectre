@@ -3,7 +3,7 @@
 <div class="paste-toolbox unselectable">
 	{{template "home-button"}}
 	<span class="paste-title">
-		<strong>Paste {{.Obj.ID}}</strong>
+		<strong>{{with .Obj.Title}}{{.}}{{else}}Paste {{.Obj.ID}}{{end}}</strong>
 		<span class="paste-subtitle">{{.Obj.Language.Name}}
 			{{if .Obj.Encrypted}}<i class="icon-lock" title="Encrypted"></i>{{end}}{{if pasteWillExpire .Obj}}<i class="icon-clock" data-reftime="{{now.UTC.Unix}}" data-value="{{.Obj.ExpirationTime.UTC.Unix}}" id="expirationIcon"></i>{{end}}
 		</span>

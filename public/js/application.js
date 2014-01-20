@@ -42,6 +42,21 @@
 	};
 })(jQuery);
 
+/* From https://github.com/sprucemedia/jQuery.divPlaceholder.js */
+(function ($) {
+        $(document).on('change keydown keypress input', '*[data-placeholder]', function() {
+                if (this.textContent) {
+                        this.setAttribute('data-div-placeholder-content', 'true');
+                }
+                else {
+                        this.removeAttribute('data-div-placeholder-content');
+                }
+        });
+	$(function() {
+		$("*[data-placeholder]").trigger("change");
+	});
+})(jQuery);
+
 (function(window) {
 	"use strict";
 	window.Ghostbin = function() {
@@ -190,10 +205,18 @@ $(function() {
 						Ghostbin.clearDefaultLanguage();
 					}
 				}
+				pasteForm.find("input[name='title']").val($("#editable-paste-title").text())
 			} else {
 				$("#deleteModal, #emptyPasteModal").modal("show");
 				return false;
 			}
+		});
+		$("#editable-paste-title").keypress(function(e) {
+			if(e.which == 13) {
+				$(codeeditor).focus();
+				return false;
+			}
+			return true;
 		});
 	}
 

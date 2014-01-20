@@ -79,6 +79,7 @@ type Paste struct {
 	Language   *Language
 	Encrypted  bool
 	Expiration string
+	Title      string
 
 	store   PasteStore
 	mtime   time.Time
@@ -242,6 +243,7 @@ func (store *FilesystemPasteStore) Get(id PasteID, key []byte) (p *Paste, err er
 
 	paste.Language = LanguageNamed(getMetadata(filename, "language", "text"))
 	paste.Expiration = getMetadata(filename, "expiration", "")
+	paste.Title = getMetadata(filename, "title", "")
 
 	if paste.Expiration != "" {
 		if dur, err := ParseDuration(paste.Expiration); err == nil {
@@ -265,6 +267,10 @@ func (store *FilesystemPasteStore) Save(p *Paste) error {
 		if err := putMetadata(filename, "expiration", p.Expiration); err != nil {
 			return err
 		}
+	}
+
+	if err := putMetadata(filename, "title", p.Title); err != nil {
+		return err
 	}
 
 	if p.Encrypted {
