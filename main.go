@@ -456,6 +456,11 @@ func (h RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusFound)
 }
 
+func partialGetHandler(w http.ResponseWriter, r *http.Request) {
+	name := mux.Vars(r)["id"]
+	RenderPartial(w, r, name, nil)
+}
+
 type RenderedPaste struct {
 	body       template.HTML
 	renderTime time.Time
@@ -731,6 +736,11 @@ func main() {
 		stats["expiring"] = fmt.Sprintf("%d", pasteExpirator.Len())
 		RenderPage(w, r, "stats", stats)
 	}))
+
+	router.Methods("GET").
+		Path("/partial/{id}").
+		Handler(http.HandlerFunc(partialGetHandler))
+
 	router.Path("/").Handler(RenderPageHandler("index"))
 	router.PathPrefix("/").Handler(http.FileServer(AssetFilesystem()))
 	http.Handle("/", &fourOhFourConsumerHandler{router})

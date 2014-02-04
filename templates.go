@@ -59,6 +59,16 @@ func init() {
 		return template.HTML(buf.String())
 	})
 
+	RegisterTemplateFunction("partial", func(ctx *RenderContext, name string) template.HTML {
+		buf := &bytes.Buffer{}
+		err := ctx.template.ExecuteTemplate(buf, "partial_"+name, ctx)
+		divId := "partial_container_" + name
+		if err != nil {
+			return template.HTML(`<div id="` + divId + `"></div>`)
+		}
+		return template.HTML(`<div id="` + divId + `">` + buf.String() + `</div>`)
+	})
+
 	RegisterTemplateFunction("now", func() time.Time {
 		return time.Now()
 	})

@@ -70,6 +70,21 @@ func RenderPage(w io.Writer, r *http.Request, page string, obj interface{}) {
 	ExecuteTemplate(w, "tmpl_page", &RenderContext{Request: r, Page: page, Obj: obj})
 }
 
+func RenderPartialHandler(page string) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				RenderPartial(w, r, "error", err.(error))
+			}
+		}()
+		RenderPartial(w, r, page, nil)
+	})
+}
+
+func RenderPartial(w io.Writer, r *http.Request, name string, obj interface{}) {
+	ExecuteTemplate(w, "partial_"+name, &RenderContext{Request: r, Page: name, Obj: obj})
+}
+
 func RequiredModelObjectHandler(lookup ModelLookupFunc, fn ModelRenderFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer errorRecoveryHandler(w)

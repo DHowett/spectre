@@ -32,3 +32,9 @@
 	<a href="/">Go to the homepage and try again.</a>
 </div>
 {{end}}
+
+{{define "partial_error"}}
+<div class="well well-error">
+	{{.Obj.Error}}
+</div>
+{{end}}
