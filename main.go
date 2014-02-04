@@ -538,6 +538,7 @@ var pasteStore *FilesystemPasteStore
 var pasteExpirator *gotimeout.Expirator
 var sessionStore *sessions.FilesystemStore
 var clientOnlySessionStore *sessions.CookieStore
+var clientLongtermSessionStore *sessions.CookieStore
 var ephStore *gotimeout.Map
 var pasteRouter *mux.Router
 
@@ -604,6 +605,13 @@ func init() {
 	}
 	clientOnlySessionStore.Options.Path = "/"
 	clientOnlySessionStore.Options.MaxAge = 0
+
+	clientLongtermSessionStore = sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
+	if Env() != EnvironmentDevelopment {
+		clientLongtermSessionStore.Options.Secure = true
+	}
+	clientLongtermSessionStore.Options.Path = "/"
+	clientLongtermSessionStore.Options.MaxAge = 86400 * 365
 
 	pastedir := filepath.Join(arguments.root, "pastes")
 	os.Mkdir(pastedir, 0700)
