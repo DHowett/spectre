@@ -134,15 +134,9 @@ func grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	pID := PasteID(sID)
 
-	session, _ := sessionStore.Get(r, "session")
-	pastes, ok := session.Values["pastes"].([]string)
-	if !ok {
-		pastes = []string{}
-	}
-
-	pastes = append(pastes, pID.String())
-	session.Values["pastes"] = pastes
-	sessions.Save(r, w)
+	perms := GetPastePermissions(r)
+	perms.Put(pID, PastePermission{"edit": true})
+	perms.Save(w, r)
 
 	delete(grants, grantKey)
 
@@ -151,18 +145,13 @@ func grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func isEditAllowed(p *Paste, r *http.Request) bool {
-	session, _ := sessionStore.Get(r, "session")
-	pastes, ok := session.Values["pastes"].([]string)
+	perms := GetPastePermissions(r)
+	perm, ok := perms.Get(p.ID)
 	if !ok {
 		return false
 	}
 
-	for _, v := range pastes {
-		if v == p.ID.String() {
-			return true
-		}
-	}
-	return false
+	return perm["edit"]
 }
 
 func requiresEditPermission(fn ModelRenderFunc) ModelRenderFunc {
@@ -287,14 +276,9 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	key := p.EncryptionKeyWithPassword(password)
 	p.SetEncryptionKey(key)
 
-	session, _ := sessionStore.Get(r, "session")
-	pastes, ok := session.Values["pastes"].([]string)
-	if !ok {
-		pastes = []string{}
-	}
-
-	pastes = append(pastes, p.ID.String())
-	session.Values["pastes"] = pastes
+	perms := GetPastePermissions(r)
+	perms.Put(p.ID, PastePermission{"edit": true, "grant": true})
+	perms.Save(w, r)
 
 	if key != nil {
 		cliSession, _ := clientOnlySessionStore.Get(r, "c_session")
@@ -315,24 +299,12 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 
-	oldId := p.ID.String()
+	oldId := p.ID
 	p.Destroy()
 
-	session, _ := sessionStore.Get(r, "session")
-
-	if session_pastes, ok := session.Values["pastes"].([]string); ok {
-		pastes := make([]string, len(session_pastes)-1)
-		n := 0
-		for _, v := range session_pastes {
-			if v == oldId {
-				continue
-			}
-			pastes[n] = v
-			n++
-		}
-		session.Values["pastes"] = pastes[:n]
-		session.Save(r, w)
-	}
+	perms := GetPastePermissions(r)
+	perms.Delete(oldId)
+	perms.Save(w, r)
 
 	w.Header().Set("Location", "/")
 	w.WriteHeader(http.StatusFound)
@@ -380,24 +352,19 @@ func pasteURL(routeType string, p *Paste) string {
 func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	var pastes []*Paste
 	var ids []string
-	session, _ := sessionStore.Get(r, "session")
-	if session_pastes, ok := session.Values["pastes"].([]string); ok {
-		pastes = make([]*Paste, len(session_pastes))
-		ids = make([]string, len(session_pastes))
-		n := 0
-		for _, v := range session_pastes {
-			if obj, _ := pasteStore.Get(PasteIDFromString(v), nil); obj != nil {
-				pastes[n] = obj
-				ids[n] = obj.ID.String()
-				n++
-			}
+	perms := GetPastePermissions(r)
+	pastes = make([]*Paste, len(perms.Entries))
+	ids = make([]string, len(perms.Entries))
+	n := 0
+	for k, _ := range perms.Entries {
+		if obj, _ := pasteStore.Get(k, nil); obj != nil {
+			pastes[n] = obj
+			ids[n] = obj.ID.String()
+			n++
 		}
-		pastes = pastes[:n]
-		ids = ids[:n]
-	} else {
-		pastes = []*Paste{}
-		ids = []string{}
 	}
+	pastes = pastes[:n]
+	ids = ids[:n]
 
 	if strings.HasSuffix(r.URL.Path, "/raw") {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -589,6 +556,7 @@ var arguments = &args{}
 func init() {
 	// N.B. this should not be necessary.
 	gob.Register(map[PasteID][]byte(nil))
+	gob.Register(&PastePermissionSet{})
 
 	arguments.register()
 	arguments.parse()
