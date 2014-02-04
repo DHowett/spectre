@@ -5,7 +5,6 @@ import (
 	"net/http"
 )
 
-type PasteList []string
 type PastePermission map[string]bool
 
 type PastePermissionSet struct {
