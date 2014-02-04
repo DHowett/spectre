@@ -19,3 +19,4 @@ session.key
 sessions/session_*
 templates/_local.html
 xattr
+accounts/*

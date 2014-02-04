@@ -1,6 +1,7 @@
 package main
 
 import (
+	"./account"
 	"bytes"
 	"crypto/md5"
 	"encoding/gob"
@@ -540,6 +541,7 @@ var sessionStore *sessions.FilesystemStore
 var clientOnlySessionStore *sessions.CookieStore
 var clientLongtermSessionStore *sessions.CookieStore
 var ephStore *gotimeout.Map
+var userStore account.AccountStore
 var pasteRouter *mux.Router
 
 type args struct {
@@ -620,6 +622,14 @@ func init() {
 
 	pasteExpirator = gotimeout.NewExpirator(filepath.Join(arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
 	ephStore = gotimeout.NewMap()
+
+	accountPath := filepath.Join(arguments.root, "accounts")
+	os.Mkdir(accountPath, 0700)
+	userStore = &CachingUserStore{
+		AccountStore: &ManglingUserStore{
+			account.NewFilesystemStore(accountPath, &AuthChallengeProvider{}),
+		},
+	}
 }
 
 func main() {
@@ -749,9 +759,12 @@ func main() {
 		Path("/partial/{id}").
 		Handler(http.HandlerFunc(partialGetHandler))
 
+	router.Methods("POST").Path("/auth/login").Handler(http.HandlerFunc(authLoginPostHandler))
+	router.Methods("POST").Path("/auth/logout").Handler(http.HandlerFunc(authLogoutPostHandler))
+
 	router.Path("/").Handler(RenderPageHandler("index"))
 	router.PathPrefix("/").Handler(http.FileServer(AssetFilesystem()))
-	http.Handle("/", &fourOhFourConsumerHandler{router})
+	http.Handle("/", &fourOhFourConsumerHandler{userLookupWrapper{router}})
 
 	var addr string = arguments.addr
 	server := &http.Server{

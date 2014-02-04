@@ -1,6 +1,7 @@
 package main
 
 import (
+	"./account"
 	"github.com/gorilla/sessions"
 	"net/http"
 )
@@ -9,10 +10,19 @@ type PastePermission map[string]bool
 
 type PastePermissionSet struct {
 	Entries map[PasteID]PastePermission
+	u       *account.User
 }
 
 func GetPastePermissions(r *http.Request) *PastePermissionSet {
 	var perms *PastePermissionSet
+
+	// Check if we have a user first.
+	user := GetUser(r)
+	if user != nil {
+		if userPerms, ok := user.Values["permissions"]; ok {
+			perms = userPerms.(*PastePermissionSet)
+		}
+	}
 
 	cookieSession, _ := sessionStore.Get(r, "session")
 
@@ -43,15 +53,20 @@ func GetPastePermissions(r *http.Request) *PastePermissionSet {
 		}
 	}
 
+	perms.u = user
 	return perms
 }
 
 // Save emits the PastePermissionSet to disk, either as part of the anonymous
 // session or as part of the authenticated user's data.
 func (p *PastePermissionSet) Save(w http.ResponseWriter, r *http.Request) {
-	cookieSession, _ := sessionStore.Get(r, "session")
-	cookieSession.Values["permissions"] = p
-	sessions.Save(r, w)
+	if p.u != nil {
+		p.u.Save()
+	} else {
+		cookieSession, _ := sessionStore.Get(r, "session")
+		cookieSession.Values["permissions"] = p
+		sessions.Save(r, w)
+	}
 }
 
 // Put inserts a set of permissions into the permission store,
