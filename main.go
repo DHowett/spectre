@@ -246,7 +246,7 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	encrypted := password != ""
 
-	if encrypted && !RequestIsHTTPS(r) {
+	if encrypted && (Env() != EnvironmentDevelopment && !RequestIsHTTPS(r)) {
 		RenderError(fmt.Errorf("I refuse to accept passwords over HTTP."), 400, w)
 		return
 	}
@@ -562,7 +562,7 @@ func init() {
 	arguments.parse()
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	RegisterTemplateFunction("encryptionAllowed", func(ri *RenderContext) bool { return RequestIsHTTPS(ri.Request) })
+	RegisterTemplateFunction("encryptionAllowed", func(ri *RenderContext) bool { return Env() == EnvironmentDevelopment || RequestIsHTTPS(ri.Request) })
 	RegisterTemplateFunction("editAllowed", func(ri *RenderContext) bool { return isEditAllowed(ri.Obj.(*Paste), ri.Request) })
 	RegisterTemplateFunction("render", renderPaste)
 	RegisterTemplateFunction("pasteURL", pasteURL)
