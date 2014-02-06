@@ -181,7 +181,7 @@ type ManglingUserStore struct {
 }
 
 func (m *ManglingUserStore) mangle(name string) string {
-	if name[:2] == "1$" {
+	if len(name) > 2 && name[:2] == "1$" {
 		return name
 	}
 	sum := sha256.Sum256([]byte(name))
