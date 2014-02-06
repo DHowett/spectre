@@ -18,19 +18,72 @@ import (
 const USER_CACHE_MAX_ENTRIES int = 1000
 
 type contextKey int
+
 const userContextKey contextKey = 0
+
+type authReply struct {
+	Status        string            `json:"status,omitempty"`
+	Reason        string            `json:"reason,omitempty"`
+	Type          string            `json:"type,omitempty"`
+	ExtraData     map[string]string `json:"extra,omitempty"`
+	InvalidFields []string          `json:"invalid_fields,omitempty"`
+}
 
 func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 	clientSession, _ := clientLongtermSessionStore.Get(r, "authentication")
 	serverSession, _ := sessionStore.Get(r, "session")
 
-	reply := make(map[string]interface{})
+	reply := &authReply{
+		Status:    "invalid",
+		ExtraData: make(map[string]string),
+	}
+
+	defer func() {
+		enc := json.NewEncoder(w)
+		enc.Encode(reply)
+	}()
 
 	var user *account.User
 
-	// BrowserID Assertion
 	assertion := r.FormValue("assertion")
-	if assertion != "" {
+	if assertion == "" {
+		// We don't have an assertion, hope we have a username/password
+		reply.Type = "username"
+
+		username, password, confirm := r.FormValue("username"), r.FormValue("password"), r.FormValue("confirm_password")
+		if username == "" || password == "" {
+			reply.Reason = "invalid username or password"
+			reply.InvalidFields = []string{"username", "password"}
+			return
+		}
+
+		newuser := userStore.Get(username)
+		if newuser == nil {
+			if confirm == "" {
+				reply.Status = "moreinfo"
+				reply.InvalidFields = []string{"confirm_password"}
+				return
+			}
+			if password != confirm {
+				reply.Reason = "passwords don't match"
+				reply.InvalidFields = []string{"password", "confirm_password"}
+				return
+			}
+			newuser = userStore.Create(username)
+			newuser.UpdateChallenge(password)
+			user = newuser
+		} else {
+			if newuser.Check(password) {
+				user = newuser
+			} else {
+				reply.Reason = "invalid username or password"
+				reply.InvalidFields = []string{"username", "password"}
+			}
+		}
+	} else {
+		// BrowserID Assertion
+		reply.Type = "persona"
+
 		audience := "https://ghostbin.com"
 		if !RequestIsHTTPS(r) {
 			audience = "http://localhost:8080"
@@ -42,6 +95,8 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			glog.Error("Persona Verify Request Failed: ", err)
+			reply.Reason = "persona verification failed"
+			reply.ExtraData["error"] = err.Error()
 			return
 		}
 		defer verifyResponse.Body.Close()
@@ -52,6 +107,8 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			glog.Error("Persona Verify JSON Decode Failed: ", err)
+			reply.Reason = "persona verification failed"
+			reply.ExtraData["error"] = err.Error()
 			return
 		}
 
@@ -62,39 +119,14 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 				user = userStore.Create(email)
 			}
 			user.Values["persona"] = true
-			reply["persona"] = email
+			reply.ExtraData["persona"] = email
 		} else {
-			reply["status"] = "failure"
-			reply["reason"] = verifyResponseJSON["reason"]
+			reply.Reason = verifyResponseJSON["reason"].(string)
 		}
-	} else {
-		// We don't have an assertion, hope we have a username/password
-		username, password := r.FormValue("username"), r.FormValue("password")
-		if username != "" && password != "" {
-			newuser := userStore.Get(username)
-			if newuser == nil {
-				newuser = userStore.Create(username)
-				newuser.UpdateChallenge(password)
-				user = newuser
-			} else {
-				if newuser.Check(password) {
-					user = newuser
-				} else {
-					reply["status"] = "failure"
-					reply["reason"] = "invalid username or password"
-				}
-			}
-		} else {
-			reply["status"] = "failure"
-			reply["reason"] = "credentials not supplied"
-		}
-
 	}
 
 	if user != nil {
 		context.Set(r, userContextKey, user)
-
-		reply["status"] = "okay"
 
 		// Attempt to aggregate user, session, and old perms.
 		pastePerms := GetPastePermissions(r)
@@ -104,17 +136,17 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 
 		err := user.Save()
 		if err != nil {
-			reply["status"] = "failure"
-			reply["reason"] = err.Error()
+			reply.Reason = "failed to save user"
+			reply.ExtraData["error"] = err.Error()
 		} else {
-			reply["username"] = user.Name
+			reply.Status = "valid"
+			reply.ExtraData["username"] = user.Name
 		}
 		clientSession.Values["account"] = user.Name
 		sessions.Save(r, w)
 	}
 
-	enc := json.NewEncoder(w)
-	enc.Encode(reply)
+	// reply serialized in defer above. just for fun.
 }
 
 func authLogoutPostHandler(w http.ResponseWriter, r *http.Request) {
