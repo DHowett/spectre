@@ -18,12 +18,14 @@ sets:
     name: lib
     path: public/js
     assets:
-      - name: "jquery-2.0.3"
-        type: "js"
-      - name: "bootstrap"
-        type: "js"
-      - name: "select2"
-        type: "js"
+      - name: jquery-2.0.3
+        type: js
+      - name: bootstrap
+        type: js
+      - name: select2
+        type: js
+      - name: ghostbin.jQuery
+        type: js
   js_core:
     handler: min.js
     type: js
