@@ -45,8 +45,8 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 
 	var user *account.User
 
-	assertion := r.FormValue("assertion")
-	if assertion == "" {
+	loginType := r.FormValue("type")
+	if loginType == "username" {
 		// We don't have an assertion, hope we have a username/password
 		reply.Type = "username"
 
@@ -80,9 +80,16 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 				reply.InvalidFields = []string{"username", "password"}
 			}
 		}
-	} else {
+	} else if loginType == "persona" {
 		// BrowserID Assertion
 		reply.Type = "persona"
+
+		assertion := r.FormValue("assertion")
+		if assertion == "" {
+			reply.Reason = "persona login requested without an assertion"
+			reply.InvalidFields = []string{"assertion"}
+			return
+		}
 
 		audience := "https://ghostbin.com"
 		if !RequestIsHTTPS(r) {
@@ -123,6 +130,10 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			reply.Reason = verifyResponseJSON["reason"].(string)
 		}
+	} else {
+		reply.Reason = "invalid login type"
+		reply.InvalidFields = []string{"type"}
+		return
 	}
 
 	if user != nil {
