@@ -64,7 +64,9 @@ func init() {
 		err := ctx.template.ExecuteTemplate(buf, "partial_"+name, ctx)
 		divId := "partial_container_" + name
 		if err != nil {
-			return template.HTML(`<div id="` + divId + `"></div>`)
+			buf = &bytes.Buffer{}
+			ctx.Obj = err
+			ctx.template.ExecuteTemplate(buf, "partial_error", ctx)
 		}
 		return template.HTML(`<div id="` + divId + `">` + buf.String() + `</div>`)
 	})
