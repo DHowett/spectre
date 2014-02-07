@@ -5,51 +5,95 @@ import (
 	"html/template"
 	"net/http"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
-type asset struct {
-	Path, Name, Kind string
-	Mtime            time.Time
+type assetFile struct {
+	Path, Name string
+	Mtime      time.Time
 }
 
-var assets map[string]*asset
-var assetFilesystem http.FileSystem
+type assetFilesystem struct {
+	http.FileSystem
+	Files map[string]*assetFile
+}
 
-func assetFunction(kind string, names ...string) template.HTML {
-	if Env() == EnvironmentProduction {
-		names = []string{"all.min"}
+type AssetEntry struct {
+	Name string
+	Type string
+	Env  string
+}
+
+type AssetSet struct {
+	Name    string
+	Type    string
+	Handler string
+	Env     string
+	Path    string
+	Assets  []*AssetEntry
+}
+
+var _assetConfig struct {
+	Sets map[string]*AssetSet
+}
+
+func assetCategoryFunction(catname string) template.HTML {
+	cat := _assetConfig.Sets[catname]
+	curEnv := Env()
+	// Set not found
+	if cat == nil {
+		return template.HTML("")
 	}
-
-	foundAssets := make([]*asset, len(names))
-	for i, v := range names {
-		foundAssets[i] = assets[v+"-"+kind]
+	// Set has an environment, and it's not this one.
+	if cat.Env != "" && cat.Env != curEnv {
+		return template.HTML("")
 	}
 
 	buf := &bytes.Buffer{}
-	ExecuteTemplate(buf, "asset_"+kind, &RenderContext{Obj: foundAssets})
+	// If the set has no environment, and we're in production
+	// assume that we want the set's generated result (per assetbuild)
+	if cat.Env == "" && Env() == EnvironmentProduction {
+		_foundAsset := assetFs.Files[cat.Name+"."+cat.Handler]
+		ExecuteTemplate(buf, "asset_"+cat.Type, &RenderContext{Obj: _foundAsset})
+	} else {
+		// Otherwise,
+		for _, ae := range cat.Assets {
+			// Only render assets that match our env (if they have an env to match)
+			if ae.Env != "" && ae.Env != curEnv {
+				continue
+			}
+
+			typ := ae.Type
+			if typ == "" {
+				typ = cat.Type
+			}
+			_foundAsset := assetFs.Files[ae.Name+"."+typ]
+			ExecuteTemplate(buf, "asset_"+typ, &RenderContext{Obj: _foundAsset})
+		}
+	}
 
 	return template.HTML(buf.String())
 }
 
-func assetDirectory(assetMap map[string]*asset, path string) {
-	dir, _ := assetFilesystem.Open(path)
+func (fs *assetFilesystem) Populate() {
+	newAssetMap := make(map[string]*assetFile)
+	fs.recursivelyPopulateMap(newAssetMap, "/")
+	fs.Files = newAssetMap
+}
+
+func (fs *assetFilesystem) recursivelyPopulateMap(assetMap map[string]*assetFile, path string) {
+	dir, _ := fs.Open(path)
 	fis, _ := dir.Readdir(0)
 	for _, v := range fis {
 		name := v.Name()
 		newPath := filepath.Join(path, name)
 		if v.IsDir() {
-			assetDirectory(assetMap, newPath)
+			fs.recursivelyPopulateMap(assetMap, newPath)
 		} else {
-			bits := strings.Split(name, ".")
-			kind := bits[len(bits)-1]
-			name := strings.Join(bits[:len(bits)-1], ".")
 			if name != "" {
-				assetMap[name+"-"+kind] = &asset{
+				assetMap[name] = &assetFile{
 					Path:  newPath,
 					Name:  name,
-					Kind:  kind,
 					Mtime: v.ModTime(),
 				}
 			}
@@ -58,17 +102,22 @@ func assetDirectory(assetMap map[string]*asset, path string) {
 }
 
 func InitAssets() {
-	newAssetMap := make(map[string]*asset)
-	assetDirectory(newAssetMap, "/")
-	assets = newAssetMap
+	assetFs.Populate()
+
+	err := YAMLUnmarshalFile("assets.yml", &_assetConfig)
+	if err != nil {
+		panic(err)
+	}
 }
 
+var assetFs *assetFilesystem
+
 func AssetFilesystem() http.FileSystem {
-	return assetFilesystem
+	return assetFs
 }
 
 func init() {
-	assetFilesystem = http.Dir("./public")
-	RegisterTemplateFunction("assets", assetFunction)
+	assetFs = &assetFilesystem{FileSystem: http.Dir("./public")}
+	RegisterTemplateFunction("assets", assetCategoryFunction)
 	RegisterReloadFunction(InitAssets)
 }

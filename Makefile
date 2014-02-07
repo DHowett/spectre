@@ -1,14 +1,18 @@
 all: sync .deploy reload_config
 .PHONY: sync reload_config
-public/css/master.gen.css: public/css/master.less
-	lessc $< > $@
-public/css/all.min.css: $(foreach n,bootstrap master.gen fonts fontello pygments ansi select2 select2-bootstrap,public/css/$(n).css)
-	-rm $@
-	for i in $^; do yui --type css $$i >> $@; done
-public/js/all.min.js: $(foreach n,jquery-2.0.3 bootstrap select2 application,public/js/$(n).js)
-	uglifyjs $^ -m > $@
-sync: $(wildcard *.yml) public/css/all.min.css public/js/all.min.js
+
+.DELETE_ON_ERROR:
+## Asset Management
+./assetbuild: $(wildcard tools/assetbuild/*.go)
+	go build -o assetbuild ./tools/assetbuild
+_assets.mk: ./assetbuild assets.yml
+	./assetbuild -file=assets.yml -env=build -md > $@
+include _assets.mk
+## End
+
+sync: $(wildcard *.yml) _assets
 	rsync -avvHAX *.yml ./templates ./public uv:ghostbin/ --delete
+
 .deploy: paste.linux
 	gnutar cj $^ | pv -prac -N upload | ssh uv "cd ghostbin; tar xj && mv paste.linux ghostbin && restart ghostbin"
 	touch .deploy

@@ -1,0 +1,78 @@
+handlers:
+  less.css:
+    func: command
+    env: []
+    args: ["lessc", "-"]
+  min.css:
+    func: command
+    env: []
+    args: ["yui", "--type", "css"]
+  min.js:
+    func: command
+    env: []
+    args: ["uglifyjs", "-m"]
+sets:
+  js_libs:
+    handler: min.js
+    type: js
+    name: lib
+    path: public/js
+    assets:
+      - name: "jquery-2.0.3"
+        type: "js"
+      - name: "bootstrap"
+        type: "js"
+      - name: "select2"
+        type: "js"
+  js_core:
+    handler: min.js
+    type: js
+    name: application
+    path: public/js
+    assets:
+      - name: application
+        type: js
+  css:
+    handler: min.css
+    type: css
+    name: all
+    path: public/css
+    assets:
+      - name: bootstrap
+        type: css
+      - name: fonts
+        type: css
+      - name: fontello
+        type: css
+      - name: pygments
+        type: css
+      - name: ansi
+        type: css
+      - name: select2
+        type: css
+      - name: select2-bootstrap
+        type: css
+      - name: master
+        env: production
+        type: less.css
+      - name: master
+        env: build
+        type: less.css
+  master_less:
+    env: dev
+    name: master
+    type: less.css
+    assets:
+      - name: master
+        type: less
+      - name: less
+        type: js
+  master_less_build:
+    env: build
+    name: master
+    handler: less.css
+    type: css
+    path: "public/css"
+    assets:
+      - name: master
+        type: less

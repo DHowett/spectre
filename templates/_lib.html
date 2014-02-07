@@ -11,9 +11,10 @@
 	<meta name="viewport" content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0">
 	<meta name="apple-mobile-web-app-capable" content="yes">
 	<meta name="apple-mobile-web-app-status-bar-style" content="black">
-	{{assets "css" "bootstrap" "fonts" "fontello" "pygments" "ansi" "select2" "select2-bootstrap"}}
-	{{assets "js" "jquery-2.0.3" "bootstrap" "select2" "application"}}
-	{{if equal env "dev"}}{{assets "less" "master"}}{{end}}
+	{{assets "css"}}
+	{{assets "js_libs"}}
+	{{assets "js_core"}}
+	{{assets "master_less"}}
 	{{subtemplate . "head"}}
 </head>
 {{with subtemplate . "body"}}
@@ -42,6 +43,6 @@ It looks like you've stumbled upon a page (<strong>{{.Page}}</strong>) that shou
 </div>
 {{end}}
 
-{{define "asset_js"}}{{range .Obj}}<script src="{{.Path}}?{{.Mtime.Unix}}" type="text/javascript"></script>{{end}}{{end}}
-{{define "asset_css"}}{{range .Obj}}<link rel="stylesheet" href="{{.Path}}?{{.Mtime.Unix}}" type="text/css" media="all">{{end}}{{end}}
-{{define "asset_less"}}{{range .Obj}}<link rel="stylesheet/less" href="{{.Path}}?{{.Mtime.Unix}}" type="text/css" media="all">{{end}}<script src="/js/less.js" type="text/javascript"></script>{{end}}
+{{define "asset_js"}}{{with .Obj}}<script src="{{.Path}}?{{.Mtime.Unix}}" type="text/javascript"></script>{{end}}{{end}}
+{{define "asset_css"}}{{with .Obj}}<link rel="stylesheet" href="{{.Path}}?{{.Mtime.Unix}}" type="text/css" media="all">{{end}}{{end}}
+{{define "asset_less"}}{{with .Obj}}<link rel="stylesheet/less" href="{{.Path}}?{{.Mtime.Unix}}" type="text/css" media="all">{{end}}{{end}}
