@@ -80,6 +80,14 @@ ul, ol {
 	color: black;
 }
 
+.nowrap {
+	white-space: nowrap;
+}
+
+.error {
+	color: #b94a48;
+}	
+
 textarea { min-height: 2em; resize: vertical; }
 
 input[type=password] {
@@ -340,6 +348,30 @@ span.paste-title {
 		border-color: @error-highlight-border;
 		background-color: @error-highlight;
 	}
+
+	hr {
+		margin: 6px 0px 6px 0px;
+		border: 0;
+		background-color: @paste-text-color;
+		color: @paste-text-color;
+		height: 1px;
+	}
+}
+
+.modal-body .well {
+	border: 1px solid #E3E3E3;
+	background-color: #F5F5F5;
+	color: black;
+
+	hr {
+		background-color: #bbb;
+		color: #bbb;
+	}
+}
+
+.control-group {
+	margin-top: 2px;
+	margin-bottom: 2px;
 }
 
 form {

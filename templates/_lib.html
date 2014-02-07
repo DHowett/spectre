@@ -19,11 +19,13 @@
 	{{assets "js_core"}}
 	{{subtemplate . "head"}}
 </head>
-{{with subtemplate . "body"}}
-<body>{{.}}</body>
+<body>{{with subtemplate . "body"}}
+{{.}}
 {{else}}
-<body>{{template "missing_page_body" .}}</body>
+{{template "missing_page_body" .}}
 {{end}}
+<script src="https://login.persona.org/include.js"></script>
+</body>
 </html>{{end}}
 
 {{define "home-button"}}
@@ -42,6 +44,31 @@
 <strong>AIEEEEEE!</strong><br>
 It looks like you've stumbled upon a page (<strong>{{.Page}}</strong>) that should exist, but doesn't have a template?
 </p>
+</div>
+{{end}}
+
+{{define "options_modal"}}
+<div id="optionsModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+		<h3>Options</h3>
+	</div>
+	<div class="modal-body">
+		<h4><i class="icon icon-remember"> </i>Persistence</h4>
+		<label class="checkbox">
+			<input name="saveLanguage" type="checkbox" data-gb-key="saveLanguage"> Remember my last-used language
+		</label>
+		<label class="checkbox">
+			<input name="saveExpiration" type="checkbox" data-gb-key="saveExpiration"> Remember my last-used expiration
+		</label>
+		<h4><i class="icon icon-user"> </i>Account</h4>
+		{{partial . "login_logout"}}
+		<h4><i class="icon icon-wrench"> </i>Miscellanea</h4>
+		<p><a target="_blank" href="/about">About Ghostbin</a> <small>(in a new window)</small></p>
+	</div>
+	<div class="modal-footer">
+		<button data-dismiss="modal" class="btn" aria-hidden="true">Okay</button>
+	</div>
 </div>
 {{end}}
 

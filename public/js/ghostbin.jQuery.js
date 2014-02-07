@@ -40,6 +40,14 @@
 		mqlListener(mql);
 		mql.addListener(mqlListener);
 	};
+	$.fn.serializeObject = function() {
+		var self = this;
+		var object = {};
+		$.each($(self).serializeArray(), function(i, v) {
+			object[v["name"]] = v["value"];
+		});
+		return object;
+	};
 })(jQuery);
 
 /* From https://github.com/sprucemedia/jQuery.divPlaceholder.js */

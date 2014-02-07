@@ -1,0 +1,51 @@
+{{define "partial_login_logout"}}
+{{if user .}}
+<p>You are logged in.</p>
+<button type="button" id="logout" class="btn"><i class="icon icon-logout"> </i>Log Out</button>
+<script type="text/javascript">
+$("button#logout").on("click", function() {
+	Ghostbin.logout();
+});
+</script>
+{{else}}
+<p><small>Ghostbin user accounts exist solely for keeping track of your own pastes.<br>No personally-identifying information is
+retained as part of your user account&mdash;even when you use <span class="nowrap"><i class="icon icon-persona"> </i>Email</span>. Promise.</small></p>
+<div class="well well-small">
+	<button type="button" id="login_persona" class="btn phone-expand"><i class="icon icon-persona"> </i>Email</button>
+	<hr>
+	<form id="loginForm" action="">
+		<input type="hidden" name="type" value="username">
+		<div class="control-group">
+			<div class="input-prepend phone-expand">
+				<span class="add-on"><i class="icon icon-user"> </i></span>
+				<div class="controls input-wrapper"><input type="text" name="username" autocomplete="off" placeholder="username"></div>
+			</div>
+		</div>
+		<div class="control-group">
+			<div class="input-prepend phone-expand">
+				<span class="add-on"><i class="icon icon-key"> </i></span>
+				<div class="controls input-wrapper"><input type="password" name="password" autocomplete="off" placeholder="password"></div>
+			</div>
+		</div>
+		<div class="control-group hide">
+			<div class="input-prepend phone-expand">
+				<span class="add-on"><i class="icon icon-key"> </i></span>
+				<div class="controls input-wrapper"><input type="password" name="confirm_password" autocomplete="off" placeholder="confirm"></div>
+			</div>
+		</div>
+		<button type="submit" class="btn phone-expand"><i class="icon icon-login"> </i>Log In or Create Account</button>
+		<div id="login_error" class="phone-expand error hide"></div>
+	</form>
+</div>
+<script type="text/javascript">
+$("form#loginForm").on('submit', function(event) {
+	Ghostbin.login($(this).serializeObject());
+	event.preventDefault();
+	event.stopPropagation();
+});
+$("button#login_persona").on("click", function() {
+	navigator.id.request();
+});
+</script>
+{{end}}
+{{end}}

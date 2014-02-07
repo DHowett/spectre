@@ -81,6 +81,80 @@
 			clearPreference: function(k) {
 				delete localStorage[k];
 			},
+			updatePartial: function(name) {
+				$.ajax({
+					type: "GET",
+					url: "/partial/"+name,
+					async: false,
+					dataType: "html",
+					success: function(reply) {
+						$("#partial_container_"+name).html(reply);
+					}
+				});
+			},
+			_loginReplyHandler: function(reply) {
+				switch(reply.status) {
+					case "valid":
+						$("#login_error").text("").hide(400);
+						if(reply.type === "persona") {
+							Ghostbin.setPreference("persona", reply.extra.persona);
+						}
+						Ghostbin.updatePartial("login_logout");
+						break;
+					case "moreinfo":
+						$("#login_error").text("").hide(400);
+						if(typeof reply.invalid_fields !== "undefined") {
+							$.each(reply.invalid_fields, function(i, v) {
+								var field = $("form#loginForm input[name="+v+"]");
+								field.parents(".control-group").eq(0).show(400);
+								field.focus();
+							});
+						}
+						break;
+					case "invalid":
+						if(typeof reply.invalid_fields !== "undefined") {
+							$.each(reply.invalid_fields, function(i, v) {
+								$("form#loginForm input[name="+v+"]").parents(".control-group").eq(0).addClass("error");
+							});
+						}
+						if(typeof reply.reason !== "undefined") {
+							$("#login_error").text(reply.reason).show(400);
+						}
+						break;
+				}
+			},
+			login: function(data) {
+				$("form#loginForm .control-group").removeClass("error");
+				$.ajax({
+					type: "POST",
+					url: "/auth/login",
+					async: false,
+					dataType: "json",
+					data: data,
+					success: Ghostbin._loginReplyHandler,
+					error: function() {
+						// In case we were attempting a persona login.
+						navigator.id.logout();
+					},
+				});
+			},
+			logout: function() {
+				$.ajax({
+					type: "POST",
+					url: "/auth/logout",
+					async: false,
+					success: function() {
+						if(Ghostbin.getPreference("persona", null)) {
+							navigator.id.logout();
+							Ghostbin.clearPreference("persona");
+						}
+						Ghostbin.updatePartial("login_logout");
+					},
+					failure: function(wat) {
+						alert(wat);
+					}
+				});
+			},
 		};
 	}();
 })(window);
@@ -368,5 +442,17 @@ $(function() {
 			show: 250,
 			hide: 50,
 		},
+	});
+	navigator.id.watch({
+		loggedInUser: Ghostbin.getPreference("persona", null),
+		onlogin: function(assertion) {
+			var data = $("#loginForm").serializeObject();
+			data["type"] = "persona";
+			data["assertion"] = assertion;
+			Ghostbin.login(data);
+		},
+		onlogout: function() {
+			Ghostbin.logout();
+		}
 	});
 });
