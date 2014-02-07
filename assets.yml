@@ -32,10 +32,10 @@ sets:
     assets:
       - name: application
         type: js
-  css:
+  css_libs:
     handler: min.css
     type: css
-    name: all
+    name: lib
     path: public/css
     assets:
       - name: bootstrap
@@ -44,21 +44,33 @@ sets:
         type: css
       - name: fontello
         type: css
-      - name: pygments
-        type: css
-      - name: ansi
-        type: css
       - name: select2
         type: css
       - name: select2-bootstrap
         type: css
+  css_ghostbin:
+    handler: min.css
+    type: css
+    name: ghostbin
+    path: public/css
+    assets:
       - name: master
         env: production
         type: less.css
       - name: master
         env: build
         type: less.css
-  master_less:
+  css_theme:
+    handler: min.css
+    type: css
+    name: theme
+    path: public/css
+    assets:
+      - name: pygments
+        type: css
+      - name: ansi
+        type: css
+  less_ghostbin:
     env: dev
     name: master
     type: less.css
@@ -67,7 +79,7 @@ sets:
         type: less
       - name: less
         type: js
-  master_less_build:
+  less_ghostbin_for_build:
     env: build
     name: master
     handler: less.css
