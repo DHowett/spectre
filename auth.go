@@ -9,10 +9,12 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/context"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 )
 
 const USER_CACHE_MAX_ENTRIES int = 1000
@@ -130,6 +132,24 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			reply.Reason = verifyResponseJSON["reason"].(string)
 		}
+	} else if loginType == "token" {
+		// Authentication Token
+		reply.Type = "token"
+
+		token := r.FormValue("token")
+		if token == "" {
+			reply.Reason = "authtoken login requested but no token provided"
+			reply.InvalidFields = []string{"token"}
+			return
+		}
+
+		u, ok := ephStore.Get("A|U|" + token)
+		if !ok {
+			reply.Reason = "that authenticated token isn't"
+			reply.InvalidFields = []string{"token"}
+			return
+		}
+		user = u.(*account.User)
 	} else {
 		reply.Reason = "invalid login type"
 		reply.InvalidFields = []string{"type"}
@@ -155,6 +175,10 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		clientSession.Values["account"] = user.Name
 		sessions.Save(r, w)
+
+		if token := r.FormValue("requested_auth_token"); token != "" {
+			ephStore.Put("A|U|"+token, user, 30*time.Minute)
+		}
 	}
 
 	// reply serialized in defer above. just for fun.
@@ -164,6 +188,28 @@ func authLogoutPostHandler(w http.ResponseWriter, r *http.Request) {
 	ses, _ := clientLongtermSessionStore.Get(r, "authentication")
 	delete(ses.Values, "account")
 	sessions.Save(r, w)
+}
+
+func authTokenHandler(w http.ResponseWriter, r *http.Request) {
+	authToken, _ := generateRandomBase32String(20, 32)
+	ephStore.Put("A|"+authToken, true, 30*time.Minute)
+	url, _ := router.Get("auth_token_login").URL("token", authToken)
+	w.Header().Set("Location", url.String())
+	w.WriteHeader(http.StatusSeeOther)
+}
+
+func authTokenPageHandler(w http.ResponseWriter, r *http.Request) {
+	token := mux.Vars(r)["token"]
+	_, ok := ephStore.Get("A|" + token)
+	if !ok {
+		return
+	}
+
+	user := GetUser(r)
+	if user != nil {
+		ephStore.Put("A|U|"+token, user, 30*time.Minute)
+	}
+	RenderPage(w, r, "authtoken", map[string]string{"token": token})
 }
 
 type AuthChallengeProvider struct{}

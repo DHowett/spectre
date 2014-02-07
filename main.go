@@ -543,6 +543,7 @@ var clientLongtermSessionStore *sessions.CookieStore
 var ephStore *gotimeout.Map
 var userStore account.AccountStore
 var pasteRouter *mux.Router
+var router *mux.Router
 
 type args struct {
 	root, addr string
@@ -644,7 +645,7 @@ func main() {
 		}
 	}()
 
-	router := mux.NewRouter()
+	router = mux.NewRouter()
 	pasteRouter = router.PathPrefix("/paste").Subrouter()
 
 	pasteRouter.Methods("GET").
@@ -761,6 +762,8 @@ func main() {
 
 	router.Methods("POST").Path("/auth/login").Handler(http.HandlerFunc(authLoginPostHandler))
 	router.Methods("POST").Path("/auth/logout").Handler(http.HandlerFunc(authLogoutPostHandler))
+	router.Methods("GET").Path("/auth/token").Handler(http.HandlerFunc(authTokenHandler))
+	router.Methods("GET").Path("/auth/token/{token}").Handler(http.HandlerFunc(authTokenPageHandler)).Name("auth_token_login")
 
 	router.Path("/").Handler(RenderPageHandler("index"))
 	router.PathPrefix("/").Handler(http.FileServer(AssetFilesystem()))

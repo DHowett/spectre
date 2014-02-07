@@ -15,6 +15,7 @@ retained as part of your user account&mdash;even when you use <span class="nowra
 	<hr>
 	<form id="loginForm" action="">
 		<input type="hidden" name="type" value="username">
+		{{if .Obj}}{{with .Obj.token}}<input type="hidden" name="requested_auth_token" value="{{.}}">{{end}}{{end}}
 		<div class="control-group">
 			<div class="input-prepend phone-expand">
 				<span class="add-on"><i class="icon icon-user"> </i></span>
@@ -48,4 +49,16 @@ $("button#login_persona").on("click", function() {
 });
 </script>
 {{end}}
+{{end}}
+
+{{define "authtoken_body"}}
+<div class="paste-toolbox">
+	{{template "home-button"}}
+	<span class="paste-title">
+		<i class="icon-lock"></i><strong>External Auth</strong>
+	</span>
+</div>
+<div class="well">
+{{partial . "login_logout"}}
+</div>
 {{end}}
