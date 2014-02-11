@@ -54,9 +54,9 @@ type _LanguageConfiguration struct {
 	} `yaml:"languageGroups"`
 	Formatters map[string]*Formatter
 
-	languageMap  map[string]*Language
-	modtime      time.Time
-	languageJSON []byte
+	languageMap        map[string]*Language
+	modtime            time.Time
+	languageJSONReader *bytes.Reader
 }
 
 var languageConfig _LanguageConfiguration
@@ -164,7 +164,8 @@ func loadLanguageConfig() {
 
 	fi, _ := os.Stat("languages.yml")
 	languageConfig.modtime = fi.ModTime()
-	languageConfig.languageJSON, _ = json.Marshal(languageConfig.LanguageGroups)
+	languageJSON, _ := json.Marshal(languageConfig.LanguageGroups)
+	languageConfig.languageJSONReader = bytes.NewReader(languageJSON)
 }
 
 func init() {

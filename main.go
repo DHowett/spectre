@@ -723,19 +723,7 @@ func main() {
 	router.Path("/about").Handler(RenderPageHandler("about"))
 	router.Methods("GET", "HEAD").Path("/languages.json").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
-		if t, err := time.Parse(http.TimeFormat, r.Header.Get("If-Modified-Since")); err == nil && languageConfig.modtime.Before(t.Add(1*time.Second)) {
-			h := w.Header()
-			delete(h, "Content-Type")
-			delete(h, "Content-Length")
-			w.WriteHeader(http.StatusNotModified)
-			return
-		}
-		w.Header().Set("Last-Modified", languageConfig.modtime.UTC().Format(http.TimeFormat))
-
-		if r.Method == "GET" {
-			w.Write(languageConfig.languageJSON)
-		}
+		http.ServeContent(w, r, "languages.json", languageConfig.modtime, languageConfig.languageJSONReader)
 	}))
 
 	launchTime := time.Now()
