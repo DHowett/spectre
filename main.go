@@ -104,6 +104,7 @@ func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"."+ext+"\"")
 		w.Header().Set("Content-Transfer-Encoding", "binary")
 	}
+	w.Header().Set("Content-Security-Policy", "default-src 'none'")
 	w.Header().Set("Content-Type", mime+"; charset=utf-8")
 
 	reader, _ := p.Reader()
