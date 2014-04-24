@@ -21,6 +21,12 @@
       ]
     },
     {
+      "uid": "f0c301ac841dafc38d8eb1b933fc73e5",
+      "css": "spinner",
+      "code": 59410,
+      "src": "fontelico"
+    },
+    {
       "uid": "5211af474d3a9848f67f945e2ccaf143",
       "css": "cancel",
       "code": 59398,

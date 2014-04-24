@@ -455,6 +455,33 @@ form {
 	}
 }
 
+#partial_container_login_logout {
+	position: relative;
+	padding: 4px;
+}
+
+.blocker {
+	border-radius: 4px;
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	background-color: rgba(0, 0, 0, 0.5);
+	z-index: 10;
+	.spinner {
+		text-align: right;
+		position: absolute;
+		width: 1em;
+		height: 1em;
+		top: 0.5em;
+		right: 1em;
+		color: #999;
+	}
+}
+
 @media @media-phone {
 	#phone-paste-control-container.well {
 		padding: 4px;

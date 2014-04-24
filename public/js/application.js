@@ -93,6 +93,7 @@
 				});
 			},
 			_loginReplyHandler: function(reply) {
+				$("#partial_container_login_logout .blocker").fadeOut("fast");
 				switch(reply.status) {
 					case "valid":
 						$("#login_error").text("").hide(400);
@@ -124,26 +125,30 @@
 				}
 			},
 			login: function(data) {
+				$("#partial_container_login_logout .blocker").fadeIn("fast");
 				$("form#loginForm .control-group").removeClass("error");
 				$.ajax({
 					type: "POST",
 					url: "/auth/login",
-					async: false,
+					async: true,
 					dataType: "json",
 					data: data,
 					success: Ghostbin._loginReplyHandler,
 					error: function() {
+						$("#partial_container_login_logout .blocker").fadeOut("fast");
 						// In case we were attempting a persona login.
 						navigator.id.logout();
 					},
 				});
 			},
 			logout: function() {
+				$("#partial_container_login_logout .blocker").fadeIn("fast");
 				$.ajax({
 					type: "POST",
 					url: "/auth/logout",
-					async: false,
+					async: true,
 					success: function() {
+						$("#partial_container_login_logout .blocker").fadeOut("fast");
 						if(Ghostbin.getPreference("persona", null)) {
 							navigator.id.logout();
 							Ghostbin.clearPreference("persona");
@@ -151,6 +156,7 @@
 						Ghostbin.updatePartial("login_logout");
 					},
 					failure: function(wat) {
+						$("#partial_container_login_logout .blocker").fadeOut("fast");
 						alert(wat);
 					}
 				});

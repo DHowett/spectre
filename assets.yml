@@ -50,6 +50,8 @@ sets:
         type: css
       - name: select2-bootstrap
         type: css
+      - name: icon_effects
+        type: css
   css_ghostbin:
     handler: min.css
     type: css
