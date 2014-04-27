@@ -26,7 +26,7 @@ func RegisterTemplateFunction(name string, function interface{}) {
 
 func InitTemplates() {
 	tmpl = func() *template.Template {
-		return template.Must(template.New("base").Funcs(templateFunctions).ParseGlob("templates/*.html"))
+		return template.Must(template.New("base").Funcs(templateFunctions).ParseGlob("templates/*.tmpl"))
 	}
 	if !arguments.rebuild {
 		glog.Info("Caching templates.")
