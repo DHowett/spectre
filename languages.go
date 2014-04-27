@@ -131,16 +131,20 @@ var formatFunctions map[string]FormatFunc = map[string]FormatFunc{
 	"markdown":         markdownFormatter,
 }
 
-func FormatPaste(p *Paste) (string, error) {
+func FormatStream(r io.Reader, language *Language) (string, error) {
 	var formatter *Formatter
 	var ok bool
-	if formatter, ok = languageConfig.Formatters[p.Language.Formatter]; !ok {
+	if formatter, ok = languageConfig.Formatters[language.Formatter]; !ok {
 		formatter = languageConfig.Formatters["default"]
 	}
 
+	return formatter.Format(r, language.ID)
+}
+
+func FormatPaste(p *Paste) (string, error) {
 	reader, _ := p.Reader()
 	defer reader.Close()
-	return formatter.Format(reader, p.Language.ID)
+	return FormatStream(reader, p.Language)
 }
 
 func loadLanguageConfig() {
