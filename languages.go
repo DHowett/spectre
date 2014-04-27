@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/golang/glog"
-	"github.com/knieriem/markdown"
 	"html/template"
 	"io"
 	"os"
@@ -12,6 +10,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/golang/glog"
+	"howett.net/blackfriday"
 )
 
 type Language struct {
@@ -105,12 +106,17 @@ func commandFormatter(formatter *Formatter, stream io.Reader, args ...string) (o
 
 func markdownFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
 	buf := &bytes.Buffer{}
-	markdownParser := markdown.NewParser(&markdown.Extensions{
-		Smart:      true,
-		FilterHTML: true,
-	})
-	markdownParser.Markdown(stream, markdown.ToHTML(buf))
-	return buf.String(), nil
+	renderer := blackfriday.HtmlRenderer(blackfriday.HTML_SAFELINK|
+		blackfriday.HTML_SANITIZE_OUTPUT|
+		blackfriday.HTML_NOFOLLOW_LINKS, "", "")
+	io.Copy(buf, stream)
+	md := blackfriday.Markdown(buf.Bytes(), renderer,
+		blackfriday.EXTENSION_NO_INTRA_EMPHASIS|
+			blackfriday.EXTENSION_TABLES|
+			blackfriday.EXTENSION_AUTOLINK|
+			blackfriday.EXTENSION_FENCED_CODE|
+			blackfriday.EXTENSION_HEADER_IDS)
+	return string(md), nil
 }
 
 func plainTextFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
