@@ -106,9 +106,7 @@ func commandFormatter(formatter *Formatter, stream io.Reader, args ...string) (o
 
 func markdownFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
 	buf := &bytes.Buffer{}
-	renderer := blackfriday.HtmlRenderer(blackfriday.HTML_SAFELINK|
-		blackfriday.HTML_SANITIZE_OUTPUT|
-		blackfriday.HTML_NOFOLLOW_LINKS, "", "")
+	renderer := NewMkdHtmlRenderer()
 	io.Copy(buf, stream)
 	md := blackfriday.Markdown(buf.Bytes(), renderer,
 		blackfriday.EXTENSION_NO_INTRA_EMPHASIS|
