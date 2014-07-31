@@ -140,6 +140,16 @@ filename="$1"
 lang="text"
 if [[ ! -z $2 ]]; then
 	lang=$2
+else
+	basename="$(basename "$filename")"
+	extension="${basename##*.}"
+	case "$extension" in
+		js|cy) lang=javascript ;;
+		h|m) lang=objc ;;
+		x|xm|xi|xmi) lang=logos ;;
+		c) lang=c ;;
+		cpp|hpp) lang=cpp ;;
+	esac
 fi
 
 if [[ "${mode}" == "delete" ]]; then
