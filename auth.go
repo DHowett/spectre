@@ -145,6 +145,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 
 		u, ok := ephStore.Get("A|U|" + token)
 		if !ok {
+			w.WriteHeader(http.StatusTeapot) // I'm a teapot.
 			reply.Reason = "that authenticated token isn't"
 			reply.InvalidFields = []string{"token"}
 			return
