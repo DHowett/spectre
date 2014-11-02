@@ -1,20 +1,21 @@
 package main
 
 import (
-	"./account"
-	"code.google.com/p/go.crypto/scrypt"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
+	"net/http"
+	"net/url"
+	"sync"
+	"time"
+
+	"./account"
+	"code.google.com/p/go.crypto/scrypt"
 	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	"net/http"
-	"net/url"
-	"sync"
-	"time"
 )
 
 const USER_CACHE_MAX_ENTRIES int = 1000

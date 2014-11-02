@@ -1,20 +1,15 @@
 package main
 
 import (
-	"./account"
 	"bytes"
 	"crypto/md5"
 	"encoding/gob"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/DHowett/gotimeout"
-	"github.com/golang/glog"
-	"github.com/golang/groupcache/lru"
-	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -22,6 +17,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"./account"
+	"github.com/DHowett/gotimeout"
+	"github.com/golang/glog"
+	"github.com/golang/groupcache/lru"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/securecookie"
+	"github.com/gorilla/sessions"
 )
 
 const PASTE_CACHE_MAX_ENTRIES int = 1000
@@ -591,17 +594,27 @@ func init() {
 	sesdir := filepath.Join(arguments.root, "sessions")
 	os.Mkdir(sesdir, 0700)
 
-	sessionKey, err := SlurpFile(filepath.Join(arguments.root, "session.key"))
+	sessionKeyFile := filepath.Join(arguments.root, "session.key")
+	sessionKey, err := SlurpFile(sessionKeyFile)
 	if err != nil {
-		glog.Fatal("session.key not found. make one with seskey.go?")
+		sessionKey = securecookie.GenerateRandomKey(32)
+		err = ioutil.WriteFile(sessionKeyFile, sessionKey, 0600)
+		if err != nil {
+			glog.Fatal("session.key not found, and an attempt to create one failed: ", err)
+		}
 	}
 	sessionStore = sessions.NewFilesystemStore(sesdir, sessionKey)
 	sessionStore.Options.Path = "/"
 	sessionStore.Options.MaxAge = 86400 * 365
 
-	clientOnlySessionEncryptionKey, err := SlurpFile(filepath.Join(arguments.root, "client_session_enc.key"))
+	clientKeyFile := filepath.Join(arguments.root, "client_session_enc.key")
+	clientOnlySessionEncryptionKey, err := SlurpFile(clientKeyFile)
 	if err != nil {
-		glog.Fatal("client_session_enc.key not found. make one with seskey.go?")
+		clientOnlySessionEncryptionKey = securecookie.GenerateRandomKey(128)
+		err = ioutil.WriteFile(clientKeyFile, clientOnlySessionEncryptionKey, 0600)
+		if err != nil {
+			glog.Fatal("client_session_enc.key not found, and an attempt to create one failed: ", err)
+		}
 	}
 	clientOnlySessionStore = sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
 	if Env() != EnvironmentDevelopment {
