@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 
-	"github.com/russross/blackfriday"
+	"gopkg.in/russross/blackfriday.v1"
 )
 
 type MkdHtmlRenderer struct {
