@@ -1,7 +1,7 @@
 package main
 
 import (
-	"./account"
+	"github.com/DHowett/ghostbin/account"
 	"github.com/gorilla/sessions"
 	"net/http"
 )

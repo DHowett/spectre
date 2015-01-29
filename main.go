@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"./account"
+	"github.com/DHowett/ghostbin/account"
 	"github.com/DHowett/gotimeout"
 	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"

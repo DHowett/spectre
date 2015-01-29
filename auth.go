@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"./account"
+	"github.com/DHowett/ghostbin/account"
 	"code.google.com/p/go.crypto/scrypt"
 	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
