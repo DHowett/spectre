@@ -10,7 +10,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"io"
-	"launchpad.net/goyaml"
+	"gopkg.in/yaml.v2"
 	"net/http"
 	"os"
 	"os/signal"
@@ -83,7 +83,7 @@ func YAMLUnmarshalFile(filename string, i interface{}) error {
 	yml := make([]byte, fi.Size())
 	io.ReadFull(yamlFile, yml)
 	yamlFile.Close()
-	err = goyaml.Unmarshal(yml, i)
+	err = yaml.Unmarshal(yml, i)
 	if err != nil {
 		return err
 	}
