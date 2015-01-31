@@ -172,6 +172,26 @@ func requiresEditPermission(fn ModelRenderFunc) ModelRenderFunc {
 	}
 }
 
+func requiresUserPermission(permission string, handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer errorRecoveryHandler(w)
+
+		user := GetUser(r)
+		if user != nil {
+			if o, ok := user.Values["user.permissions"]; ok {
+				if perms, ok := o.(PastePermission); ok {
+					if perms[permission] {
+						handler.ServeHTTP(w, r)
+						return
+					}
+				}
+			}
+		}
+
+		panic(fmt.Errorf("You are not allowed to be here. >:|"))
+	})
+}
+
 func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 	pasteUpdateCore(o, w, r, false)
 }
@@ -582,6 +602,7 @@ func init() {
 	// N.B. this should not be necessary.
 	gob.Register(map[PasteID][]byte(nil))
 	gob.Register(&PastePermissionSet{})
+	gob.Register(PastePermission{})
 
 	arguments.register()
 	arguments.parse()
