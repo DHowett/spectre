@@ -622,7 +622,7 @@ func init() {
 	clientKeyFile := filepath.Join(arguments.root, "client_session_enc.key")
 	clientOnlySessionEncryptionKey, err := SlurpFile(clientKeyFile)
 	if err != nil {
-		clientOnlySessionEncryptionKey = securecookie.GenerateRandomKey(128)
+		clientOnlySessionEncryptionKey = securecookie.GenerateRandomKey(32)
 		err = ioutil.WriteFile(clientKeyFile, clientOnlySessionEncryptionKey, 0600)
 		if err != nil {
 			glog.Fatal("client_session_enc.key not found, and an attempt to create one failed: ", err)
