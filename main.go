@@ -286,7 +286,10 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	perms.Save(w, r)
 
 	if key != nil {
-		cliSession, _ := clientOnlySessionStore.Get(r, "c_session")
+		cliSession, err := clientOnlySessionStore.Get(r, "c_session")
+		if err != nil {
+			glog.Errorln(err)
+		}
 		pasteKeys, ok := cliSession.Values["paste_keys"].(map[PasteID][]byte)
 		if !ok {
 			pasteKeys = map[PasteID][]byte{}
@@ -296,7 +299,10 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 		cliSession.Values["paste_keys"] = pasteKeys
 	}
 
-	sessions.Save(r, w)
+	err = sessions.Save(r, w)
+	if err != nil {
+		glog.Errorln(err)
+	}
 
 	pasteUpdateCore(p, w, r, true)
 }
@@ -319,7 +325,10 @@ func lookupPasteWithRequest(r *http.Request) (Model, error) {
 	id := PasteIDFromString(mux.Vars(r)["id"])
 	var key []byte
 
-	cliSession, _ := clientOnlySessionStore.Get(r, "c_session")
+	cliSession, err := clientOnlySessionStore.Get(r, "c_session")
+	if err != nil {
+		glog.Errorln(err)
+	}
 	if pasteKeys, ok := cliSession.Values["paste_keys"].(map[PasteID][]byte); ok {
 		if _key, ok := pasteKeys[id]; ok {
 			key = _key
@@ -405,6 +414,9 @@ func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
 		pasteKeys[id] = key
 		cliSession.Values["paste_keys"] = pasteKeys
 		sessions.Save(r, w)
+		if err != nil {
+			glog.Errorln(err)
+		}
 	}
 
 	url, _ := pasteRouter.Get("show").URL("id", id.String())

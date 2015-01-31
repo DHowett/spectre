@@ -33,8 +33,14 @@ type authReply struct {
 }
 
 func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
-	clientSession, _ := clientLongtermSessionStore.Get(r, "authentication")
-	serverSession, _ := sessionStore.Get(r, "session")
+	clientSession, err := clientLongtermSessionStore.Get(r, "authentication")
+	if err != nil {
+		glog.Errorln(err)
+	}
+	serverSession, err := sessionStore.Get(r, "session")
+	if err != nil {
+		glog.Errorln(err)
+	}
 
 	reply := &authReply{
 		Status:    "invalid",
@@ -176,7 +182,10 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 			reply.ExtraData["username"] = user.Name
 		}
 		clientSession.Values["account"] = user.Name
-		sessions.Save(r, w)
+		err = sessions.Save(r, w)
+		if err != nil {
+			glog.Errorln(err)
+		}
 
 		if token := r.FormValue("requested_auth_token"); token != "" {
 			ephStore.Put("A|U|"+token, user, 30*time.Minute)
@@ -189,7 +198,10 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 func authLogoutPostHandler(w http.ResponseWriter, r *http.Request) {
 	ses, _ := clientLongtermSessionStore.Get(r, "authentication")
 	delete(ses.Values, "account")
-	sessions.Save(r, w)
+	err := sessions.Save(r, w)
+	if err != nil {
+		glog.Errorln(err)
+	}
 }
 
 func authTokenHandler(w http.ResponseWriter, r *http.Request) {
