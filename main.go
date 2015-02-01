@@ -747,6 +747,11 @@ func main() {
 		Path("/{id}/delete").
 		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
 
+	pasteRouter.Methods("POST").
+		Path("/{id}/report").
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, pasteReport)).
+		Name("report")
+
 	pasteRouter.Methods("GET").
 		MatcherFunc(HTTPSMuxMatcher).
 		Path("/{id}/authenticate").
