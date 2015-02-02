@@ -770,6 +770,9 @@ func main() {
 	router.Path("/admin").Handler(requiresUserPermission("admin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		RenderPage(w, r, "admin_home", reported_posts)
 	})))
+	router.Methods("GET"). // TODO: POST Support
+				Path("/admin/paste/{id}/delete").
+				Handler(requiresUserPermission("admin", RequiredModelObjectHandler(lookupPasteWithRequest, pasteDelete)))
 
 	router.Methods("GET"). // TODO: POST Support
 				Path("/admin/paste/{id}/clear_report").
