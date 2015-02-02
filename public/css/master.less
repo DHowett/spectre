@@ -266,13 +266,23 @@ ul.paste-list {
 	list-style: none;
 	padding: @paste-content-padding;
 	margin: 0;
+	&.selectable {
+		& > li {
+			&:hover {
+				background-color: @minor-highlight;
+			}
+		}
+	}
 	& > li {
 		padding: 4px;
-		&:hover {
-			background-color: @minor-highlight;
-		}
-		& > a {
+		a {
 			text-decoration: none;
+			color: @paste-title-color;
+			font-size: @paste-title-font-size;
+			vertical-align: middle;
+			&:hover {
+				color: @paste-subtitle-color;
+			}
 		}
 	}
 }
