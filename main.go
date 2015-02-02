@@ -767,6 +767,14 @@ func main() {
 		Path("/{id}/authenticate").
 		Handler(RenderPageHandler("paste_authenticate_disallowed"))
 
+	router.Path("/admin").Handler(requiresUserPermission("admin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		RenderPage(w, r, "admin_home", reported_posts)
+	})))
+
+	router.Methods("GET"). // TODO: POST Support
+				Path("/admin/paste/{id}/clear_report").
+				Handler(requiresUserPermission("admin", http.HandlerFunc(reportClear)))
+
 	pasteRouter.Methods("GET").Path("/").Handler(RedirectHandler("/"))
 
 	router.Path("/paste").Handler(RedirectHandler("/"))
