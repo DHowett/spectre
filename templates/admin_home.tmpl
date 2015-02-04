@@ -1,0 +1,24 @@
+{{define "admin_home_title"}}Admin Home{{end}}
+{{define "admin_home_body"}}
+<div class="paste-toolbox">
+	{{template "home-button"}}
+	<span class="paste-title">
+		<strong>{{with user .}}{{.Name}}{{end}}</strong>
+	</span>
+</div>
+<ul class="paste-list">
+{{range $pasteID, $reportData := .Obj}}<li>
+	<!--a href="/paste/{{$pasteID}}" class="btn btn-inverse" target="_blank"><i class="icon-file-text icon-large"></i></a-->
+	<a href="/paste/{{$pasteID}}" target="_blank"><i class="icon-file-text icon-large"></i></a>
+	<a href="/admin/paste/{{$pasteID}}/clear_report"><i class="icon-edit icon-large"></i></a>
+	<a href="/admin/paste/{{$pasteID}}/delete"><i class="icon-trash icon-large"></i></a>
+	<span class="paste-title">
+	<strong>{{$pasteID}}</strong>
+	<span class="paste-subtitle">
+	{{range $report_type, $count := $reportData}}
+		{{$report_type}} x{{$count}}
+	{{end}}
+	</span>
+	</span>
+</li>{{end}}
+</ul>{{end}}
