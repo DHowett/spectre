@@ -749,7 +749,7 @@ func main() {
 
 	pasteRouter.Methods("POST").
 		Path("/{id}/report").
-		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, pasteReport)).
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, reportPaste)).
 		Name("report")
 
 	pasteRouter.Methods("GET").
@@ -768,7 +768,7 @@ func main() {
 		Handler(RenderPageHandler("paste_authenticate_disallowed"))
 
 	router.Path("/admin").Handler(requiresUserPermission("admin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		RenderPage(w, r, "admin_home", reported_posts)
+		RenderPage(w, r, "admin_home", ReportedPastes)
 	})))
 	router.Methods("GET"). // TODO: POST Support
 				Path("/admin/paste/{id}/delete").

@@ -9,10 +9,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type report_info map[string]int
-type report_posts map[PasteID]report_info
+type ReportInfo map[string]int
+type ReportedPasteMap map[PasteID]ReportInfo
 
-func (r report_posts) Save(filename string) error {
+func (r ReportedPasteMap) Save(filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -25,39 +25,40 @@ func (r report_posts) Save(filename string) error {
 	return enc.Encode(r)
 }
 
-func (r report_posts) Delete(p PasteID) {
+func (r ReportedPasteMap) Delete(p PasteID) {
 	delete(r, p)
 	glog.Info(r)
 }
 
-// var reported_posts = make(map[PasteID]report_info)
-var reported_posts report_posts
+// var ReportedPastes = make(map[PasteID]ReportInfo)
+var ReportedPastes ReportedPasteMap
 
-func pasteReport(o Model, w http.ResponseWriter, r *http.Request) {
+func reportPaste(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 	reason := r.FormValue("reason")
 
-	existing_reports, ok := reported_posts[p.ID]
+	CurrentReports, ok := ReportedPastes[p.ID]
 
 	if !ok {
-		existing_reports = make(report_info)
-		reported_posts[p.ID] = existing_reports
+		CurrentReports = make(ReportInfo)
+		ReportedPastes[p.ID] = CurrentReports
 	}
 
-	existing_reports[reason] = existing_reports[reason] + 1
-	err := reported_posts.Save("reports.gob")
+	CurrentReports[reason] = CurrentReports[reason] + 1
+	err := ReportedPastes.Save("reports.gob")
 	if err != nil {
 		glog.Error("Error saving to reports.gob", err)
+		// Should we be panicking here?
 	}
 
 	w.Header().Set("Location", "/")
 	w.WriteHeader(http.StatusFound)
 }
 
-func loadReports() report_posts {
+func loadReports() ReportedPasteMap {
 	report_file, err := os.Open("reports.gob")
 	if err == nil {
-		var decoded_reports report_posts
+		var decoded_reports ReportedPasteMap
 		dec := gob.NewDecoder(report_file)
 		err := dec.Decode(&decoded_reports)
 
@@ -66,15 +67,15 @@ func loadReports() report_posts {
 		}
 		return decoded_reports
 	}
-	return make(report_posts)
+	return make(ReportedPasteMap)
 }
 
 func reportClear(w http.ResponseWriter, r *http.Request) {
 	defer errorRecoveryHandler(w)
 
 	id := PasteIDFromString(mux.Vars(r)["id"])
-	reported_posts.Delete(id)
-	err := reported_posts.Save("reports.gob")
+	ReportedPastes.Delete(id)
+	err := ReportedPastes.Save("reports.gob")
 
 	if err != nil {
 		glog.Fatal("Error saving reported posts. Error:", err)
@@ -86,5 +87,5 @@ func reportClear(w http.ResponseWriter, r *http.Request) {
 }
 
 func init() {
-	reported_posts = loadReports()
+	ReportedPastes = loadReports()
 }
