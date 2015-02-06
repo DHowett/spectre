@@ -30,7 +30,13 @@
 	{{range $reportType, $count := $reportData}}
 		{{$reportType}} x{{$count}}
 	{{end}}
+	<div class="well paste-miniature">
+		<div class="code">{{with pasteFromID $pasteID}}{{truncatedPasteBody . 5}}{{end}}</div>
+	</div>
 	</span>
 	</span>
-</li>{{end}}
-</ul>{{end}}
+</li>{{else}}
+<div class="well">No reports!</div>
+{{end}}
+</ul>
+{{end}}
