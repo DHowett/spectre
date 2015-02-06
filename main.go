@@ -570,8 +570,7 @@ func pasteDestroyCallback(p *Paste) {
 	// Clear the cached render when a paste is destroyed
 	renderCache.c.Remove(p.ID)
 
-	reportedPastes.Delete(p.ID)
-	reportedPastes.Save("reports.gob")
+	reportStore.Delete(p.ID)
 }
 
 var pasteStore *FilesystemPasteStore
@@ -778,7 +777,7 @@ func main() {
 		Handler(RenderPageHandler("paste_authenticate_disallowed"))
 
 	router.Path("/admin").Handler(requiresUserPermission("admin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		RenderPage(w, r, "admin_home", reportedPastes)
+		RenderPage(w, r, "admin_home", reportStore.Reports)
 	})))
 
 	router.Methods("POST").

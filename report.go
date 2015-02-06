@@ -4,16 +4,20 @@ import (
 	"encoding/gob"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
 
 type ReportInfo map[string]int
-type ReportedPasteMap map[PasteID]ReportInfo
+type ReportStore struct {
+	Reports  map[PasteID]ReportInfo
+	filename string
+}
 
-func (r ReportedPasteMap) Save(filename string) error {
-	file, err := os.Create(filename)
+func (r *ReportStore) Save() error {
+	file, err := os.Create(r.filename)
 	if err != nil {
 		return err
 	}
@@ -25,67 +29,64 @@ func (r ReportedPasteMap) Save(filename string) error {
 	return enc.Encode(r)
 }
 
-func (r ReportedPasteMap) Delete(p PasteID) {
-	delete(r, p)
-	glog.Info(p, " deleted from report history.")
+func (r *ReportStore) Add(id PasteID, kind string) {
+	currentReportsForPaste, ok := r.Reports[id]
+
+	if !ok {
+		currentReportsForPaste = make(ReportInfo)
+		r.Reports[id] = currentReportsForPaste
+	}
+
+	currentReportsForPaste[kind] = currentReportsForPaste[kind] + 1
+	r.Save()
 }
 
-// var reportedPastes = make(map[PasteID]ReportInfo)
-var reportedPastes ReportedPasteMap
+func (r *ReportStore) Delete(p PasteID) {
+	delete(r.Reports, p)
+	glog.Info(p, " deleted from report history.")
+	r.Save()
+}
+
+func LoadReportStore(filename string) *ReportStore {
+	report_file, err := os.Open(filename)
+	if err == nil {
+		var decoded_reports *ReportStore
+		dec := gob.NewDecoder(report_file)
+		err := dec.Decode(&decoded_reports)
+
+		if err != nil {
+			glog.Fatal("Failed to decode reports: ", err)
+		}
+		decoded_reports.filename = filename
+		return decoded_reports
+	}
+	return &ReportStore{Reports: map[PasteID]ReportInfo{}, filename: filename}
+}
+
+var reportStore *ReportStore
 
 func reportPaste(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 	reason := r.FormValue("reason")
 
-	CurrentReports, ok := reportedPastes[p.ID]
-
-	if !ok {
-		CurrentReports = make(ReportInfo)
-		reportedPastes[p.ID] = CurrentReports
-	}
-
-	CurrentReports[reason] = CurrentReports[reason] + 1
-	err := reportedPastes.Save("reports.gob")
-	if err != nil {
-		glog.Error("Error saving to reports.gob", err)
-		// Should we be panicking here?
-	}
+	reportStore.Add(p.ID, reason)
 
 	w.Header().Set("Location", "/")
 	w.WriteHeader(http.StatusFound)
-}
-
-func loadReports() ReportedPasteMap {
-	report_file, err := os.Open("reports.gob")
-	if err == nil {
-		var decoded_reports ReportedPasteMap
-		dec := gob.NewDecoder(report_file)
-		err := dec.Decode(&decoded_reports)
-
-		if err != nil {
-			glog.Fatal("Failed to decode report.gob :", err)
-		}
-		return decoded_reports
-	}
-	return make(ReportedPasteMap)
 }
 
 func reportClear(w http.ResponseWriter, r *http.Request) {
 	defer errorRecoveryHandler(w)
 
 	id := PasteIDFromString(mux.Vars(r)["id"])
-	reportedPastes.Delete(id)
-	err := reportedPastes.Save("reports.gob")
-
-	if err != nil {
-		glog.Fatal("Error saving reported posts. Error:", err)
-		panic(err)
-	}
+	reportStore.Delete(id)
 
 	w.Header().Set("Location", "/admin")
 	w.WriteHeader(http.StatusFound)
 }
 
 func init() {
-	reportedPastes = loadReports()
+	arguments.register()
+	arguments.parse()
+	reportStore = LoadReportStore(filepath.Join(arguments.root, "reports.gob"))
 }
