@@ -564,16 +564,23 @@ var router *mux.Router
 type args struct {
 	root, addr string
 	rebuild    bool
+
+	registrationOnce sync.Once
+	parseOnce        sync.Once
 }
 
 func (a *args) register() {
-	flag.StringVar(&a.root, "root", "./", "path to generated file storage")
-	flag.StringVar(&a.addr, "addr", "0.0.0.0:8080", "bind address and port")
-	flag.BoolVar(&a.rebuild, "rebuild", false, "rebuild all templates for each request")
+	a.registrationOnce.Do(func() {
+		flag.StringVar(&a.root, "root", "./", "path to generated file storage")
+		flag.StringVar(&a.addr, "addr", "0.0.0.0:8080", "bind address and port")
+		flag.BoolVar(&a.rebuild, "rebuild", false, "rebuild all templates for each request")
+	})
 }
 
 func (a *args) parse() {
-	flag.Parse()
+	a.parseOnce.Do(func() {
+		flag.Parse()
+	})
 }
 
 var arguments = &args{}
