@@ -27,7 +27,7 @@ func (r ReportedPasteMap) Save(filename string) error {
 
 func (r ReportedPasteMap) Delete(p PasteID) {
 	delete(r, p)
-	glog.Info(r)
+	glog.Info(p, " deleted from report history.")
 }
 
 // var reportedPastes = make(map[PasteID]ReportInfo)
