@@ -8,10 +8,22 @@
 </div>
 <ul class="paste-list">
 {{range $pasteID, $reportData := .Obj}}<li>
-	<!--a href="/paste/{{$pasteID}}" class="btn btn-inverse" target="_blank"><i class="icon-file-text icon-large"></i></a-->
-	<a href="/paste/{{$pasteID}}" target="_blank"><i class="icon-file-text icon-large"></i></a>
-	<a href="/admin/paste/{{$pasteID}}/clear_report"><i class="icon-edit icon-large"></i></a>
-	<a href="/admin/paste/{{$pasteID}}/delete"><i class="icon-trash icon-large"></i></a>
+	<a href="/paste/{{$pasteID}}" target="_blank" class="btn btn-link"><i class="icon-file-text icon-large"></i></a>
+
+	<form action="/admin/paste/{{$pasteID}}/delete" method="post">
+		<button title="Delete Paste" type="submit" class="btn btn-link">
+			<i class="icon-trash icon-large"></i>
+			<span class="button-title">Delete Paste</span>
+		</button>
+	</form>
+
+	<form action="/admin/paste/{{$pasteID}}/clear_report" method="post">
+		<button title="Clear Report" type="submit" class="btn btn-link">
+			<i class="icon-edit icon-large"></i>
+			<span class="button-title">Clear Report</span>
+		</button>
+	</form>
+
 	<span class="paste-title">
 	<strong>{{$pasteID}}</strong>
 	<span class="paste-subtitle">
