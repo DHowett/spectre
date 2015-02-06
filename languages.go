@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	"howett.net/blackfriday"
 )
 
 type Language struct {
@@ -102,19 +101,6 @@ func commandFormatter(formatter *Formatter, stream io.Reader, args ...string) (o
 		output = strings.TrimSpace(errbuf.String())
 	}
 	return
-}
-
-func markdownFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
-	buf := &bytes.Buffer{}
-	renderer := NewMkdHtmlRenderer()
-	io.Copy(buf, stream)
-	md := blackfriday.Markdown(buf.Bytes(), renderer,
-		blackfriday.EXTENSION_NO_INTRA_EMPHASIS|
-			blackfriday.EXTENSION_TABLES|
-			blackfriday.EXTENSION_AUTOLINK|
-			blackfriday.EXTENSION_FENCED_CODE|
-			blackfriday.EXTENSION_HEADER_IDS)
-	return string(md), nil
 }
 
 func plainTextFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
