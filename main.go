@@ -771,7 +771,7 @@ func main() {
 		Handler(RenderPageHandler("paste_authenticate_disallowed"))
 
 	router.Path("/admin").Handler(requiresUserPermission("admin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		RenderPage(w, r, "admin_home", ReportedPastes)
+		RenderPage(w, r, "admin_home", reportedPastes)
 	})))
 
 	router.Methods("POST").

@@ -30,22 +30,22 @@ func (r ReportedPasteMap) Delete(p PasteID) {
 	glog.Info(r)
 }
 
-// var ReportedPastes = make(map[PasteID]ReportInfo)
-var ReportedPastes ReportedPasteMap
+// var reportedPastes = make(map[PasteID]ReportInfo)
+var reportedPastes ReportedPasteMap
 
 func reportPaste(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(*Paste)
 	reason := r.FormValue("reason")
 
-	CurrentReports, ok := ReportedPastes[p.ID]
+	CurrentReports, ok := reportedPastes[p.ID]
 
 	if !ok {
 		CurrentReports = make(ReportInfo)
-		ReportedPastes[p.ID] = CurrentReports
+		reportedPastes[p.ID] = CurrentReports
 	}
 
 	CurrentReports[reason] = CurrentReports[reason] + 1
-	err := ReportedPastes.Save("reports.gob")
+	err := reportedPastes.Save("reports.gob")
 	if err != nil {
 		glog.Error("Error saving to reports.gob", err)
 		// Should we be panicking here?
@@ -74,8 +74,8 @@ func reportClear(w http.ResponseWriter, r *http.Request) {
 	defer errorRecoveryHandler(w)
 
 	id := PasteIDFromString(mux.Vars(r)["id"])
-	ReportedPastes.Delete(id)
-	err := ReportedPastes.Save("reports.gob")
+	reportedPastes.Delete(id)
+	err := reportedPastes.Save("reports.gob")
 
 	if err != nil {
 		glog.Fatal("Error saving reported posts. Error:", err)
@@ -87,5 +87,5 @@ func reportClear(w http.ResponseWriter, r *http.Request) {
 }
 
 func init() {
-	ReportedPastes = loadReports()
+	reportedPastes = loadReports()
 }
