@@ -569,6 +569,9 @@ func pasteDestroyCallback(p *Paste) {
 	glog.Info("RENDER CACHE: Removing ", p.ID, " due to destruction.")
 	// Clear the cached render when a paste is destroyed
 	renderCache.c.Remove(p.ID)
+
+	reportedPastes.Delete(p.ID)
+	reportedPastes.Save("reports.gob")
 }
 
 var pasteStore *FilesystemPasteStore
