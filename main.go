@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/md5"
 	"encoding/gob"
@@ -623,6 +624,35 @@ func init() {
 	RegisterTemplateFunction("pasteURL", pasteURL)
 	RegisterTemplateFunction("pasteWillExpire", func(p *Paste) bool {
 		return p.Expiration != "" && p.Expiration != "-1"
+	})
+	RegisterTemplateFunction("pasteFromID", func(id PasteID) *Paste {
+		p, err := pasteStore.Get(id, nil)
+		if err != nil {
+			return nil
+		}
+		return p
+	})
+	RegisterTemplateFunction("truncatedPasteBody", func(p *Paste, lines int) string {
+		reader, _ := p.Reader()
+		defer reader.Close()
+		bufReader := bufio.NewReader(reader)
+		s := ""
+		n := 0
+		for n < lines {
+			line, err := bufReader.ReadString('\n')
+			if err != io.EOF && err != nil {
+				break
+			}
+			s = s + line
+			if err == io.EOF {
+				break
+			}
+			n++
+		}
+		if n == lines {
+			s += "..."
+		}
+		return s
 	})
 	RegisterTemplateFunction("pasteBody", func(p *Paste) string {
 		reader, _ := p.Reader()
