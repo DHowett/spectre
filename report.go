@@ -79,7 +79,7 @@ func reportClear(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		glog.Fatal("Error saving reported posts. Error:", err)
-		panic err
+		panic(err)
 	}
 
 	w.Header().Set("Location", "/admin")
