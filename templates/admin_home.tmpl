@@ -3,23 +3,23 @@
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
-		<strong>{{with user .}}{{.Name}}{{end}}</strong>
+		<strong>Administration (Reports)</strong>
 	</span>
 </div>
 <ul class="paste-list">
 {{range $pasteID, $reportData := .Obj}}<li>
-	<a href="/paste/{{$pasteID}}" target="_blank" class="btn btn-link"><i class="icon-file-text icon-large"></i></a>
+	<a href="/paste/{{$pasteID}}" target="_blank" class="btn btn-link"><i class="icon-file-text"></i></a>
 
 	<form action="/admin/paste/{{$pasteID}}/delete" method="post">
 		<button title="Delete Paste" type="submit" class="btn btn-link">
-			<i class="icon-trash icon-large"></i>
+			<i class="icon-trash"></i>
 			<span class="button-title">Delete Paste</span>
 		</button>
 	</form>
 
 	<form action="/admin/paste/{{$pasteID}}/clear_report" method="post">
 		<button title="Clear Report" type="submit" class="btn btn-link">
-			<i class="icon-edit icon-large"></i>
+			<i class="icon-edit"></i>
 			<span class="button-title">Clear Report</span>
 		</button>
 	</form>
