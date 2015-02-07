@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"launchpad.net/goyaml"
-	//"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
 func YAMLUnmarshalFile(filename string, i interface{}) error {
@@ -19,7 +19,7 @@ func YAMLUnmarshalFile(filename string, i interface{}) error {
 		return err
 	}
 
-	err = goyaml.Unmarshal(yml, i)
+	err = yaml.Unmarshal(yml, i)
 	if err != nil {
 		return err
 	}
