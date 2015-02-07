@@ -20,6 +20,10 @@
 					<span class="button-title">Download</span>
 				</a>
 			</div>
+			<button title="Report" type="button" data-target="#reportModal" data-toggle="modal" class="btn btn-inverse">
+				<i class="icon-flag icon-large"></i>
+				<span class="button-title">Report</span>
+			</button>
 		</div>
 		{{if editAllowed .}}<a title="Edit" href="{{pasteURL "edit" .Obj}}" class="btn btn-primary">
 			<i class="icon-edit icon-large"></i>
@@ -29,4 +33,23 @@
 {{if not .Obj.Language.SuppressLineNumbers}}<div class="code code-line-numbers unselectable" id="line-numbers" aria-hidden="true"></div>{{end}}
 <div class="code{{if .Obj.Language.DisplayStyle}} code-{{.Obj.Language.DisplayStyle}}{{end}}" id="code">{{render .Obj}}</div>
 <div class="well visible-phone unselectable" id="phone-paste-control-container"></div>
+<div id="reportModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+        <form name="reportForm" action="{{pasteURL "report" .Obj}}" method="post">
+        <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+                <h3>Report Paste</h3>
+        </div>
+        <div class="modal-body">
+	<p>For what reason do you wish to report paste <strong>{{.Obj.ID}}</strong>?</p>
+		<p><select name="reason">
+			<option value="spam">Spam</option>
+			<option value="personal">Personal Information</option>
+		</select></p>
+		</div>
+		<div class="modal-footer">
+		<button type="submit" class="btn btn-danger">Report Paste</button>
+		<button data-dismiss="modal" class="btn" aria-hidden="true">Nevermind</button>
+	</div>
+	</form>
+</div>
 {{end}}

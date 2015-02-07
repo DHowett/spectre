@@ -266,13 +266,30 @@ ul.paste-list {
 	list-style: none;
 	padding: @paste-content-padding;
 	margin: 0;
+	&.selectable {
+		& > li {
+			&:hover {
+				background-color: @minor-highlight;
+			}
+		}
+	}
 	& > li {
 		padding: 4px;
-		&:hover {
-			background-color: @minor-highlight;
+		form {
+			display: inline;
 		}
-		& > a {
+
+		a, button.btn-link {
+			padding: 0px 0px 0px 0px;
+			text-shadow: none;
+			display: inline;
 			text-decoration: none;
+			color: @paste-title-color;
+			font-size: @paste-title-font-size;
+			vertical-align: middle;
+			&:hover, &:active, &:focus {
+				color: @paste-subtitle-color;
+			}
 		}
 	}
 }

@@ -1,0 +1,42 @@
+{{define "admin_home_title"}}Admin Home{{end}}
+{{define "admin_home_body"}}
+<div class="paste-toolbox">
+	{{template "home-button"}}
+	<span class="paste-title">
+		<strong>Administration (Reports)</strong>
+	</span>
+</div>
+<ul class="paste-list">
+{{range $pasteID, $reportData := .Obj}}<li>
+	<a href="/paste/{{$pasteID}}" target="_blank" class="btn btn-link"><i class="icon-file-text"></i></a>
+
+	<form action="/admin/paste/{{$pasteID}}/delete" method="post">
+		<button title="Delete Paste" type="submit" class="btn btn-link">
+			<i class="icon-trash"></i>
+			<span class="button-title">Delete Paste</span>
+		</button>
+	</form>
+
+	<form action="/admin/paste/{{$pasteID}}/clear_report" method="post">
+		<button title="Clear Report" type="submit" class="btn btn-link">
+			<i class="icon-cancel"></i>
+			<span class="button-title">Clear Report</span>
+		</button>
+	</form>
+
+	<span class="paste-title">
+	<strong>{{$pasteID}}</strong>
+	<span class="paste-subtitle">
+	{{range $reportType, $count := $reportData}}
+		{{$reportType}} x{{$count}}
+	{{end}}
+	<div class="well paste-miniature">
+		<div class="code">{{with pasteFromID $pasteID}}{{truncatedPasteBody . 5}}{{end}}</div>
+	</div>
+	</span>
+	</span>
+</li>{{else}}
+<div class="well">No reports!</div>
+{{end}}
+</ul>
+{{end}}

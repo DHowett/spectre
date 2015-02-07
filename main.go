@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/md5"
 	"encoding/gob"
@@ -170,6 +171,26 @@ func requiresEditPermission(fn ModelRenderFunc) ModelRenderFunc {
 		}
 		fn(p, w, r)
 	}
+}
+
+func requiresUserPermission(permission string, handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer errorRecoveryHandler(w)
+
+		user := GetUser(r)
+		if user != nil {
+			if o, ok := user.Values["user.permissions"]; ok {
+				if perms, ok := o.(PastePermission); ok {
+					if perms[permission] {
+						handler.ServeHTTP(w, r)
+						return
+					}
+				}
+			}
+		}
+
+		panic(fmt.Errorf("You are not allowed to be here. >:|"))
+	})
 }
 
 func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
@@ -549,6 +570,8 @@ func pasteDestroyCallback(p *Paste) {
 	glog.Info("RENDER CACHE: Removing ", p.ID, " due to destruction.")
 	// Clear the cached render when a paste is destroyed
 	renderCache.c.Remove(p.ID)
+
+	reportStore.Delete(p.ID)
 }
 
 var pasteStore *FilesystemPasteStore
@@ -589,6 +612,7 @@ func init() {
 	// N.B. this should not be necessary.
 	gob.Register(map[PasteID][]byte(nil))
 	gob.Register(&PastePermissionSet{})
+	gob.Register(PastePermission{})
 
 	arguments.register()
 	arguments.parse()
@@ -600,6 +624,35 @@ func init() {
 	RegisterTemplateFunction("pasteURL", pasteURL)
 	RegisterTemplateFunction("pasteWillExpire", func(p *Paste) bool {
 		return p.Expiration != "" && p.Expiration != "-1"
+	})
+	RegisterTemplateFunction("pasteFromID", func(id PasteID) *Paste {
+		p, err := pasteStore.Get(id, nil)
+		if err != nil {
+			return nil
+		}
+		return p
+	})
+	RegisterTemplateFunction("truncatedPasteBody", func(p *Paste, lines int) string {
+		reader, _ := p.Reader()
+		defer reader.Close()
+		bufReader := bufio.NewReader(reader)
+		s := ""
+		n := 0
+		for n < lines {
+			line, err := bufReader.ReadString('\n')
+			if err != io.EOF && err != nil {
+				break
+			}
+			s = s + line
+			if err == io.EOF {
+				break
+			}
+			n++
+		}
+		if n == lines {
+			s += "..."
+		}
+		return s
 	})
 	RegisterTemplateFunction("pasteBody", func(p *Paste) string {
 		reader, _ := p.Reader()
@@ -733,6 +786,11 @@ func main() {
 		Path("/{id}/delete").
 		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(pasteDelete)))
 
+	pasteRouter.Methods("POST").
+		Path("/{id}/report").
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, reportPaste)).
+		Name("report")
+
 	pasteRouter.Methods("GET").
 		MatcherFunc(HTTPSMuxMatcher).
 		Path("/{id}/authenticate").
@@ -747,6 +805,20 @@ func main() {
 		MatcherFunc(NonHTTPSMuxMatcher).
 		Path("/{id}/authenticate").
 		Handler(RenderPageHandler("paste_authenticate_disallowed"))
+
+	router.Path("/admin").Handler(requiresUserPermission("admin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		RenderPage(w, r, "admin_home", reportStore.Reports)
+	})))
+
+	router.Methods("POST").
+		Path("/admin/paste/{id}/delete").
+		Handler(requiresUserPermission("admin", RequiredModelObjectHandler(lookupPasteWithRequest, pasteDelete))).
+		Name("admindelete")
+
+	router.Methods("POST").
+		Path("/admin/paste/{id}/clear_report").
+		Handler(requiresUserPermission("admin", http.HandlerFunc(reportClear))).
+		Name("reportclear")
 
 	pasteRouter.Methods("GET").Path("/").Handler(RedirectHandler("/"))
 
