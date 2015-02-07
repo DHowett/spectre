@@ -38,7 +38,7 @@ var sanitationPolicy *bluemonday.Policy
 func init() {
 	mkdHtmlRenderer = NewMkdHtmlRenderer()
 	sanitationPolicy = bluemonday.UGCPolicy()
-	sanitationPolicy.AllowAttrs("class").OnElements("div", "i")
+	sanitationPolicy.AllowAttrs("class").OnElements("div", "i", "span")
 }
 
 func markdownFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
