@@ -9,7 +9,12 @@
 </div>
 <ul class="paste-list">
 {{range .Obj}}<li>
-	<a href="{{pasteURL "show" .}}"><span class="paste-title"><strong>{{.ID}}</strong>
+	<a href="{{pasteURL "show" .}}"><span class="paste-title">
+		{{with .Title}}
+		<strong>{{.}}</strong>
+		{{else}}
+		<strong>{{.ID}}</strong>
+		{{end}}
 		<span class="paste-subtitle">{{.Language.Name}}
 			{{if .Encrypted}}<i class="icon-lock"></i>{{end}}{{if pasteWillExpire .}}<i class="icon-clock"></i>{{end}}
 		</span>
