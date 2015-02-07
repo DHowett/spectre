@@ -413,6 +413,10 @@ $(function() {
 					this.selectionStart = this.selectionEnd = ends[0] + 1;
 					return false;
 				}
+				if(e.keyCode === 83 && e.ctrlKey && !e.altKey && !e.shiftKey) {
+					pasteForm.submit();
+					return false;
+				}
 			});
 		}
 	})();
