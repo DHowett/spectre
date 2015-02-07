@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/gob"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -66,6 +67,11 @@ func LoadReportStore(filename string) *ReportStore {
 var reportStore *ReportStore
 
 func reportPaste(o Model, w http.ResponseWriter, r *http.Request) {
+	if throttleAuthForRequest(r) {
+		RenderError(fmt.Errorf("Cool it."), 420, w)
+		return
+	}
+
 	p := o.(*Paste)
 	reason := r.FormValue("reason")
 
