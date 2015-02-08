@@ -418,6 +418,23 @@ $(function() {
 					return false;
 				}
 			});
+
+			var changed = false;
+			codeeditor.on("input propertychange", function() {
+				changed = true;
+			});
+			pasteForm.on("submit", function() {
+				changed = false;
+			});
+
+			window.addEventListener("beforeunload", function(e) {
+				if(!changed) {
+					return;
+				}
+				var confirmationMessage = "If you leave now, your paste will not be saved.";
+				(e || window.event).returnValue = confirmationMessage;
+				return confirmationMessage;
+			});
 		}
 	})();
 
