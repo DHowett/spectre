@@ -42,7 +42,7 @@
                 <h3>Report Paste</h3>
         </div>
         <div class="modal-body">
-	<p>For what reason do you wish to report paste <strong>{{.Obj.ID}}</strong>?</p>
+		<p>For what reason do you wish to report {{with .Obj.Title}}<strong>{{.}}</strong>{{else}}paste <strong>{{.Obj.ID}}</strong>{{end}}?</p>
 		<p><select name="reason">
 			<option value="spam">Spam</option>
 			<option value="personal">Personal Information</option>
