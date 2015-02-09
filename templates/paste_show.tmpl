@@ -27,9 +27,17 @@
 			</button>
 			{{end}}
 		</div>
-		{{if editAllowed .}}<a title="Edit" href="{{pasteURL "edit" .Obj}}" class="btn btn-primary">
-			<i class="icon-edit icon-large"></i>
-		</a>{{end}}
+		{{if editAllowed .}}
+		<div class="btn-group">
+			<button title="Grant" type="button" data-target="#grantModal" data-toggle="modal" class="btn btn-inverse">
+				<i class="icon-flag icon-large"></i>
+			</button>
+
+			<a title="Edit" href="{{pasteURL "edit" .Obj}}" class="btn btn-primary">
+				<i class="icon-edit icon-large"></i>
+			</a>
+		</div>
+		{{end}}
 	</div>
 </div>
 {{if not .Obj.Language.SuppressLineNumbers}}<div class="code code-line-numbers unselectable" id="line-numbers" aria-hidden="true"></div>{{end}}
@@ -53,5 +61,20 @@
 		<button data-dismiss="modal" class="btn" aria-hidden="true">Nevermind</button>
 	</div>
 	</form>
+</div>
+<div id="grantModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
+	<form name="grantForm" action="{{pasteURL "grant" .Obj}}" method="get">
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
+		<h3>Grant Edit Permission</h3>
+	</div>
+	<div class="modal-body">
+		<p>Are you sure you want to grant permission to another user to edit {{with .Obj.Title}}<strong>{{.}}</strong>{{else}}paste <strong>{{.Obj.ID}}</strong>{{end}}?</p>
+		<p>This is not reversible.</p>
+	</div>
+	<div class="modal-footer">
+		<button type="submit" class="btn btn-primary">Generate Grant</button>
+		<button data-dismiss="modal" class="btn" aria-hidden="true">Nevermind</button>
+	</div>
 </div>
 {{end}}
