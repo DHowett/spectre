@@ -423,7 +423,14 @@ $(function() {
 			codeeditor.on("input propertychange", function() {
 				changed = true;
 			});
+
 			pasteForm.on("submit", function() {
+				changed = false;
+			});
+
+			var deleteForm = $("[name='deleteForm']");
+
+			deleteForm.on("submit", function() {
 				changed = false;
 			});
 
