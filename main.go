@@ -124,10 +124,25 @@ func pasteGrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
 
 	grantKey, _ := generateRandomBase32String(20, 32)
 	grants[grantKey] = p.ID
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	url, _ := pasteRouter.Get("grant_accept").URL("grantkey", grantKey)
-	s := "<html><body><a href=\"" + url.String() + "\">grant link</a></html></body>"
-	w.Write([]byte(s))
+	acceptURL, _ := pasteRouter.Get("grant_accept").URL("grantkey", grantKey)
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	enc := json.NewEncoder(w)
+	enc.Encode(map[string]string{
+		"acceptURL": acceptURL.String(),
+		"key":       grantKey,
+		"id":        p.ID.String(),
+	})
+}
+
+func pasteUngrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
+	p := o.(*Paste)
+	perms := GetPastePermissions(r)
+	perms.Delete(p.ID)
+	perms.Save(w, r)
+
+	w.Header().Set("Location", pasteURL("show", &Paste{ID: p.ID}))
+	w.WriteHeader(http.StatusSeeOther)
 }
 
 func grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
@@ -136,6 +151,7 @@ func grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
 	sID, ok := grants[grantKey]
 	if !ok {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Hey."))
 		return
 	}
