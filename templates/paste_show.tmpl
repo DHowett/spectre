@@ -71,10 +71,21 @@
 	<div class="modal-body">
 		<p>Are you sure you want to grant permission to another user to edit {{with .Obj.Title}}<strong>{{.}}</strong>{{else}}paste <strong>{{.Obj.ID}}</strong>{{end}}?</p>
 		<p>This is not reversible.</p>
+		<div id="grantContainer"></div>
 	</div>
 	<div class="modal-footer">
-		<button type="submit" class="btn btn-primary">Generate Grant</button>
+		<button type="button" id="newGrantButton" class="btn btn-primary">Generate Grant</button>
 		<button data-dismiss="modal" class="btn" aria-hidden="true">Nevermind</button>
 	</div>
 </div>
+<script>
+$("#newGrantButton").on("click", function() {
+	$.post("{{pasteURL "grant" .Obj}}", null, function(e) {
+		var input = $("<input type=\"text\">").val(e.acceptURL);
+		var pp = $("<span class=\"add-on\">Grant URL</span>");
+		var inner = $("<div class=\"input-prepend\" style=\"display:block\"></div>").append(pp).append(input);
+		$("div#grantContainer").append(inner);
+	});
+});
+</script>
 {{end}}
