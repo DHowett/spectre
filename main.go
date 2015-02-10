@@ -129,7 +129,7 @@ func pasteGrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	enc := json.NewEncoder(w)
 	enc.Encode(map[string]string{
-		"acceptURL": acceptURL.String(),
+		"acceptURL": BaseURLForRequest(r).ResolveReference(acceptURL).String(),
 		"key":       grantKey,
 		"id":        p.ID.String(),
 	})
