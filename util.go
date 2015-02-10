@@ -7,15 +7,17 @@ import (
 	"crypto/sha256"
 	"encoding/base32"
 	"fmt"
-	"github.com/golang/glog"
-	"github.com/gorilla/mux"
 	"io"
-	"gopkg.in/yaml.v2"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+
+	"github.com/golang/glog"
+	"github.com/gorilla/mux"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -100,6 +102,19 @@ func SlurpFile(path string) (out []byte, err error) {
 		file.Close()
 	}
 	return
+}
+
+func BaseURLForRequest(r *http.Request) *url.URL {
+	determinedScheme := "http"
+	if RequestIsHTTPS(r) {
+		determinedScheme = "https"
+	}
+	return &url.URL{
+		Scheme: determinedScheme,
+		User:   r.URL.User,
+		Host:   r.Host,
+		Path:   "/",
+	}
 }
 
 func RequestIsHTTPS(r *http.Request) bool {
