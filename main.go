@@ -777,8 +777,8 @@ func main() {
 		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, RenderPageForModel("paste_show"))).
 		Name("show")
 
-	pasteRouter.Methods("GET").
-		Path("/{id}/grant").
+	pasteRouter.Methods("POST").
+		Path("/{id}/grant/new").
 		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(ModelRenderFunc(pasteGrantHandler)))).
 		Name("grant")
 	pasteRouter.Methods("GET").
