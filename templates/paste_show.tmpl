@@ -70,21 +70,30 @@
 	</div>
 	<div class="modal-body">
 		<p>Are you sure you want to grant permission to another user to edit {{with .Obj.Title}}<strong>{{.}}</strong>{{else}}paste <strong>{{.Obj.ID}}</strong>{{end}}?</p>
-		<p>This is not reversible.</p>
+		<p>This is not reversible. Grant links will be valid for 48 hours.</p>
+		<div id="grantTutorial"></div>
 		<div id="grantContainer"></div>
+		<div id="grantSpacing"></div>
+		<button type="button" id="newGrantButton" class="btn">Generate Grant</button>
 	</div>
 	<div class="modal-footer">
-		<button type="button" id="newGrantButton" class="btn btn-primary">Generate Grant</button>
 		<button data-dismiss="modal" class="btn" aria-hidden="true">Nevermind</button>
 	</div>
 </div>
 <script>
+var tutorialDisplayed = false;
 $("#newGrantButton").on("click", function() {
 	$.post("{{pasteURL "grant" .Obj}}", null, function(e) {
 		var input = $("<input type=\"text\">").val(e.acceptURL);
 		var pp = $("<span class=\"add-on\">Grant URL</span>");
 		var inner = $("<div class=\"input-prepend\" style=\"display:block\"></div>").append(pp).append(input);
 		$("div#grantContainer").append(inner);
+
+		if(!tutorialDisplayed) {
+			$("div#grantTutorial").append("<p>Send the following URLs (one per intended editor) to collaborators for redemption.</p>");
+			$("div#grantSpacing").append("<br>");
+			tutorialDisplayed = true;
+		}
 	});
 });
 </script>
