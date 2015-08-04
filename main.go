@@ -783,6 +783,9 @@ func main() {
 		Path("/grant/{grantkey}/accept").
 		Handler(http.HandlerFunc(grantAcceptHandler)).
 		Name("grant_accept")
+	pasteRouter.Methods("GET").
+		Path("/{id}/disavow").
+		Handler(RequiredModelObjectHandler(lookupPasteWithRequest, requiresEditPermission(ModelRenderFunc(pasteUngrantHandler))))
 
 	pasteRouter.Methods("GET").
 		Path("/{id}/raw").
