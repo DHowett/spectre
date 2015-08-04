@@ -18,7 +18,7 @@ pygments
 restarter
 session.key
 sessions/session_*
-templates/_local.html
+templates/_local.tmpl
 xattr
 accounts/*
 _assets.mk
