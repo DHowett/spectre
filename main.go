@@ -146,14 +146,13 @@ func pasteUngrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
 func grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
 	v := mux.Vars(r)
 	grantKey := GrantID(v["grantkey"])
-	sID, ok := grantStore.Get(grantKey)
+	pID, ok := grantStore.Get(grantKey)
 	if !ok {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Hey."))
 		return
 	}
-	pID := PasteID(sID)
 
 	perms := GetPastePermissions(r)
 	perms.Put(pID, PastePermission{"edit": true})
