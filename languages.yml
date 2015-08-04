@@ -24,6 +24,11 @@ formatters:
     args:
     - ./bin/ansi2html
     - "--naked"
+  iphonesyslog:
+    name: iphonesyslog
+    func: commandFormatter
+    args:
+    - "./bin/syslog_hl.pl"
 languageGroups:
 - name: Text
   languages:
@@ -42,7 +47,7 @@ languageGroups:
     mimetypes: [text/x-markdown]
   - id: irc
     name: IRC Log
-- name: Common Programming Languages
+- name: Common Languages
   languages:
   - id: logos
     name: Logos + Objective-C
@@ -74,11 +79,14 @@ languageGroups:
     extensions: [go]
 - name: Other Languages
   languages:
+  - id: iphonesyslog
+    name: "iOS System Log"
+    formatter: iphonesyslog
   - alt_ids: [py, sage]
-    extensions: [py, pyw, sc, SConstruct, SConscript, tac, sage]
+    extensions: [py, pyw, sc, sconstruct, sconscript, tac, sage]
     id: python
     mimetypes: [text/x-python, application/x-python]
-    name: Python
+    name: python
   - {id: pycon, name: Python console session}
   - {id: pytb, name: Python Traceback}
   - alt_ids: [py3]
@@ -393,7 +401,7 @@ languageGroups:
     id: splus
     mimetypes: [text/S-plus, text/S, text/x-r-source, text/x-r, text/x-R, text/x-r-history,
       text/x-r-profile]
-    name: S
+    name: R
   - extensions: [jag, bug]
     id: jags
     name: JAGS
