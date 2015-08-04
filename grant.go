@@ -46,6 +46,7 @@ func (r *GrantStore) NewGrant(id PasteID) GrantID {
 }
 
 func (r *GrantStore) Delete(p GrantID) {
+	r.expirator.CancelObjectExpiration(p)
 	delete(r.Grants, p)
 	r.Save()
 }
