@@ -171,6 +171,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if verifyResponseJSON["status"].(string) == "okay" {
+			healthServer.IncrementMetric("user.login.persona")
 			email := verifyResponseJSON["email"].(string)
 			user = userStore.Get(email)
 			if user == nil {
@@ -222,6 +223,8 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user != nil {
+		healthServer.IncrementMetric("user.login")
+
 		context.Set(r, userContextKey, user)
 
 		// Attempt to aggregate user, session, and old perms.

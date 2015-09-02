@@ -131,6 +131,8 @@ func pasteGrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
 		"key":       string(grantKey),
 		"id":        p.ID.String(),
 	})
+
+	healthServer.IncrementMetric("grants.generated")
 }
 
 func pasteUngrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
@@ -142,6 +144,8 @@ func pasteUngrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	SetFlash(w, "success", fmt.Sprintf("Paste %v disavowed.", p.ID))
 	w.Header().Set("Location", pasteURL("show", &Paste{ID: p.ID}))
 	w.WriteHeader(http.StatusSeeOther)
+
+	healthServer.IncrementMetric("grants.disavowed")
 }
 
 func grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
@@ -165,6 +169,8 @@ func grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
 	SetFlash(w, "success", fmt.Sprintf("You now have edit rights to Paste %v.", pID))
 	w.Header().Set("Location", pasteURL("show", &Paste{ID: pID}))
 	w.WriteHeader(http.StatusSeeOther)
+
+	healthServer.IncrementMetric("grants.accepted")
 }
 
 func isEditAllowed(p *Paste, r *http.Request) bool {
@@ -206,12 +212,14 @@ func requiresUserPermission(permission string, handler http.Handler) http.Handle
 			}
 		}
 
+		healthServer.IncrementMetric("permission." + permission + ".failed")
 		panic(fmt.Errorf("You are not allowed to be here. >:|"))
 	})
 }
 
 func pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
 	pasteUpdateCore(o, w, r, false)
+	healthServer.IncrementMetric("paste.updated")
 }
 
 func pasteUpdateCore(o Model, w http.ResponseWriter, r *http.Request, newPaste bool) {
@@ -343,6 +351,8 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pasteUpdateCore(p, w, r, true)
+
+	healthServer.IncrementMetric("paste.created")
 }
 
 func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
@@ -472,6 +482,7 @@ func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Location", dest)
 	w.WriteHeader(http.StatusSeeOther)
+	healthServer.IncrementMetric("paste.auth.successful")
 }
 
 func throttleAuthForRequest(r *http.Request) bool {
@@ -597,6 +608,8 @@ func pasteDestroyCallback(p *Paste) {
 	renderCache.c.Remove(p.ID)
 
 	reportStore.Delete(p.ID)
+
+	healthServer.IncrementMetric("paste.deleted")
 }
 
 var pasteStore *FilesystemPasteStore
@@ -608,6 +621,7 @@ var ephStore *gotimeout.Map
 var userStore account.AccountStore
 var pasteRouter *mux.Router
 var router *mux.Router
+var healthServer *HealthServer
 
 type args struct {
 	root, addr string
@@ -759,6 +773,34 @@ func main() {
 		}
 	}()
 
+	launchTime := time.Now()
+	healthServer = &HealthServer{}
+
+	healthServer.RegisterComputedMetric("goroutines", func() interface{} {
+		return runtime.NumGoroutine()
+	})
+	healthServer.RegisterComputedMetric("memory.alloc", func() interface{} {
+		var ms runtime.MemStats
+		runtime.ReadMemStats(&ms)
+		return ms.Alloc
+	})
+	healthServer.RegisterComputedMetric("paste.expiring", func() interface{} {
+		return pasteExpirator.Len()
+	})
+	healthServer.RegisterComputedMetric("paste.cache", func() interface{} {
+		if renderCache.c != nil {
+			return renderCache.c.Len()
+		} else {
+			return 0
+		}
+	})
+	healthServer.RegisterComputedMetric("ephstore.count", func() interface{} {
+		return ephStore.Len()
+	})
+	healthServer.RegisterComputedMetric("uptime", func() interface{} {
+		return int(time.Now().Sub(launchTime) / time.Second)
+	})
+
 	router = mux.NewRouter()
 	pasteRouter = router.PathPrefix("/paste").Subrouter()
 
@@ -866,7 +908,6 @@ func main() {
 		http.ServeContent(w, r, "languages.json", languageConfig.modtime, languageConfig.languageJSONReader)
 	}))
 
-	launchTime := time.Now()
 	router.Methods("GET").Path("/stats").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		stats := make(map[string]string)
 		ms := &runtime.MemStats{}
@@ -883,6 +924,7 @@ func main() {
 		stats["expiring"] = fmt.Sprintf("%d", pasteExpirator.Len())
 		RenderPage(w, r, "stats", stats)
 	}))
+	router.Methods("GET").Path("/stats.json").Handler(healthServer)
 
 	router.Methods("GET").
 		Path("/partial/{id}").
