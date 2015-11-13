@@ -78,7 +78,7 @@ func reportPaste(o Model, w http.ResponseWriter, r *http.Request) {
 	reportStore.Add(p.ID, reason)
 
 	SetFlash(w, "success", fmt.Sprintf("Paste %v reported.", p.ID))
-	w.Header().Set("Location", "/")
+	w.Header().Set("Location", pasteURL("show", p))
 	w.WriteHeader(http.StatusFound)
 }
 
@@ -89,7 +89,7 @@ func reportClear(w http.ResponseWriter, r *http.Request) {
 	reportStore.Delete(id)
 
 	SetFlash(w, "success", fmt.Sprintf("Report for %v cleared.", id))
-	w.Header().Set("Location", "/admin")
+	w.Header().Set("Location", "/admin/reports")
 	w.WriteHeader(http.StatusFound)
 }
 
