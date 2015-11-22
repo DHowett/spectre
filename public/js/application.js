@@ -494,7 +494,7 @@ $(function() {
 $(function(){
 	if(docCookies.hasItem("flash")) {
 		var flash = JSON.parse(atob(docCookies.getItem("flash")));
-		docCookies.removeItem("flash");
+		docCookies.removeItem("flash", "/");
 		var container = $("#flash-container");
 		var newFlash = container.find("#flash-template").clone();
 		newFlash.removeAttr('id').find('p').text(flash.body);
