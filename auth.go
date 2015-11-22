@@ -4,13 +4,15 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 
-	"github.com/DHowett/ghostbin/account"
 	"code.google.com/p/go.crypto/scrypt"
+	"github.com/DHowett/ghostbin/account"
 	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/context"
@@ -346,6 +348,29 @@ func (c *CachingUserStore) Create(name string) *account.User {
 		if user != nil {
 			c.putCache(user.Name, user)
 		}
+	}
+	return user
+}
+
+type PromoteFirstUserToAdminStore struct {
+	directory string
+	account.AccountStore
+}
+
+func (c *PromoteFirstUserToAdminStore) Create(name string) *account.User {
+	firstUser := false
+	accountDir, err := os.Open(c.directory)
+	if err != nil {
+		firstUser = true
+	} else {
+		_, err = accountDir.Readdirnames(1)
+		if err == io.EOF {
+			firstUser = true
+		}
+	}
+	user := c.AccountStore.Create(name)
+	if firstUser {
+		user.Values["user.permissions"] = PastePermission{"admin": true}
 	}
 	return user
 }
