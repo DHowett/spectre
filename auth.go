@@ -392,6 +392,9 @@ func adminPromoteHandler(w http.ResponseWriter, r *http.Request) {
 		perms["admin"] = true
 		user.Values["user.permissions"] = perms
 		user.Save()
+		SetFlash(w, "success", "Promoted "+username+".")
+	} else {
+		SetFlash(w, "error", "Couldn't find "+username+" to promote.")
 	}
 	w.Header().Set("Location", "/admin")
 	w.WriteHeader(http.StatusSeeOther)
