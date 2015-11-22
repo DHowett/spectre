@@ -363,6 +363,7 @@ func (c *PromoteFirstUserToAdminStore) Create(name string) *account.User {
 	if err != nil {
 		firstUser = true
 	} else {
+		defer accountDir.Close()
 		_, err = accountDir.Readdirnames(1)
 		if err == io.EOF {
 			firstUser = true
