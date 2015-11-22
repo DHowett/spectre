@@ -1,45 +1,21 @@
-{{define "admin_home_title"}}Admin Home{{end}}
+{{define "admin_home_title"}}Administration{{end}}
 {{define "admin_home_body"}}
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
-		<strong>Administration (Reports)</strong>
+		<strong>Administration</strong>
 	</span>
 </div>
-<ul class="report-list">
-{{range $pasteID, $reportData := .Obj}}<li>
-	<div class="report-buttons">
-		<a title="View Paste" href="/paste/{{$pasteID}}" target="_blank" class="btn btn-link"><i class="icon-file-text"></i></a>
-
-		<form action="/admin/paste/{{$pasteID}}/delete" method="post">
-			<button title="Delete Paste" type="submit" class="btn btn-link">
-				<i class="icon-trash"></i>
-			</button>
+<div class="content">
+	<p><a href="/admin/reports"><span class="paste-title">Reports</span></a></p>
+	<p>
+		<form method="POST" action="/admin/promote">
+			<div class="input-prepend phone-expand">
+				<span class="add-on"><i class="icon icon-user"> </i></span>
+				<div class="input-wrapper"><input type="text" name="username" autocomplete="off" placeholder="Username"></div>
+			</div>
+			<button class="btn" type="submit" aria-hidden="true">Promote to Admin</button>
 		</form>
-
-		<form action="/admin/paste/{{$pasteID}}/clear_report" method="post">
-			<button title="Clear Report" type="submit" class="btn btn-link">
-				<i class="icon-cancel"></i>
-			</button>
-		</form>
-	</div>
-
-	<div class="report-contents">
-		<span class="paste-title">
-		<strong>{{$pasteID}}</strong>
-		<span class="paste-subtitle">
-		{{range $reportType, $count := $reportData}}
-			{{$reportType}} x{{$count}}
-		{{end}}
-		</span>
-		</span>
-		<div class="well paste-miniature">
-			<div class="code">{{with pasteFromID $pasteID}}{{truncatedPasteBody . 5}}{{end}}</div>
-		</div>
-	</div>
-	<div class="clearfix"></div>
-</li>{{else}}
-<div class="well">No reports!</div>
-{{end}}
-</ul>
+	</p>
+</div>
 {{end}}

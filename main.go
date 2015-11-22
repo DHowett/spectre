@@ -832,9 +832,13 @@ func main() {
 		Path("/{id}/authenticate").
 		Handler(RenderPageHandler("paste_authenticate_disallowed"))
 
-	router.Path("/admin").Handler(requiresUserPermission("admin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		RenderPage(w, r, "admin_home", reportStore.Reports)
+	router.Path("/admin").Handler(requiresUserPermission("admin", RenderPageHandler("admin_home")))
+
+	router.Path("/admin/reports").Handler(requiresUserPermission("admin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		RenderPage(w, r, "admin_reports", reportStore.Reports)
 	})))
+
+	router.Methods("POST").Path("/admin/promote").Handler(requiresUserPermission("admin", http.HandlerFunc(adminPromoteHandler)))
 
 	router.Methods("POST").
 		Path("/admin/paste/{id}/delete").

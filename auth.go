@@ -375,6 +375,22 @@ func (c *PromoteFirstUserToAdminStore) Create(name string) *account.User {
 	return user
 }
 
+func adminPromoteHandler(w http.ResponseWriter, r *http.Request) {
+	username := r.FormValue("username")
+	user := userStore.Get(username)
+	if user != nil {
+		perms, ok := user.Values["user.permissions"].(PastePermission)
+		if !ok {
+			perms = PastePermission{}
+		}
+		perms["admin"] = true
+		user.Values["user.permissions"] = perms
+		user.Save()
+	}
+	w.Header().Set("Location", "/admin")
+	w.WriteHeader(http.StatusSeeOther)
+}
+
 func init() {
 	RegisterTemplateFunction("user", func(r *RenderContext) *account.User {
 		return GetUser(r.Request)
