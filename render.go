@@ -1,11 +1,14 @@
 package main
 
 import (
-	"github.com/golang/glog"
+	"encoding/base64"
+	"encoding/json"
 	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
+
+	"github.com/golang/glog"
 )
 
 type Model interface{}
@@ -104,6 +107,22 @@ func RequiredModelObjectHandler(lookup ModelLookupFunc, fn ModelRenderFunc) http
 		} else {
 			fn(obj, w, r)
 		}
+	})
+}
+
+func SetFlash(w http.ResponseWriter, kind, body string) {
+	flashBody, err := json.Marshal(map[string]string{
+		"type": kind,
+		"body": body,
+	})
+	if err != nil {
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:   "flash",
+		Value:  base64.URLEncoding.EncodeToString(flashBody),
+		Path:   "/",
+		MaxAge: 60,
 	})
 }
 

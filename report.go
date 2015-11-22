@@ -77,6 +77,7 @@ func reportPaste(o Model, w http.ResponseWriter, r *http.Request) {
 
 	reportStore.Add(p.ID, reason)
 
+	SetFlash(w, "success", fmt.Sprintf("Paste %v reported.", p.ID))
 	w.Header().Set("Location", "/")
 	w.WriteHeader(http.StatusFound)
 }
@@ -87,6 +88,7 @@ func reportClear(w http.ResponseWriter, r *http.Request) {
 	id := PasteIDFromString(mux.Vars(r)["id"])
 	reportStore.Delete(id)
 
+	SetFlash(w, "success", fmt.Sprintf("Report for %v cleared.", id))
 	w.Header().Set("Location", "/admin")
 	w.WriteHeader(http.StatusFound)
 }

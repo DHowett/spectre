@@ -23,6 +23,9 @@
 @error-highlight: rgb(red(@major-highlight), 0, 0);
 @error-highlight-border: rgb(red(@major-highlight-border), 0, 0);
 
+@success-highlight: rgb(0, green(@major-highlight), 0);
+@success-highlight-border: rgb(0, green(@major-highlight-border), 0);
+
 @line-number-bar: @minor-highlight;
 @line-numbers: lighten(@paste-background, 25%);
 @line-numbers-hover: lighten(@line-numbers, 20%);
@@ -534,6 +537,54 @@ form {
 
 .grant-tutorial {
 	display: none;
+}
+
+.flash-container {
+	width: 50%;
+	display: none;
+	margin: 0 auto;
+	.flash {
+		z-index: 999;
+		position: absolute;
+
+		min-width: 50%;
+		width: 50%;
+		margin: 1em 0 0 0;
+		padding: 6px;
+
+		text-align: center;
+
+		min-height: 20px;
+		border-radius: 4px;
+		color: @paste-text-color;
+
+		font-weight: bold;
+
+		p {
+			margin: 0;
+		}
+
+		.flash-title {
+			font-size: 125%;
+		}
+
+		border: 1px solid @minor-highlight-border;
+		background-color: @minor-highlight;
+		&.flash-error {
+			border-color: @error-highlight-border;
+			background-color: @error-highlight;
+		}
+
+		&.flash-success {
+			border-color: @success-highlight-border;
+			background-color: @success-highlight;
+		}
+
+		display: none;
+	}
+
+	#flash-template {
+	}
 }
 
 @media @media-phone {

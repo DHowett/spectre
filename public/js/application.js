@@ -490,3 +490,28 @@ $(function() {
 		}
 	});
 });
+
+$(function(){
+	if(docCookies.hasItem("flash")) {
+		var flash = JSON.parse(atob(docCookies.getItem("flash")));
+		docCookies.removeItem("flash");
+		var container = $("#flash-container");
+		var newFlash = container.find("#flash-template").clone();
+		newFlash.removeAttr('id').find('p').text(flash.body);
+		if(flash.type) {
+			newFlash.addClass('flash-' + flash.type);
+		}
+		container.append(newFlash);
+		container.show();
+
+		window.setTimeout(function() {
+			newFlash.fadeIn(200);
+			window.setTimeout(function() {
+				newFlash.fadeOut(400, function() {
+					container.hide();
+					newFlash.remove();
+				});
+			}, 4000);
+		}, 500);
+	}
+});

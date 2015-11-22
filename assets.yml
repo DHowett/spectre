@@ -26,6 +26,8 @@ sets:
         type: js
       - name: ghostbin.jQuery
         type: js
+      - name: mozcookies
+        type: js
   js_core:
     handler: min.js
     type: js

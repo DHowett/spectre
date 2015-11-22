@@ -139,6 +139,7 @@ func pasteUngrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	perms.Delete(p.ID)
 	perms.Save(w, r)
 
+	SetFlash(w, "success", fmt.Sprintf("Paste %v disavowed.", p.ID))
 	w.Header().Set("Location", pasteURL("show", &Paste{ID: p.ID}))
 	w.WriteHeader(http.StatusSeeOther)
 }
@@ -161,6 +162,7 @@ func grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
 	// delete(grants, grantKey)
 	grantStore.Delete(grantKey)
 
+	SetFlash(w, "success", fmt.Sprintf("You now have edit rights to Paste %v.", pID))
 	w.Header().Set("Location", pasteURL("show", &Paste{ID: pID}))
 	w.WriteHeader(http.StatusSeeOther)
 }
@@ -361,6 +363,8 @@ func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+
+	SetFlash(w, "success", fmt.Sprintf("Paste %v deleted.", oldId))
 	w.Header().Set("Location", path.Join(components[:n]...))
 	w.WriteHeader(http.StatusFound)
 }
