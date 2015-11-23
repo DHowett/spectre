@@ -390,6 +390,12 @@ span.paste-title {
 		background-color: @error-highlight;
 	}
 
+	&.well-success {
+		border-color: @success-highlight-border;
+		background-color: @success-highlight;
+	}
+
+
 	hr {
 		margin: 6px 0px 6px 0px;
 		border: 0;
@@ -543,7 +549,7 @@ form {
 	width: 50%;
 	display: none;
 	margin: 0 auto;
-	.flash {
+	.well {
 		z-index: 999;
 		position: absolute;
 
@@ -553,34 +559,12 @@ form {
 		padding: 6px;
 
 		text-align: center;
-
-		min-height: 20px;
-		border-radius: 4px;
-		color: @paste-text-color;
-
 		font-weight: bold;
+		display: none;
 
 		p {
 			margin: 0;
 		}
-
-		.flash-title {
-			font-size: 125%;
-		}
-
-		border: 1px solid @minor-highlight-border;
-		background-color: @minor-highlight;
-		&.flash-error {
-			border-color: @error-highlight-border;
-			background-color: @error-highlight;
-		}
-
-		&.flash-success {
-			border-color: @success-highlight-border;
-			background-color: @success-highlight;
-		}
-
-		display: none;
 	}
 
 	#flash-template {

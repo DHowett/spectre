@@ -499,7 +499,7 @@ $(function(){
 		var newFlash = container.find("#flash-template").clone();
 		newFlash.removeAttr('id').find('p').text(flash.body);
 		if(flash.type) {
-			newFlash.addClass('flash-' + flash.type);
+			newFlash.addClass('well-' + flash.type);
 		}
 		container.append(newFlash);
 		container.show();
