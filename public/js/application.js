@@ -101,6 +101,7 @@
 							Ghostbin.setPreference("persona", reply.extra.persona);
 						}
 						Ghostbin.updatePartial("login_logout");
+						Ghostbin.displayFlash({type: "success", body: "Successfully logged in."});
 						break;
 					case "moreinfo":
 						$("#login_error").text("").hide(400);
@@ -154,12 +155,33 @@
 							Ghostbin.clearPreference("persona");
 						}
 						Ghostbin.updatePartial("login_logout");
+						Ghostbin.displayFlash({type: "success", body: "Successfully logged out."});
 					},
 					failure: function(wat) {
 						$("#partial_container_login_logout .blocker").fadeOut("fast");
 						alert(wat);
 					}
 				});
+			},
+			displayFlash: function(flash) {
+				var container = $("#flash-container");
+				var newFlash = container.find("#flash-template").clone();
+				newFlash.removeAttr('id').find('p').text(flash.body);
+				if(flash.type) {
+					newFlash.addClass('well-' + flash.type);
+				}
+				container.append(newFlash);
+				container.show();
+
+				window.setTimeout(function() {
+					newFlash.fadeIn(200);
+					window.setTimeout(function() {
+						newFlash.fadeOut(400, function() {
+							container.hide();
+							newFlash.remove();
+						});
+					}, 4000);
+				}, 500);
 			},
 		};
 	}();
@@ -495,23 +517,6 @@ $(function(){
 	if(docCookies.hasItem("flash")) {
 		var flash = JSON.parse(atob(docCookies.getItem("flash")));
 		docCookies.removeItem("flash", "/");
-		var container = $("#flash-container");
-		var newFlash = container.find("#flash-template").clone();
-		newFlash.removeAttr('id').find('p').text(flash.body);
-		if(flash.type) {
-			newFlash.addClass('well-' + flash.type);
-		}
-		container.append(newFlash);
-		container.show();
-
-		window.setTimeout(function() {
-			newFlash.fadeIn(200);
-			window.setTimeout(function() {
-				newFlash.fadeOut(400, function() {
-					container.hide();
-					newFlash.remove();
-				});
-			}, 4000);
-		}, 500);
+		Ghostbin.displayFlash(flash);
 	}
 });
