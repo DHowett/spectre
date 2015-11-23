@@ -1,16 +1,7 @@
 all: sync .deploy reload_config
 .PHONY: sync reload_config
 
-.DELETE_ON_ERROR:
-## Asset Management
-./assetbuild: $(wildcard tools/assetbuild/*.go)
-	go build -o assetbuild ./tools/assetbuild
-_assets.mk: ./assetbuild assets.yml
-	./assetbuild -file=assets.yml -env=build -md > $@
-include _assets.mk
-## End
-
-sync: $(wildcard *.yml) _assets
+sync: $(wildcard *.yml)
 	rsync -avvHAX *.yml ./templates ./public uv:ghostbin/ --delete
 
 .deploy: paste.linux

@@ -893,7 +893,7 @@ func main() {
 	router.Methods("GET").Path("/auth/token/{token}").Handler(http.HandlerFunc(authTokenPageHandler)).Name("auth_token_login")
 
 	router.Path("/").Handler(RenderPageHandler("index"))
-	router.PathPrefix("/").Handler(http.FileServer(AssetFilesystem()))
+	router.PathPrefix("/").Handler(http.FileServer(http.Dir("public")))
 	http.Handle("/", &fourOhFourConsumerHandler{userLookupWrapper{router}})
 
 	var addr string = arguments.addr

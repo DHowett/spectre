@@ -21,5 +21,7 @@ sessions/session_*
 templates/_local.tmpl
 xattr
 accounts/*
-_assets.mk
-assetbuild
+
+node_modules
+build
+.tmpl

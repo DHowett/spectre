@@ -1,0 +1,28 @@
+{
+  "name": "ghostbin",
+  "version": "0.0.1",
+  "description": "Ghostbin",
+  "main": "main.go",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@git.howett.net:paste"
+  },
+  "author": "Dustin L. Howett <dustin@howett.net>",
+  "license": "GPL",
+  "dependencies": {
+    "grunt": "^0.4.5",
+    "grunt-cli": "^0.1.13",
+    "grunt-contrib-clean": "^0.7.0",
+    "grunt-contrib-concat": "^0.5.1",
+    "grunt-contrib-copy": "^0.8.2",
+    "grunt-contrib-less": "^1.1.0",
+    "grunt-contrib-uglify": "^0.11.0",
+    "grunt-filerev": "^2.3.1",
+    "grunt-usemin": "^3.1.1",
+    "grunt-yui-compressor": "^0.4.0",
+    "load-grunt-tasks": "^3.3.0"
+  }
+}

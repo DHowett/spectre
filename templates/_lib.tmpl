@@ -16,12 +16,41 @@
 	<link rel="apple-touch-icon" href="/ghostbin-icon152.png" sizes="152x152">
 	<link rel="apple-touch-icon" href="/ghostbin-icon76.png" sizes="76x76">
 	<link rel="apple-touch-icon" href="/ghostbin-icon72.png" sizes="72x72">
-	{{assets "css_libs"}}
-	{{assets "css_ghostbin"}}
-	{{assets "less_ghostbin"}}
-	{{assets "css_theme"}}
-	{{assets "js_libs"}}
-	{{assets "js_core"}}
+
+	<!-- build:css /css/lib.min.css -->
+	<link rel="stylesheet" href="/css/lib-fontello.css" type="text/css" media="all">
+	<link rel="stylesheet" href="/css/lib-fonts.css" type="text/css" media="all">
+	<link rel="stylesheet" href="/css/lib-bootstrap.css" type="text/css" media="all">
+	<link rel="stylesheet" href="/css/lib-icon_effects.css" type="text/css" media="all">
+	<link rel="stylesheet" href="/css/lib-select2.css" type="text/css" media="all">
+	<link rel="stylesheet" href="/css/lib-select2-bootstrap.css" type="text/css" media="all">
+	<!-- endbuild -->
+
+	<!-- build:less /css/application.min.css -->
+	<link rel="stylesheet/less" href="/css/master.less" type="text/css" media="all">
+	<!-- endbuild -->
+
+	<!-- build:remove -->
+	<script src="/js/less.js" type="text/javascript"></script>
+	<!-- endbuild -->
+
+	<!-- build:css /css/theme.min.css -->
+	<link rel="stylesheet" href="/css/theme-pygments.css" type="text/css" media="all">
+	<link rel="stylesheet" href="/css/theme-ansi.css" type="text/css" media="all">
+	<!-- endbuild -->
+
+	<!-- build:js /js/lib.min.js -->
+	<script src="/js/jquery-2.0.3.js" type="text/javascript"></script>
+	<script src="/js/select2.js" type="text/javascript"></script>
+	<script src="/js/ghostbin.jQuery.js" type="text/javascript"></script>
+	<script src="/js/bootstrap.js" type="text/javascript"></script>
+	<script src="/js/mozcookies.js" type="text/javascript"></script>
+	<!-- endbuild -->
+
+	<!-- build:js /js/application.min.js -->
+	<script src="/js/application.js" type="text/javascript"></script>
+	<!-- endbuild -->
+
 	{{subtemplate . "head"}}
 </head>
 <body>
@@ -83,7 +112,3 @@ It looks like you've stumbled upon a page (<strong>{{.Page}}</strong>) that shou
 	</div>
 </div>
 {{end}}
-
-{{define "asset_js"}}{{with .Obj}}<script src="{{.Path}}?{{.Mtime.Unix}}" type="text/javascript"></script>{{end}}{{end}}
-{{define "asset_css"}}{{with .Obj}}<link rel="stylesheet" href="{{.Path}}?{{.Mtime.Unix}}" type="text/css" media="all">{{end}}{{end}}
-{{define "asset_less"}}{{with .Obj}}<link rel="stylesheet/less" href="{{.Path}}?{{.Mtime.Unix}}" type="text/css" media="all">{{end}}{{end}}
