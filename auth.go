@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"code.google.com/p/go.crypto/scrypt"
+	"golang.org/x/crypto/scrypt"
 	"github.com/DHowett/ghostbin/account"
 	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
