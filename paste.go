@@ -1,136 +1,109 @@
 package main
 
 import (
-	"golang.org/x/crypto/scrypt"
-	"crypto/aes"
-	"crypto/cipher"
-	"github.com/DHowett/go-xattr"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
+
+	"github.com/DHowett/go-xattr"
+
+	"github.com/DHowett/ghostbin/lib/pastes"
 )
 
-const CURRENT_ENCRYPTION_METHOD string = "2"
+const CURRENT_ENCRYPTION_METHOD pastes.EncryptionMethod = pastes.EncryptionMethodAES_CTR
 
-type PasteStore interface {
-	GenerateNewPasteID(bool) (PasteID, error)
-	New(bool) (*Paste, error)
-	Get(PasteID, []byte) (*Paste, error)
-	Save(*Paste) error
-	Destroy(*Paste) error
-
-	EncryptionKeyForPasteWithPassword(*Paste, string) []byte
-	readStream(*Paste) (*PasteReader, error)
-	writeStream(*Paste) (*PasteWriter, error)
-}
-
-type PasteID string
-
-func (id PasteID) String() string {
-	return string(id)
-}
-
-func PasteIDFromString(s string) PasteID {
-	return PasteID(s)
-}
-
-type PasteEncryptedError struct {
-	ID PasteID
-}
-
-func (e PasteEncryptedError) Error() string {
-	return "Paste " + e.ID.String() + " is encrypted."
-}
-
-type PasteInvalidKeyError PasteEncryptedError
-
-func (e PasteInvalidKeyError) Error() string { return "" }
-
-type PasteNotFoundError struct {
-	ID PasteID
-}
-
-func (e PasteNotFoundError) Error() string {
-	return "Paste " + e.ID.String() + " was not found."
-}
-
-type PasteReader struct {
+type pasteReader struct {
 	io.ReadCloser
-	paste *Paste
 }
 
-func (pr *PasteReader) Close() error {
+func (pr *pasteReader) Close() error {
 	return pr.ReadCloser.Close()
 }
 
-type PasteWriter struct {
+type pasteWriter struct {
 	io.WriteCloser
-	paste *Paste
+	paste *fsPaste
 }
 
-func (pr *PasteWriter) Close() error {
-	pr.paste.Save()
+func (pr *pasteWriter) Close() error {
+	pr.paste.Commit()
 	return pr.WriteCloser.Close()
 }
 
-type Paste struct {
-	ID         PasteID
+type fsPaste struct {
+	ID         pastes.ID
 	Language   *Language
 	Encrypted  bool
 	Expiration string
 	Title      string
 
-	store   PasteStore
+	store   *FilesystemPasteStore
 	mtime   time.Time
 	exptime time.Time
 
 	encryptionKey    []byte
 	encryptionSalt   []byte
-	encryptionMethod string
+	encryptionMethod pastes.EncryptionMethod
 }
 
-func (p *Paste) Save() error {
+func (p *fsPaste) GetID() pastes.ID {
+	return p.ID
+}
+func (p *fsPaste) GetModificationTime() time.Time {
+	return p.mtime
+}
+func (p *fsPaste) GetLanguageName() string {
+	if p.Language == nil {
+		return ""
+	}
+	return p.Language.ID
+}
+func (p *fsPaste) SetLanguageName(language string) {
+	p.Language = LanguageNamed(language)
+}
+func (p *fsPaste) IsEncrypted() bool {
+	return p.Encrypted
+}
+func (p *fsPaste) GetExpiration() string {
+	return p.Expiration
+}
+func (p *fsPaste) SetExpiration(expiration string) {
+	p.Expiration = expiration
+}
+func (p *fsPaste) GetTitle() string {
+	return p.Title
+}
+func (p *fsPaste) SetTitle(title string) {
+	p.Title = title
+}
+
+func (p *fsPaste) Commit() error {
 	return p.store.Save(p)
 }
 
-func (p *Paste) Destroy() error {
+func (p *fsPaste) Erase() error {
 	return p.store.Destroy(p)
 }
 
-func (p *Paste) Reader() (*PasteReader, error) {
+func (p *fsPaste) Reader() (io.ReadCloser, error) {
 	return p.store.readStream(p)
 }
 
-func (p *Paste) Writer() (*PasteWriter, error) {
+func (p *fsPaste) Writer() (io.WriteCloser, error) {
 	return p.store.writeStream(p)
 }
 
-func (p *Paste) LastModified() time.Time {
-	return p.mtime
-}
-
-func (p *Paste) ExpirationTime() time.Time {
-	return p.exptime
-}
-
-func (p *Paste) SetEncryptionKey(key []byte) {
-	p.encryptionKey = key
-	p.Encrypted = (key != nil)
-}
-
-func (p *Paste) EncryptionKeyWithPassword(password string) []byte {
-	return p.store.EncryptionKeyForPasteWithPassword(p, password)
-}
-
-type PasteCallback func(*Paste)
+type PasteCallback func(pastes.Paste)
 type FilesystemPasteStore struct {
 	PasteUpdateCallback  PasteCallback
 	PasteDestroyCallback PasteCallback
 	path                 string
 }
 
-func noopPasteCallback(p *Paste) {}
+func noopPasteCallback(p pastes.Paste) {}
 
 func NewFilesystemPasteStore(path string) *FilesystemPasteStore {
 	return &FilesystemPasteStore{
@@ -140,38 +113,52 @@ func NewFilesystemPasteStore(path string) *FilesystemPasteStore {
 	}
 }
 
-func (store *FilesystemPasteStore) GenerateNewPasteID(encrypted bool) (PasteID, error) {
+func (store *FilesystemPasteStore) GenerateNewPasteID(encrypted bool) pastes.ID {
 	nbytes, idlen := 4, 5
 	if encrypted {
 		nbytes, idlen = 5, 8
 	}
 
 	for {
-		s, err := generateRandomBase32String(nbytes, idlen)
-		if _, staterr := os.Stat(store.filenameForID(PasteIDFromString(s))); os.IsNotExist(staterr) {
-			return PasteIDFromString(s), err
+		s, _ := generateRandomBase32String(nbytes, idlen)
+		if _, staterr := os.Stat(store.filenameForID(pastes.IDFromString(s))); os.IsNotExist(staterr) {
+			return pastes.IDFromString(s)
 		}
 	}
 }
 
-func (store *FilesystemPasteStore) filenameForID(id PasteID) string {
+func (store *FilesystemPasteStore) filenameForID(id pastes.ID) string {
 	return filepath.Join(store.path, id.String())
 }
 
-func (store *FilesystemPasteStore) New(encrypted bool) (p *Paste, err error) {
-	id, err := store.GenerateNewPasteID(encrypted)
+func (store *FilesystemPasteStore) NewPaste() (pastes.Paste, error) {
+	id := store.GenerateNewPasteID(false)
+	return &fsPaste{ID: id, store: store}, nil
+}
+
+func (store *FilesystemPasteStore) NewEncryptedPaste(method pastes.EncryptionMethod, passphraseMaterial []byte) (pastes.Paste, error) {
+	if passphraseMaterial == nil {
+		return nil, errors.New("FilesystemPasteStore: unacceptable encryption material")
+	}
+
+	salt, err := generateRandomBytes(16)
 	if err != nil {
-		panic(err)
+		return nil, err
+	}
+	key, err := pastes.GetEncryptionHandler(method).DeriveKey(passphraseMaterial, salt)
+	if err != nil {
+		return nil, err
 	}
 
-	p = &Paste{ID: id, store: store}
-
-	if encrypted {
-		p.encryptionSalt, _ = generateRandomBytes(16)
-		p.encryptionMethod = CURRENT_ENCRYPTION_METHOD
-	}
-
-	return
+	id := store.GenerateNewPasteID(true)
+	return &fsPaste{
+		ID:               id,
+		Encrypted:        true,
+		store:            store,
+		encryptionMethod: method,
+		encryptionKey:    key,
+		encryptionSalt:   salt,
+	}, nil
 }
 
 func putMetadata(fn string, name string, value string) error {
@@ -187,21 +174,22 @@ func getMetadata(fn string, name string, dflt string) string {
 	return string(bytes)
 }
 
-func (store *FilesystemPasteStore) Get(id PasteID, key []byte) (p *Paste, err error) {
+func (store *FilesystemPasteStore) Get(id pastes.ID, passphraseMaterial []byte) (pastes.Paste, error) {
 	filename := store.filenameForID(id)
 	stat, err := os.Stat(filename)
 	if err != nil {
-		err = PasteNotFoundError{ID: id}
-		return
+		return nil, pastes.PasteNotFoundError{ID: id}
 	}
 
-	paste := &Paste{ID: id, store: store, mtime: stat.ModTime()}
+	paste := &fsPaste{ID: id, store: store, mtime: stat.ModTime()}
 
 	hmac := getMetadata(filename, "hmac", "")
-	paste.encryptionMethod = getMetadata(filename, "encryption_version", "")
+	method, _ := strconv.Atoi(getMetadata(filename, "encryption_version", ""))
+	paste.encryptionMethod = pastes.EncryptionMethod(method)
 	if hmac != "" {
-		if paste.encryptionMethod == "" {
-			paste.encryptionMethod = "1"
+		if paste.encryptionMethod == pastes.EncryptionMethodNone {
+			// Pastes with an HMAC but no encryption method use Ghostbin Legacy Enc.
+			paste.encryptionMethod = pastes.EncryptionMethodAES_OFB
 		}
 
 		paste.Encrypted = true
@@ -211,33 +199,31 @@ func (store *FilesystemPasteStore) Get(id PasteID, key []byte) (p *Paste, err er
 		} else {
 			saltb, e := base32Encoder.DecodeString(salt)
 			if e != nil {
-				err = e
-				return
+				return nil, e
 			}
 
 			paste.encryptionSalt = saltb
 		}
 
-		err = PasteEncryptedError{ID: id}
-		if key != nil {
-			err = nil
-
-			hmacBytes, e := base32Encoder.DecodeString(hmac)
-			if e != nil {
-				err = e
-				return
+		err = pastes.PasteEncryptedError{ID: id}
+		if passphraseMaterial != nil {
+			key, err := pastes.GetEncryptionHandler(paste.encryptionMethod).DeriveKey(passphraseMaterial, paste.encryptionSalt)
+			if err != nil {
+				return nil, err
 			}
 
-			MACMessage := encryptionMethodHandlers[paste.encryptionMethod].generateMACMessage(paste)
-			ok := checkMAC(MACMessage, hmacBytes, key)
+			hmacBytes, err := base32Encoder.DecodeString(hmac)
+			if err != nil {
+				return nil, err
+			}
+
+			ok := pastes.GetEncryptionHandler(paste.encryptionMethod).Authenticate(id, paste.encryptionSalt, key, hmacBytes)
 
 			if !ok {
-				err = PasteInvalidKeyError{ID: id}
-				return
+				return nil, pastes.PasteInvalidKeyError{ID: id}
 			}
 
 			paste.encryptionKey = key
-			err = nil
 		}
 	}
 
@@ -253,71 +239,58 @@ func (store *FilesystemPasteStore) Get(id PasteID, key []byte) (p *Paste, err er
 
 	store.PasteUpdateCallback(paste)
 
-	p = paste
-	return
+	return paste, nil
 }
 
-func (store *FilesystemPasteStore) Save(p *Paste) error {
-	filename := store.filenameForID(p.ID)
-	if err := putMetadata(filename, "language", p.Language.ID); err != nil {
+func (store *FilesystemPasteStore) Save(p pastes.Paste) error {
+	fsp := p.(*fsPaste)
+	filename := store.filenameForID(fsp.ID)
+	if err := putMetadata(filename, "language", fsp.Language.ID); err != nil {
 		return err
 	}
 
-	if p.Expiration != "" {
-		if err := putMetadata(filename, "expiration", p.Expiration); err != nil {
+	if fsp.Expiration != "" {
+		if err := putMetadata(filename, "expiration", fsp.Expiration); err != nil {
 			return err
 		}
 	}
 
-	if err := putMetadata(filename, "title", p.Title); err != nil {
+	if err := putMetadata(filename, "title", fsp.Title); err != nil {
 		return err
 	}
 
-	if p.Encrypted {
-		MACMessage := encryptionMethodHandlers[p.encryptionMethod].generateMACMessage(p)
-		hmacBytes := constructMAC([]byte(MACMessage), p.encryptionKey)
+	if fsp.Encrypted {
+		hmacBytes := pastes.GetEncryptionHandler(fsp.encryptionMethod).GenerateHMAC(fsp.GetID(), fsp.encryptionSalt, fsp.encryptionKey)
 		hmac := base32Encoder.EncodeToString(hmacBytes)
 		if err := putMetadata(filename, "hmac", hmac); err != nil {
 			return err
 		}
 
-		if err := putMetadata(filename, "encryption_version", p.encryptionMethod); err != nil {
+		if err := putMetadata(filename, "encryption_version", strconv.Itoa(int(fsp.encryptionMethod))); err != nil {
 			return err
 		}
 
-		if err := putMetadata(filename, "encryption_salt", base32Encoder.EncodeToString(p.encryptionSalt)); err != nil {
+		if err := putMetadata(filename, "encryption_salt", base32Encoder.EncodeToString(fsp.encryptionSalt)); err != nil {
 			return err
 		}
 	}
 
-	store.PasteUpdateCallback(p)
+	store.PasteUpdateCallback(fsp)
 	return nil
 }
 
-func (store *FilesystemPasteStore) Destroy(p *Paste) error {
-	err := os.Remove(store.filenameForID(p.ID))
+func (store *FilesystemPasteStore) Destroy(p pastes.Paste) error {
+	fsp := p.(*fsPaste)
+	err := os.Remove(store.filenameForID(fsp.ID))
 	if err != nil {
 		return err
 	}
 
-	store.PasteDestroyCallback(p)
+	store.PasteDestroyCallback(fsp)
 	return nil
 }
 
-func (store *FilesystemPasteStore) EncryptionKeyForPasteWithPassword(p *Paste, password string) []byte {
-	if password == "" {
-		return nil
-	}
-
-	key, err := scrypt.Key([]byte(password), []byte(p.encryptionSalt), 16384, 8, 1, 32)
-	if err != nil {
-		panic(err)
-	}
-
-	return key
-}
-
-func (store *FilesystemPasteStore) readStream(p *Paste) (*PasteReader, error) {
+func (store *FilesystemPasteStore) readStream(p *fsPaste) (io.ReadCloser, error) {
 	filename := store.filenameForID(p.ID)
 	var r io.ReadCloser
 	var err error
@@ -325,14 +298,15 @@ func (store *FilesystemPasteStore) readStream(p *Paste) (*PasteReader, error) {
 		return nil, err
 	}
 
-	if p.Encrypted {
-		r = encryptionMethodHandlers[p.encryptionMethod].encryptedReadWrapper(p, r)
-	}
+	r = &pasteReader{ReadCloser: r}
 
-	return &PasteReader{ReadCloser: r, paste: p}, nil
+	if p.Encrypted {
+		r = pastes.GetEncryptionHandler(p.encryptionMethod).Reader(p.encryptionKey, r)
+	}
+	return r, nil
 }
 
-func (store *FilesystemPasteStore) writeStream(p *Paste) (*PasteWriter, error) {
+func (store *FilesystemPasteStore) writeStream(p *fsPaste) (io.WriteCloser, error) {
 	filename := store.filenameForID(p.ID)
 	var w io.WriteCloser
 	var err error
@@ -340,62 +314,11 @@ func (store *FilesystemPasteStore) writeStream(p *Paste) (*PasteWriter, error) {
 		return nil, err
 	}
 
-	// N.B. We always write using the newest encryption method.
+	w = &pasteWriter{WriteCloser: w, paste: p}
+
 	if p.Encrypted {
-		w = encryptionMethodHandlers[p.encryptionMethod].encryptedWriteWrapper(p, w)
+		// N.B. We always write using the newest encryption method.
+		w = pastes.GetEncryptionHandler(p.encryptionMethod).Writer(p.encryptionKey, w)
 	}
-
-	return &PasteWriter{WriteCloser: w, paste: p}, nil
-}
-
-type EncryptionMethodHandlers struct {
-	generateMACMessage    func(*Paste) []byte
-	encryptedReadWrapper  func(*Paste, io.ReadCloser) io.ReadCloser
-	encryptedWriteWrapper func(*Paste, io.WriteCloser) io.WriteCloser
-}
-
-var encryptionMethodHandlers = map[string]EncryptionMethodHandlers{
-	"": EncryptionMethodHandlers{
-		generateMACMessage:    func(p *Paste) []byte { return []byte{} },
-		encryptedReadWrapper:  func(p *Paste, r io.ReadCloser) io.ReadCloser { return r },
-		encryptedWriteWrapper: func(p *Paste, w io.WriteCloser) io.WriteCloser { return w },
-	},
-	"1": EncryptionMethodHandlers{
-		generateMACMessage: func(p *Paste) []byte {
-			return []byte(p.ID.String())
-		},
-		encryptedReadWrapper: func(p *Paste, r io.ReadCloser) io.ReadCloser {
-			blockCipher, _ := aes.NewCipher(p.encryptionKey)
-			var iv [aes.BlockSize]byte
-			stream := cipher.NewOFB(blockCipher, iv[:])
-			streamReader := &cipher.StreamReader{S: stream, R: r}
-			return &ReadCloser{Reader: streamReader, Closer: r}
-		},
-		encryptedWriteWrapper: func(p *Paste, w io.WriteCloser) io.WriteCloser {
-			blockCipher, _ := aes.NewCipher(p.encryptionKey)
-			var iv [aes.BlockSize]byte
-			stream := cipher.NewOFB(blockCipher, iv[:])
-			streamWriter := &cipher.StreamWriter{S: stream, W: w}
-			return &WriteCloser{Writer: streamWriter, Closer: w}
-		},
-	},
-	"2": EncryptionMethodHandlers{
-		generateMACMessage: func(p *Paste) []byte {
-			return append([]byte(p.ID.String()), p.encryptionSalt...)
-		},
-		encryptedReadWrapper: func(p *Paste, r io.ReadCloser) io.ReadCloser {
-			blockCipher, _ := aes.NewCipher(p.encryptionKey)
-			var iv [aes.BlockSize]byte
-			stream := cipher.NewCTR(blockCipher, iv[:])
-			streamReader := &cipher.StreamReader{S: stream, R: r}
-			return &ReadCloser{Reader: streamReader, Closer: r}
-		},
-		encryptedWriteWrapper: func(p *Paste, w io.WriteCloser) io.WriteCloser {
-			blockCipher, _ := aes.NewCipher(p.encryptionKey)
-			var iv [aes.BlockSize]byte
-			stream := cipher.NewCTR(blockCipher, iv[:])
-			streamWriter := &cipher.StreamWriter{S: stream, W: w}
-			return &WriteCloser{Writer: streamWriter, Closer: w}
-		},
-	},
+	return w, nil
 }

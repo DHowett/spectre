@@ -1,27 +1,34 @@
 package main
 
 import (
+	"github.com/DHowett/ghostbin/lib/pastes"
 	"github.com/DHowett/gotimeout"
 )
 
 type ExpiringPasteStore struct {
-	PasteStore
+	pastes.PasteStore
 }
 
+type ExpiringPasteID pastes.ID
+
 func (e *ExpiringPasteStore) GetExpirable(id gotimeout.ExpirableID) gotimeout.Expirable {
-	v, _ := e.PasteStore.Get(PasteID(id), nil)
+	v, _ := e.PasteStore.Get(pastes.ID(id), nil)
 	if v == nil {
 		return nil
 	}
-	return v
+	return ExpiringPasteID(id)
 }
 
 func (e *ExpiringPasteStore) DestroyExpirable(ex gotimeout.Expirable) {
-	if paste, ok := ex.(*Paste); ok {
-		e.PasteStore.Destroy(paste)
+	v, _ := e.PasteStore.Get(pastes.ID(ex.ExpirationID()), nil)
+	if v == nil {
+		return
+	}
+	if paste, ok := v.(pastes.Paste); ok {
+		paste.Erase()
 	}
 }
 
-func (p *Paste) ExpirationID() gotimeout.ExpirableID {
-	return gotimeout.ExpirableID(p.ID)
+func (p ExpiringPasteID) ExpirationID() gotimeout.ExpirableID {
+	return gotimeout.ExpirableID(p)
 }

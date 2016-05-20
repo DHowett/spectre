@@ -1,15 +1,17 @@
 package main
 
 import (
-	"github.com/DHowett/ghostbin/account"
-	"github.com/gorilla/sessions"
 	"net/http"
+
+	"github.com/DHowett/ghostbin/account"
+	"github.com/DHowett/ghostbin/lib/pastes"
+	"github.com/gorilla/sessions"
 )
 
 type PastePermission map[string]bool
 
 type PastePermissionSet struct {
-	Entries map[PasteID]PastePermission
+	Entries map[pastes.ID]PastePermission
 	u       *account.User
 }
 
@@ -39,14 +41,14 @@ func GetPastePermissions(r *http.Request) *PastePermissionSet {
 
 	if perms == nil {
 		perms = &PastePermissionSet{
-			Entries: make(map[PasteID]PastePermission),
+			Entries: make(map[pastes.ID]PastePermission),
 		}
 	}
 
 	// Attempt to get hold of the original list of pastes
 	if oldPasteList, ok := cookieSession.Values["pastes"]; ok {
 		for _, v := range oldPasteList.([]string) {
-			perms.Put(PasteIDFromString(v), PastePermission{
+			perms.Put(pastes.IDFromString(v), PastePermission{
 				"grant": true,
 				"edit":  true,
 			})
@@ -71,7 +73,7 @@ func (p *PastePermissionSet) Save(w http.ResponseWriter, r *http.Request) {
 
 // Put inserts a set of permissions into the permission store,
 // potentially merging new permissions with existing permissions for the same paste.
-func (p *PastePermissionSet) Put(id PasteID, perms PastePermission) {
+func (p *PastePermissionSet) Put(id pastes.ID, perms PastePermission) {
 	if existing, ok := p.Entries[id]; ok {
 		for k, v := range perms {
 			existing[k] = v
@@ -81,11 +83,11 @@ func (p *PastePermissionSet) Put(id PasteID, perms PastePermission) {
 	}
 }
 
-func (p *PastePermissionSet) Get(id PasteID) (PastePermission, bool) {
+func (p *PastePermissionSet) Get(id pastes.ID) (PastePermission, bool) {
 	v, ok := p.Entries[id]
 	return v, ok
 }
 
-func (p *PastePermissionSet) Delete(id PasteID) {
+func (p *PastePermissionSet) Delete(id pastes.ID) {
 	delete(p.Entries, id)
 }

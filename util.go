@@ -2,9 +2,7 @@ package main
 
 import (
 	"bytes"
-	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base32"
 	"fmt"
 	"io"
@@ -24,26 +22,6 @@ const (
 	EnvironmentDevelopment string = "dev"
 	EnvironmentProduction  string = "production"
 )
-
-type ReadCloser struct {
-	io.Reader
-	io.Closer
-}
-
-type WriteCloser struct {
-	io.Writer
-	io.Closer
-}
-
-func constructMAC(message, key []byte) []byte {
-	mac := hmac.New(sha256.New, key)
-	mac.Write(message)
-	return mac.Sum(nil)
-}
-
-func checkMAC(message, messageMAC, key []byte) bool {
-	return hmac.Equal(messageMAC, constructMAC(message, key))
-}
 
 var base32Encoder = base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789")
 

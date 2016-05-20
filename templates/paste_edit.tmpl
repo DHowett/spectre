@@ -1,4 +1,4 @@
-{{define "paste_edit_title"}}{{.Obj.ID}}{{end}}
+{{define "paste_edit_title"}}{{.Obj.GetID}}{{end}}
 {{define "paste_edit_body"}}
 {{template "paste_edit_partial" .}}
 <div id="deleteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
@@ -8,7 +8,7 @@
 		<h3>Confirm Deletion</h3>
 	</div>
 	<div class="modal-body">
-		<p>Are you sure you want to delete paste <strong>{{.Obj.ID}}</strong>?</p>
+		<p>Are you sure you want to delete paste <strong>{{.Obj.GetID}}</strong>?</p>
 	</div>
 	<div class="modal-footer">
 		<button type="submit" class="btn btn-danger">Destroy! Annihilate!</button>
@@ -23,7 +23,7 @@
 <div class="sizefix clearfix">
 <div class="paste-toolbox">
 	{{template "home-button"}}
-	<span class="paste-title"><strong id="editable-paste-title" data-placeholder="{{with .Obj}}Paste {{.ID}}{{else}}New Paste{{end}}" contenteditable>{{with .Obj}}{{.Title}}{{end}}</strong></span>
+	<span class="paste-title"><strong id="editable-paste-title" data-placeholder="{{with .Obj}}Paste {{.GetID}}{{else}}New Paste{{end}}" contenteditable>{{with .Obj}}{{.GetTitle}}{{end}}</strong></span>
 	<div class="paste-toolbox-buttons pull-right" id="desktop-paste-control-container">
 		<div id="paste-controls">
 			{{if not .Obj}}
@@ -59,7 +59,7 @@
 </div>
 </div>
 <div class="well visible-phone" id="phone-paste-control-container"></div>
-<input type="hidden" name="expire" value="{{if .Obj}}{{.Obj.Expiration}}{{else}}-1{{end}}">
+<input type="hidden" name="expire" value="{{if .Obj}}{{.Obj.GetExpiration}}{{else}}-1{{end}}">
 <input type="hidden" name="password" value="">
 <input type="hidden" name="title" value="">
 <div id="expireModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
@@ -84,4 +84,4 @@
 </form>
 {{end}}
 
-{{define "s2langbox"}}<input type="hidden" class="dropdown" id="langbox" name="lang"{{if .Language}} data-selected="{{.Language.ID}}"{{end}}>{{end}}
+{{define "s2langbox"}}<input type="hidden" class="dropdown" id="langbox" name="lang"{{if .GetLanguageName}} data-selected="{{(languageNamed .GetLanguageName).ID}}"{{end}}>{{end}}

@@ -7,13 +7,15 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/DHowett/ghostbin/lib/pastes"
+
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
 
 type ReportInfo map[string]int
 type ReportStore struct {
-	Reports  map[PasteID]ReportInfo
+	Reports  map[pastes.ID]ReportInfo
 	filename string
 }
 
@@ -30,7 +32,7 @@ func (r *ReportStore) Save() error {
 	return enc.Encode(r)
 }
 
-func (r *ReportStore) Add(id PasteID, kind string) {
+func (r *ReportStore) Add(id pastes.ID, kind string) {
 	currentReportsForPaste, ok := r.Reports[id]
 
 	if !ok {
@@ -42,7 +44,7 @@ func (r *ReportStore) Add(id PasteID, kind string) {
 	r.Save()
 }
 
-func (r *ReportStore) Delete(p PasteID) {
+func (r *ReportStore) Delete(p pastes.ID) {
 	delete(r.Reports, p)
 	glog.Info(p, " deleted from report history.")
 	r.Save()
@@ -61,7 +63,7 @@ func LoadReportStore(filename string) *ReportStore {
 		decoded_reports.filename = filename
 		return decoded_reports
 	}
-	return &ReportStore{Reports: map[PasteID]ReportInfo{}, filename: filename}
+	return &ReportStore{Reports: map[pastes.ID]ReportInfo{}, filename: filename}
 }
 
 var reportStore *ReportStore
@@ -72,20 +74,20 @@ func reportPaste(o Model, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p := o.(*Paste)
+	p := o.(pastes.Paste)
 	reason := r.FormValue("reason")
 
-	reportStore.Add(p.ID, reason)
+	reportStore.Add(p.GetID(), reason)
 
-	SetFlash(w, "success", fmt.Sprintf("Paste %v reported.", p.ID))
-	w.Header().Set("Location", pasteURL("show", p))
+	SetFlash(w, "success", fmt.Sprintf("Paste %v reported.", p.GetID()))
+	w.Header().Set("Location", pasteURL("show", p.GetID()))
 	w.WriteHeader(http.StatusFound)
 }
 
 func reportClear(w http.ResponseWriter, r *http.Request) {
 	defer errorRecoveryHandler(w)
 
-	id := PasteIDFromString(mux.Vars(r)["id"])
+	id := pastes.IDFromString(mux.Vars(r)["id"])
 	reportStore.Delete(id)
 
 	SetFlash(w, "success", fmt.Sprintf("Report for %v cleared.", id))

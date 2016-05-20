@@ -6,12 +6,14 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/DHowett/ghostbin/lib/pastes"
+
 	"github.com/DHowett/gotimeout"
 	"github.com/golang/glog"
 )
 
 type GrantStore struct {
-	Grants     map[GrantID]PasteID
+	Grants     map[GrantID]pastes.ID
 	ExpiryJunk *gotimeout.HandleMap
 
 	filename  string
@@ -33,7 +35,7 @@ func (r *GrantStore) Save() error {
 	return enc.Encode(r)
 }
 
-func (r *GrantStore) NewGrant(id PasteID) GrantID {
+func (r *GrantStore) NewGrant(id pastes.ID) GrantID {
 	newKey, _ := generateRandomBase32String(20, 32)
 	grantKey := GrantID(newKey)
 	r.Grants[grantKey] = id
@@ -51,7 +53,7 @@ func (r *GrantStore) Delete(p GrantID) {
 	r.Save()
 }
 
-func (r *GrantStore) Get(p GrantID) (PasteID, bool) {
+func (r *GrantStore) Get(p GrantID) (pastes.ID, bool) {
 	pid, ok := r.Grants[p]
 	return pid, ok
 }
@@ -71,7 +73,7 @@ func LoadGrantStore(filename string) *GrantStore {
 		gs = &GrantStore{}
 	}
 	if gs.Grants == nil {
-		gs.Grants = make(map[GrantID]PasteID)
+		gs.Grants = make(map[GrantID]pastes.ID)
 	}
 	gs.filename = filename
 	gs.expirator = gotimeout.NewExpiratorWithStorage(gs, gs)

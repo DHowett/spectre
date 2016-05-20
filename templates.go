@@ -3,11 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/golang/glog"
 	"html/template"
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/golang/glog"
 )
 
 type RenderContext struct {

@@ -1,11 +1,11 @@
 {{define "paste_delete_confirm_title"}}Delete?{{end}}
-{{define "paste_delete_confirm_body"}}
+{{define "paste_delete_confirm_body"}}{{$language := (languageNamed .Obj.GetLanguageName)}}
 <div class="well">
 <form name="deleteForm" action="{{pasteURL "delete" .Obj}}" method="post">
 <strong>Confirm</strong><br>
-<p>Are you sure you want to delete paste {{.Obj.ID}}?</p>
+<p>Are you sure you want to delete paste {{.Obj.GetID}}?</p>
 <div class="paste-miniature">
-<div class="code{{if .Obj.Language.DisplayStyle}} code-{{.Obj.Language.DisplayStyle}}{{end}}" id="code">{{render .Obj}}</div>
+<div class="code{{if $language.DisplayStyle}} code-{{$language.DisplayStyle}}{{end}}" id="code">{{render .Obj}}</div>
 </div>
 <button type="submit" class="btn btn-danger btn-phone-expand">Destroy! Annihilate!</button>
 <a href="{{pasteURL "show" .Obj}}" class="btn btn-phone-expand">Nevermind</a>
