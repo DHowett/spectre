@@ -11,35 +11,34 @@ type User struct {
 	Name   string
 	Values map[string]interface{}
 
+	Salt      []byte
+	Challenge []byte
+
 	store             AccountStore
 	challengeProvider ChallengeProvider
 }
 
 func (u *User) UpdateChallenge(password string) {
-	s, ok := u.Values["_salt"]
-	var salt []byte
-	if !ok {
+	salt := u.Salt
+	if salt == nil {
 		salt = u.challengeProvider.RandomSalt()
-		u.Values["_salt"] = salt
-	} else {
-		salt = s.([]byte)
+		u.Salt = salt
 	}
 	key := u.challengeProvider.DeriveKey(password, salt)
 	challengeMessage := append(salt, []byte(u.Name)...)
-	u.Values["_challenge"] = u.challengeProvider.Challenge(challengeMessage, key)
+	u.Challenge = u.challengeProvider.Challenge(challengeMessage, key)
 	u.Save()
 }
 
 func (u *User) Check(password string) bool {
-	s, ok := u.Values["_salt"]
-	if !ok {
+	salt := u.Salt
+	if salt == nil {
 		return false
 	}
-	salt := s.([]byte)
 	key := u.challengeProvider.DeriveKey(password, salt)
 	challengeMessage := append(salt, []byte(u.Name)...)
 	newChallenge := u.challengeProvider.Challenge(challengeMessage, key)
-	return bytes.Equal(newChallenge, u.Values["_challenge"].([]byte))
+	return bytes.Equal(newChallenge, u.Challenge)
 }
 
 func (u *User) Save() error {
@@ -78,11 +77,23 @@ func (f *FilesystemStore) Get(name string) *User {
 		}
 	}
 
+	// Legacy: FS Store used to store Salt/Challenge in .Values.
+	if val, ok := user.Values["_salt"].([]byte); ok {
+		user.Salt = val
+		delete(user.Values, "_salt")
+	}
+
+	if val, ok := user.Values["_challenge"].([]byte); ok {
+		user.Challenge = val
+		delete(user.Values, "_challenge")
+	}
+
 	if user == nil {
 		return nil
 	}
 	user.store = f
 	user.challengeProvider = f.challengeProvider
+
 	return user
 }
 
