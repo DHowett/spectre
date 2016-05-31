@@ -4,20 +4,16 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/url"
-	"os"
-	"sync"
 	"time"
 
-	"golang.org/x/crypto/scrypt"
-	"github.com/DHowett/ghostbin/account"
+	"github.com/DHowett/ghostbin/lib/accounts"
 	"github.com/golang/glog"
-	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"golang.org/x/crypto/scrypt"
 )
 
 const USER_CACHE_MAX_ENTRIES int = 1000
@@ -54,7 +50,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 		enc.Encode(reply)
 	}()
 
-	var user *account.User
+	var user accounts.User
 
 	loginType := r.FormValue("type")
 	if loginType == "username" {
@@ -68,7 +64,8 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		newuser := userStore.Get(username)
+		// errors here are non-fatal.
+		newuser, _ := userStore.GetUserNamed(username)
 		if newuser == nil {
 			if confirm == "" {
 				reply.Status = "moreinfo"
@@ -80,7 +77,12 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 				reply.InvalidFields = []string{"password", "confirm_password"}
 				return
 			}
-			newuser = userStore.Create(username)
+			newuser, err = userStore.CreateUser(username)
+			if err != nil {
+				// TODO(DH): propagate.
+				glog.Error(err)
+				return
+			}
 			newuser.UpdateChallenge(password)
 			user = newuser
 		} else {
@@ -132,11 +134,14 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 
 		if verifyResponseJSON["status"].(string) == "okay" {
 			email := verifyResponseJSON["email"].(string)
-			user = userStore.Get(email)
+			user, _ = userStore.GetUserNamed(email)
 			if user == nil {
-				user = userStore.Create(email)
+				user, err = userStore.CreateUser(email)
+				if err != nil {
+					glog.Error(err)
+				}
 			}
-			user.Values["persona"] = true
+			user.SetPersona(true)
 			reply.ExtraData["persona"] = email
 		} else {
 			reply.Reason = verifyResponseJSON["reason"].(string)
@@ -159,7 +164,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 			reply.InvalidFields = []string{"token"}
 			return
 		}
-		user = u.(*account.User)
+		user = u.(accounts.User)
 	} else {
 		reply.Reason = "invalid login type"
 		reply.InvalidFields = []string{"type"}
@@ -169,21 +174,23 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 	if user != nil {
 		context.Set(r, userContextKey, user)
 
+		// TODO(DH) paste perms
+		_ = serverSession
 		// Attempt to aggregate user, session, and old perms.
-		pastePerms := GetPastePermissions(r)
-		user.Values["permissions"] = pastePerms
-		delete(serverSession.Values, "pastes")      // delete old perms
-		delete(serverSession.Values, "permissions") // delete new session perms
+		//pastePerms := GetPastePermissions(r)
+		//user.Values["permissions"] = pastePerms
+		//delete(serverSession.Values, "pastes")      // delete old perms
+		//delete(serverSession.Values, "permissions") // delete new session perms
 
-		err := user.Save()
-		if err != nil {
-			reply.Reason = "failed to save user"
-			reply.ExtraData["error"] = err.Error()
-		} else {
-			reply.Status = "valid"
-			reply.ExtraData["username"] = user.Name
-		}
-		clientSession.Values["account"] = user.Name
+		//err := userStore.SaveUser(user)
+		//if err != nil {
+		//reply.Reason = "failed to save user"
+		//reply.ExtraData["error"] = err.Error()
+		//} else {
+		reply.Status = "valid"
+		reply.ExtraData["username"] = user.GetName()
+		//}
+		clientSession.Values["acct_id"] = user.GetID()
 		err = sessions.Save(r, w)
 		if err != nil {
 			glog.Errorln(err)
@@ -199,7 +206,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 
 func authLogoutPostHandler(w http.ResponseWriter, r *http.Request) {
 	ses, _ := clientLongtermSessionStore.Get(r, "authentication")
-	delete(ses.Values, "account")
+	delete(ses.Values, "acct_id")
 	err := sessions.Save(r, w)
 	if err != nil {
 		glog.Errorln(err)
@@ -258,9 +265,9 @@ func (a *AuthChallengeProvider) Challenge(message []byte, key []byte) []byte {
 	return challenge
 }
 
-func GetUser(r *http.Request) *account.User {
+func GetUser(r *http.Request) accounts.User {
 	u := context.Get(r, userContextKey)
-	user, ok := u.(*account.User)
+	user, ok := u.(accounts.User)
 	if !ok {
 		return nil
 	}
@@ -273,16 +280,18 @@ type userLookupWrapper struct {
 
 func (u userLookupWrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ses, _ := clientLongtermSessionStore.Get(r, "authentication")
-	account, ok := ses.Values["account"].(string)
+	uid, ok := ses.Values["acct_id"].(uint)
 	if ok {
-		user := userStore.Get(account)
-		context.Set(r, userContextKey, user)
+		user, err := userStore.GetUserByID(uid)
+		if user != nil && err == nil {
+			context.Set(r, userContextKey, user)
+		}
 	}
 	u.Handler.ServeHTTP(w, r)
 }
 
 type ManglingUserStore struct {
-	account.AccountStore
+	accounts.Store
 }
 
 func (m *ManglingUserStore) mangle(name string) string {
@@ -293,14 +302,15 @@ func (m *ManglingUserStore) mangle(name string) string {
 	return "1$" + base32Encoder.EncodeToString(sum[:])
 }
 
-func (m *ManglingUserStore) Get(name string) *account.User {
-	return m.AccountStore.Get(m.mangle(name))
+func (m *ManglingUserStore) GetUserNamed(name string) (accounts.User, error) {
+	return m.Store.GetUserNamed(m.mangle(name))
 }
 
-func (m *ManglingUserStore) Create(name string) *account.User {
-	return m.AccountStore.Create(m.mangle(name))
+func (m *ManglingUserStore) CreateUser(name string) (accounts.User, error) {
+	return m.Store.CreateUser(m.mangle(name))
 }
 
+/*
 type CachingUserStore struct {
 	account.AccountStore
 	mu    sync.RWMutex
@@ -351,48 +361,37 @@ func (c *CachingUserStore) Create(name string) *account.User {
 	}
 	return user
 }
+*/
 
 type PromoteFirstUserToAdminStore struct {
-	Path string
-	account.AccountStore
-	firstUserCheckDone bool
+	accounts.Store
 }
 
-func (c *PromoteFirstUserToAdminStore) Create(name string) *account.User {
-	firstUser := false
-	if !c.firstUserCheckDone {
-		accountDir, err := os.Open(c.Path)
-		if err != nil {
-			firstUser = true
-		} else {
-			defer accountDir.Close()
-			_, err = accountDir.Readdirnames(1)
-			if err == io.EOF {
-				firstUser = true
-			}
-		}
-		c.firstUserCheckDone = true
+func (c *PromoteFirstUserToAdminStore) CreateUser(name string) (accounts.User, error) {
+	u, err := c.Store.CreateUser(name)
+	if err != nil {
+		return u, err
 	}
 
-	user := c.AccountStore.Create(name)
-	if firstUser {
-		user.Values["user.permissions"] = PastePermission{"admin": true}
+	if u.GetID() == 1 {
+		err = u.Permissions(accounts.PermissionClassUser).Grant(accounts.UserPermissionAdmin)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return user
+	return u, nil
 }
 
 func adminPromoteHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
-	user := userStore.Get(username)
+	user, _ := userStore.GetUserNamed(username)
 	if user != nil {
-		perms, ok := user.Values["user.permissions"].(PastePermission)
-		if !ok {
-			perms = PastePermission{}
+		err := user.Permissions(accounts.PermissionClassUser).Grant(accounts.UserPermissionAdmin)
+		if err != nil {
+			SetFlash(w, "success", "Promoted "+username+".")
+		} else {
+			SetFlash(w, "error", "Failed to promote "+username+".")
 		}
-		perms["admin"] = true
-		user.Values["user.permissions"] = perms
-		user.Save()
-		SetFlash(w, "success", "Promoted "+username+".")
 	} else {
 		SetFlash(w, "error", "Couldn't find "+username+" to promote.")
 	}
@@ -401,7 +400,7 @@ func adminPromoteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func init() {
-	RegisterTemplateFunction("user", func(r *RenderContext) *account.User {
+	RegisterTemplateFunction("user", func(r *RenderContext) accounts.User {
 		return GetUser(r.Request)
 	})
 }

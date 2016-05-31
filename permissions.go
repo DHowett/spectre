@@ -21,9 +21,10 @@ func GetPastePermissions(r *http.Request) *PastePermissionSet {
 	// Check if we have a user first.
 	user := GetUser(r)
 	if user != nil {
-		if userPerms, ok := user.Values["permissions"]; ok {
-			perms = userPerms.(*PastePermissionSet)
-		}
+		// TODO(DH) paste perms
+		//if userPerms, ok := user.Values["permissions"]; ok {
+		//perms = userPerms.(*PastePermissionSet)
+		//}
 	}
 
 	cookieSession, _ := sessionStore.Get(r, "session")
@@ -55,7 +56,7 @@ func GetPastePermissions(r *http.Request) *PastePermissionSet {
 		}
 	}
 
-	perms.u = user
+	//perms.u = user
 	return perms
 }
 

@@ -19,7 +19,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DHowett/ghostbin/account"
+	"github.com/DHowett/ghostbin/lib/accounts"
+	"github.com/DHowett/ghostbin/lib/pastes"
+
 	"github.com/DHowett/gotimeout"
 	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
@@ -189,19 +191,15 @@ func requiresEditPermission(fn ModelRenderFunc) ModelRenderFunc {
 	}
 }
 
-func requiresUserPermission(permission string, handler http.Handler) http.Handler {
+func requiresUserPermission(permission accounts.Permission, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer errorRecoveryHandler(w)
 
 		user := GetUser(r)
 		if user != nil {
-			if o, ok := user.Values["user.permissions"]; ok {
-				if perms, ok := o.(PastePermission); ok {
-					if perms[permission] {
-						handler.ServeHTTP(w, r)
-						return
-					}
-				}
+			if user.Permissions(accounts.PermissionClassUser).Has(permission) {
+				handler.ServeHTTP(w, r)
+				return
 			}
 		}
 
@@ -595,7 +593,7 @@ var sessionStore *sessions.FilesystemStore
 var clientOnlySessionStore *sessions.CookieStore
 var clientLongtermSessionStore *sessions.CookieStore
 var ephStore *gotimeout.Map
-var userStore account.AccountStore
+var userStore accounts.Store
 var pasteRouter *mux.Router
 var router *mux.Router
 
@@ -732,14 +730,7 @@ func init() {
 
 	accountPath := filepath.Join(arguments.root, "accounts")
 	os.Mkdir(accountPath, 0700)
-	userStore = &PromoteFirstUserToAdminStore{
-		Path: accountPath,
-		AccountStore: &CachingUserStore{
-			AccountStore: &ManglingUserStore{
-				account.NewFilesystemStore(accountPath, &AuthChallengeProvider{}),
-			},
-		},
-	}
+	userStore = nil
 }
 
 func main() {
@@ -832,22 +823,22 @@ func main() {
 		Path("/{id}/authenticate").
 		Handler(RenderPageHandler("paste_authenticate_disallowed"))
 
-	router.Path("/admin").Handler(requiresUserPermission("admin", RenderPageHandler("admin_home")))
+	router.Path("/admin").Handler(requiresUserPermission(accounts.UserPermissionAdmin, RenderPageHandler("admin_home")))
 
-	router.Path("/admin/reports").Handler(requiresUserPermission("admin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.Path("/admin/reports").Handler(requiresUserPermission(accounts.UserPermissionAdmin, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		RenderPage(w, r, "admin_reports", reportStore.Reports)
 	})))
 
-	router.Methods("POST").Path("/admin/promote").Handler(requiresUserPermission("admin", http.HandlerFunc(adminPromoteHandler)))
+	router.Methods("POST").Path("/admin/promote").Handler(requiresUserPermission(accounts.UserPermissionAdmin, http.HandlerFunc(adminPromoteHandler)))
 
 	router.Methods("POST").
 		Path("/admin/paste/{id}/delete").
-		Handler(requiresUserPermission("admin", RequiredModelObjectHandler(lookupPasteWithRequest, pasteDelete))).
+		Handler(requiresUserPermission(accounts.UserPermissionAdmin, RequiredModelObjectHandler(lookupPasteWithRequest, pasteDelete))).
 		Name("admindelete")
 
 	router.Methods("POST").
 		Path("/admin/paste/{id}/clear_report").
-		Handler(requiresUserPermission("admin", http.HandlerFunc(reportClear))).
+		Handler(requiresUserPermission(accounts.UserPermissionAdmin, http.HandlerFunc(reportClear))).
 		Name("reportclear")
 
 	pasteRouter.Methods("GET").Path("/").Handler(RedirectHandler("/"))
@@ -889,8 +880,13 @@ func main() {
 	router.Methods("GET").Path("/auth/token/{token}").Handler(http.HandlerFunc(authTokenPageHandler)).Name("auth_token_login")
 
 	router.Path("/").Handler(RenderPageHandler("index"))
+	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		route.Handler(userLookupWrapper{route.GetHandler()})
+		glog.Info(route.GetPathTemplate())
+		return mux.SkipRouter
+	})
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("public")))
-	http.Handle("/", &fourOhFourConsumerHandler{userLookupWrapper{router}})
+	http.Handle("/", &fourOhFourConsumerHandler{router})
 
 	var addr string = arguments.addr
 	server := &http.Server{
