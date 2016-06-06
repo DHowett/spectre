@@ -3,92 +3,73 @@ package main
 import (
 	"net/http"
 
-	"github.com/DHowett/ghostbin/account"
+	"github.com/DHowett/ghostbin/lib/accounts"
 	"github.com/DHowett/ghostbin/lib/pastes"
 	"github.com/gorilla/sessions"
 )
 
-type PastePermission map[string]bool
+type globalPermissionScope struct {
+	pID pastes.ID
+	// attempts to merge session store with user perms
+	// in the new unified scope interface.
 
-type PastePermissionSet struct {
-	Entries map[pastes.ID]PastePermission
-	u       *account.User
+	// User's paste perm scope for this ID
+	uScope accounts.PermissionScope
+
+	v3Entries map[pastes.ID]accounts.Permission
 }
 
-func GetPastePermissions(r *http.Request) *PastePermissionSet {
-	var perms *PastePermissionSet
+func (g *globalPermissionScope) Has(p accounts.Permission) bool {
+	if g.uScope != nil {
+		return g.uScope.Has(p)
+	}
+	return g.v3Entries[g.pID]&p == p
+}
 
-	// Check if we have a user first.
+func (g *globalPermissionScope) Grant(p accounts.Permission) error {
+	if g.uScope != nil {
+		return g.uScope.Grant(p)
+	}
+	g.v3Entries[g.pID] = g.v3Entries[g.pID] | p
+	return nil
+}
+
+func (g *globalPermissionScope) Revoke(p accounts.Permission) error {
+	if g.uScope != nil {
+		return g.uScope.Revoke(p)
+	}
+	g.v3Entries[g.pID] = g.v3Entries[g.pID] & (^p)
+	if g.v3Entries[g.pID] == 0 {
+		delete(g.v3Entries, g.pID)
+	}
+	return nil
+}
+
+func GetPastePermissionScope(pID pastes.ID, r *http.Request) accounts.PermissionScope {
+	var userScope accounts.PermissionScope
 	user := GetUser(r)
 	if user != nil {
-		// TODO(DH) paste perms
-		//if userPerms, ok := user.Values["permissions"]; ok {
-		//perms = userPerms.(*PastePermissionSet)
-		//}
+		userScope = user.Permissions(accounts.PermissionClassPaste, pID)
 	}
 
 	cookieSession, _ := sessionStore.Get(r, "session")
-
-	// Attempt to get hold of the new-style permission set.
-	if sessionPermissionSet, ok := cookieSession.Values["permissions"]; ok {
-		if perms != nil {
-			for k, v := range sessionPermissionSet.(*PastePermissionSet).Entries {
-				perms.Put(k, v)
-			}
-		} else {
-			perms = sessionPermissionSet.(*PastePermissionSet)
-		}
+	v3EntriesI := cookieSession.Values["v3permissions"]
+	v3Entries, ok := v3EntriesI.(map[pastes.ID]accounts.Permission)
+	if !ok || v3Entries == nil {
+		v3Entries = make(map[pastes.ID]accounts.Permission)
+		cookieSession.Values["v3permissions"] = v3Entries
 	}
 
-	if perms == nil {
-		perms = &PastePermissionSet{
-			Entries: make(map[pastes.ID]PastePermission),
-		}
+	return &globalPermissionScope{
+		pID:       pID,
+		uScope:    userScope,
+		v3Entries: v3Entries,
 	}
-
-	// Attempt to get hold of the original list of pastes
-	if oldPasteList, ok := cookieSession.Values["pastes"]; ok {
-		for _, v := range oldPasteList.([]string) {
-			perms.Put(pastes.IDFromString(v), PastePermission{
-				"grant": true,
-				"edit":  true,
-			})
-		}
-	}
-
-	//perms.u = user
-	return perms
 }
 
-// Save emits the PastePermissionSet to disk, either as part of the anonymous
-// session or as part of the authenticated user's data.
-func (p *PastePermissionSet) Save(w http.ResponseWriter, r *http.Request) {
-	if p.u != nil {
-		p.u.Save()
-	} else {
-		cookieSession, _ := sessionStore.Get(r, "session")
-		cookieSession.Values["permissions"] = p
+func SavePastePermissionScope(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r)
+	if user == nil {
 		sessions.Save(r, w)
 	}
-}
-
-// Put inserts a set of permissions into the permission store,
-// potentially merging new permissions with existing permissions for the same paste.
-func (p *PastePermissionSet) Put(id pastes.ID, perms PastePermission) {
-	if existing, ok := p.Entries[id]; ok {
-		for k, v := range perms {
-			existing[k] = v
-		}
-	} else {
-		p.Entries[id] = perms
-	}
-}
-
-func (p *PastePermissionSet) Get(id pastes.ID) (PastePermission, bool) {
-	v, ok := p.Entries[id]
-	return v, ok
-}
-
-func (p *PastePermissionSet) Delete(id pastes.ID) {
-	delete(p.Entries, id)
 }

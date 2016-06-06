@@ -136,9 +136,8 @@ func pasteGrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
 
 func pasteUngrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(pastes.Paste)
-	perms := GetPastePermissions(r)
-	perms.Delete(p.GetID())
-	perms.Save(w, r)
+	GetPastePermissionScope(p.GetID(), r).Revoke(accounts.PastePermissionAll)
+	SavePastePermissionScope(w, r)
 
 	SetFlash(w, "success", fmt.Sprintf("Paste %v disavowed.", p.GetID()))
 	w.Header().Set("Location", pasteURL("show", p.GetID()))
@@ -156,9 +155,8 @@ func grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	perms := GetPastePermissions(r)
-	perms.Put(pID, PastePermission{"edit": true})
-	perms.Save(w, r)
+	GetPastePermissionScope(pID, r).Grant(accounts.PastePermissionEdit)
+	SavePastePermissionScope(w, r)
 
 	// delete(grants, grantKey)
 	grantStore.Delete(grantKey)
@@ -169,13 +167,7 @@ func grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func isEditAllowed(p pastes.Paste, r *http.Request) bool {
-	perms := GetPastePermissions(r)
-	perm, ok := perms.Get(p.GetID())
-	if !ok {
-		return false
-	}
-
-	return perm["edit"]
+	return GetPastePermissionScope(p.GetID(), r).Has(accounts.PastePermissionEdit)
 }
 
 func requiresEditPermission(fn ModelRenderFunc) ModelRenderFunc {
@@ -334,9 +326,8 @@ func pasteCreate(w http.ResponseWriter, r *http.Request) {
 		cliSession.Values["paste_passphrases"] = pasteKeys
 	}
 
-	perms := GetPastePermissions(r)
-	perms.Put(p.GetID(), PastePermission{"edit": true, "grant": true})
-	perms.Save(w, r)
+	GetPastePermissionScope(p.GetID(), r).Grant(accounts.PastePermissionAll)
+	SavePastePermissionScope(w, r)
 
 	err = sessions.Save(r, w)
 	if err != nil {
@@ -352,9 +343,8 @@ func pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 	oldId := p.GetID()
 	p.Erase()
 
-	perms := GetPastePermissions(r)
-	perms.Delete(oldId)
-	perms.Save(w, r)
+	GetPastePermissionScope(oldId, r).Revoke(accounts.PastePermissionAll)
+	SavePastePermissionScope(w, r)
 
 	SetFlash(w, "success", fmt.Sprintf("Paste %v deleted.", oldId))
 
@@ -411,28 +401,30 @@ func pasteURL(routeType string, p pastes.ID) string {
 }
 
 func sessionHandler(w http.ResponseWriter, r *http.Request) {
-	var sessionPastes []pastes.Paste
-	var ids []string
-	perms := GetPastePermissions(r)
-	sessionPastes = make([]pastes.Paste, len(perms.Entries))
-	ids = make([]string, len(perms.Entries))
-	n := 0
-	for k, _ := range perms.Entries {
-		if obj, _ := pasteStore.Get(k, nil); obj != nil {
-			sessionPastes[n] = obj
-			ids[n] = obj.GetID().String()
-			n++
+	/* TODO(DH): fix
+		var sessionPastes []pastes.Paste
+		var ids []string
+		perms := GetPastePermissions(r)
+		sessionPastes = make([]pastes.Paste, len(perms.Entries))
+		ids = make([]string, len(perms.Entries))
+		n := 0
+		for k, _ := range perms.Entries {
+			if obj, _ := pasteStore.Get(k, nil); obj != nil {
+				sessionPastes[n] = obj
+				ids[n] = obj.GetID().String()
+				n++
+			}
 		}
-	}
-	sessionPastes = sessionPastes[:n]
-	ids = ids[:n]
+		sessionPastes = sessionPastes[:n]
+		ids = ids[:n]
 
-	if strings.HasSuffix(r.URL.Path, "/raw") {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Write([]byte(strings.Join(ids, " ")))
-	} else {
-		RenderPage(w, r, "session", sessionPastes)
-	}
+		if strings.HasSuffix(r.URL.Path, "/raw") {
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.Write([]byte(strings.Join(ids, " ")))
+		} else {
+			RenderPage(w, r, "session", sessionPastes)
+		}
+	*/
 }
 
 func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
@@ -624,8 +616,7 @@ var arguments = &args{}
 func init() {
 	// N.B. this should not be necessary.
 	gob.Register(map[pastes.ID][]byte(nil))
-	gob.Register(&PastePermissionSet{})
-	gob.Register(PastePermission{})
+	gob.Register(map[pastes.ID]accounts.Permission{})
 
 	arguments.register()
 	arguments.parse()
@@ -881,9 +872,9 @@ func main() {
 
 	router.Path("/").Handler(RenderPageHandler("index"))
 	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		route.Handler(userLookupWrapper{route.GetHandler()})
+		route.Handler(userLookupWrapper{legacyPermWrapperHandler{route.GetHandler()}})
 		glog.Info(route.GetPathTemplate())
-		return mux.SkipRouter
+		return nil
 	})
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("public")))
 	http.Handle("/", &fourOhFourConsumerHandler{router})
