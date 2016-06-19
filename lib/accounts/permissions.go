@@ -4,7 +4,7 @@ const (
 	UserPermissionUnknown Permission = (0)
 	UserPermissionAdmin              = (1 << (iota - 1))
 
-	UserPermissionAll Permission = ^Permission(0)
+	UserPermissionAll Permission = Permission(^uint32(0))
 )
 
 const (
@@ -12,10 +12,10 @@ const (
 	PastePermissionEdit               = (1 << (iota - 1))
 	PastePermissionGrant
 
-	PastePermissionAll Permission = ^Permission(0)
+	PastePermissionAll Permission = Permission(^uint32(0))
 )
 
-type Permission uint32
+type Permission uint64
 type PermissionScope interface {
 	Has(Permission) bool
 	Grant(Permission) error
