@@ -242,6 +242,18 @@ func (store *FilesystemPasteStore) Get(id pastes.ID, passphraseMaterial []byte) 
 	return paste, nil
 }
 
+func (store *FilesystemPasteStore) GetAll(ids []pastes.ID) ([]pastes.Paste, error) {
+	pastes := make([]pastes.Paste, len(ids))
+	n := 0
+	for i, pid := range ids {
+		if obj, _ := store.Get(pid, nil); obj != nil {
+			pastes[i] = obj
+			n++
+		}
+	}
+	return pastes[:n], nil
+}
+
 func (store *FilesystemPasteStore) Save(p pastes.Paste) error {
 	fsp := p.(*fsPaste)
 	filename := store.filenameForID(fsp.ID)

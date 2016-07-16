@@ -36,6 +36,7 @@ type PasteStore interface {
 	NewPaste() (Paste, error)
 	NewEncryptedPaste(EncryptionMethod, []byte) (Paste, error)
 	Get(ID, []byte) (Paste, error)
+	GetAll([]ID) ([]Paste, error)
 	Save(Paste) error
 	Destroy(Paste) error
 }
