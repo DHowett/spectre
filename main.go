@@ -88,16 +88,19 @@ func getPasteJSONHandler(o Model, w http.ResponseWriter, r *http.Request) {
 }
 
 func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "null")
+	w.Header().Set("Vary", "Origin")
+
+	w.Header().Set("Content-Security-Policy", "default-src 'none'")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-XSS-Protection", "1; mode=block")
+
 	p := o.(pastes.Paste)
-	mime := "text/plain"
 	ext := "txt"
 	if mux.CurrentRoute(r).GetName() == "download" {
 		lang := LanguageNamed(p.GetLanguageName())
 		if lang != nil {
-			if len(lang.MIMETypes) > 0 {
-				mime = lang.MIMETypes[0]
-			}
-
 			if len(lang.Extensions) > 0 {
 				ext = lang.Extensions[0]
 			}
@@ -110,8 +113,6 @@ func getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"."+ext+"\"")
 		w.Header().Set("Content-Transfer-Encoding", "binary")
 	}
-	w.Header().Set("Content-Security-Policy", "default-src 'none'")
-	w.Header().Set("Content-Type", mime+"; charset=utf-8")
 
 	reader, _ := p.Reader()
 	defer reader.Close()
