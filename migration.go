@@ -87,11 +87,11 @@ func mergeV3PermsToUser(v3Perms map[pastes.ID]accounts.Permission, user accounts
 	return false
 }
 
-type legacyPermWrapperHandler struct {
+type permissionMigrationWrapperHandler struct {
 	http.Handler
 }
 
-func (h legacyPermWrapperHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h permissionMigrationWrapperHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	cookieSession, _ := sessionStore.Get(r, "session")
 
 	v3Perms, hasV3 := getV3Perms(r)
