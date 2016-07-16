@@ -266,28 +266,19 @@ func (a *AuthChallengeProvider) Challenge(message []byte, key []byte) []byte {
 }
 
 func GetUser(r *http.Request) accounts.User {
-	u := context.Get(r, userContextKey)
-	user, ok := u.(accounts.User)
-	if !ok {
-		return nil
-	}
-	return user
-}
-
-type userLookupWrapper struct {
-	http.Handler
-}
-
-func (u userLookupWrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ses, _ := clientLongtermSessionStore.Get(r, "authentication")
-	uid, ok := ses.Values["acct_id"].(uint)
-	if ok {
-		user, err := userStore.GetUserByID(uid)
-		if user != nil && err == nil {
-			context.Set(r, userContextKey, user)
+	user, present := context.Get(r, userContextKey).(accounts.User)
+	if user == nil || !present {
+		ses, _ := clientLongtermSessionStore.Get(r, "authentication")
+		uid, ok := ses.Values["acct_id"].(uint)
+		if ok {
+			var err error
+			user, err = userStore.GetUserByID(uid)
+			if user != nil && err == nil {
+				context.Set(r, userContextKey, user)
+			}
 		}
 	}
-	u.Handler.ServeHTTP(w, r)
+	return user
 }
 
 type ManglingUserStore struct {

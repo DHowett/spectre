@@ -872,8 +872,7 @@ func main() {
 
 	router.Path("/").Handler(RenderPageHandler("index"))
 	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		route.Handler(userLookupWrapper{legacyPermWrapperHandler{route.GetHandler()}})
-		glog.Info(route.GetPathTemplate())
+		route.Handler(legacyPermWrapperHandler{route.GetHandler()})
 		return nil
 	})
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("public")))
