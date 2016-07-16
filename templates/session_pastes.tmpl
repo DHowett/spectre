@@ -10,13 +10,13 @@
 <ul class="paste-list">
 {{range .Obj}}<li>
 	<a href="{{pasteURL "show" .}}"><span class="paste-title">
-		{{with .Title}}
+		{{with .GetTitle}}
 		<strong>{{.}}</strong>
 		{{else}}
-		<strong>{{.ID}}</strong>
+		<strong>{{.GetID}}</strong>
 		{{end}}
-		<span class="paste-subtitle">{{.Language.Name}}
-			{{if .Encrypted}}<i class="icon-lock"></i>{{end}}{{if pasteWillExpire .}}<i class="icon-clock"></i>{{end}}
+		<span class="paste-subtitle">{{$language := (languageNamed .GetLanguageName)}}{{$language.Name}}
+			{{if .IsEncrypted}}<i class="icon-lock"></i>{{end}}{{if pasteWillExpire .}}<i class="icon-clock"></i>{{end}}
 		</span>
 	</span></a>
 </li>{{end}}
