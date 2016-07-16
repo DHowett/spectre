@@ -401,30 +401,46 @@ func pasteURL(routeType string, p pastes.ID) string {
 }
 
 func sessionHandler(w http.ResponseWriter, r *http.Request) {
-	/* TODO(DH): fix
-		var sessionPastes []pastes.Paste
-		var ids []string
-		perms := GetPastePermissions(r)
-		sessionPastes = make([]pastes.Paste, len(perms.Entries))
-		ids = make([]string, len(perms.Entries))
-		n := 0
-		for k, _ := range perms.Entries {
-			if obj, _ := pasteStore.Get(k, nil); obj != nil {
-				sessionPastes[n] = obj
-				ids[n] = obj.GetID().String()
-				n++
-			}
-		}
-		sessionPastes = sessionPastes[:n]
-		ids = ids[:n]
+	var ids []pastes.ID
 
-		if strings.HasSuffix(r.URL.Path, "/raw") {
-			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			w.Write([]byte(strings.Join(ids, " ")))
-		} else {
-			RenderPage(w, r, "session", sessionPastes)
+	// Assumption: due to the migration handler wrapper, a logged-in session will
+	// never have v3 perms and user perms.
+	user := GetUser(r)
+	if user != nil {
+		uPastes, err := user.GetPastes()
+		if err == nil {
+			ids = uPastes
 		}
-	*/
+	} else {
+
+		// Failed lookup is non-fatal here.
+		cookieSession, _ := sessionStore.Get(r, "session")
+		v3EntriesI, _ := cookieSession.Values["v3permissions"]
+		v3Perms, _ := v3EntriesI.(map[pastes.ID]accounts.Permission)
+
+		ids = make([]pastes.ID, len(v3Perms))
+		n := 0
+		for pid, _ := range v3Perms {
+			ids[n] = pid
+			n++
+		}
+	}
+
+	if strings.HasSuffix(r.URL.Path, "/raw") {
+		stringIDs := make([]string, len(ids))
+		for i, v := range ids {
+			stringIDs[i] = v.String()
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write([]byte(strings.Join(stringIDs, " ")))
+		return
+	}
+
+	sessionPastes, err := pasteStore.GetAll(ids)
+	if err != nil {
+		panic(err)
+	}
+	RenderPage(w, r, "session", sessionPastes)
 }
 
 func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
