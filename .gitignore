@@ -21,6 +21,7 @@ sessions/session_*
 templates/_local.tmpl
 xattr
 accounts/*
+.idea
 
 node_modules
 build
