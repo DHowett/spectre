@@ -1,7 +1,7 @@
 package main
 
 import (
-	"code.google.com/p/go.crypto/scrypt"
+	"golang.org/x/crypto/scrypt"
 	"crypto/aes"
 	"crypto/cipher"
 	"github.com/DHowett/go-xattr"
