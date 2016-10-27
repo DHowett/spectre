@@ -19,6 +19,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DHowett/ghostbin/lib/four"
+
 	"github.com/DHowett/ghostbin/lib/accounts"
 	"github.com/DHowett/ghostbin/lib/pastes"
 
@@ -893,7 +895,7 @@ func main() {
 		return nil
 	})
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("public")))
-	http.Handle("/", &fourOhFourConsumerHandler{router})
+	http.Handle("/", four.WrapHandler(router, RenderPageHandler("404")))
 
 	var addr string = arguments.addr
 	server := &http.Server{

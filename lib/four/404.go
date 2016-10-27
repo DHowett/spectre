@@ -1,4 +1,6 @@
-package main
+// Package four provides an http.Handler that consumes "404 page not found" pages from
+// go's default net/http.Error implementation and turns them into something useful.
+package four
 
 import (
 	"bytes"
@@ -29,12 +31,19 @@ func (w *fourOhFourConsumerWriter) Write(p []byte) (int, error) {
 
 type fourOhFourConsumerHandler struct {
 	http.Handler
+	errorHandler http.Handler
 }
 
 func (h *fourOhFourConsumerHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	writer := &fourOhFourConsumerWriter{ResponseWriter: w}
 	h.Handler.ServeHTTP(writer, r)
 	if writer.tripped {
-		RenderPage(writer.ResponseWriter, r, "404", nil)
+		h.errorHandler.ServeHTTP(w, r)
 	}
+}
+
+// WrapHandler returns a new http.Handler that invokes errorHandler when orig would
+// have rendered a 404.
+func WrapHandler(orig http.Handler, errorHandler http.Handler) http.Handler {
+	return &fourOhFourConsumerHandler{orig, errorHandler}
 }
