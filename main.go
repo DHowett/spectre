@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/DHowett/ghostbin/lib/four"
+	"github.com/DHowett/ghostbin/lib/templatepack"
 
 	"github.com/DHowett/ghostbin/lib/accounts"
 	"github.com/DHowett/ghostbin/lib/pastes"
@@ -443,7 +444,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	RenderPage(w, r, "session", sessionPastes)
+	templatePack.ExecutePage(w, r, "session", sessionPastes)
 }
 
 func authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
@@ -503,7 +504,7 @@ func throttleAuthForRequest(r *http.Request) bool {
 	return false
 }
 
-func requestVariable(rc *RenderContext, variable string) string {
+func requestVariable(rc *templatepack.Context, variable string) string {
 	v, _ := mux.Vars(rc.Request)[variable]
 	if v == "" {
 		v = rc.Request.FormValue(variable)
@@ -520,7 +521,7 @@ func (h RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func partialGetHandler(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["id"]
-	RenderPartial(w, r, name, nil)
+	templatePack.ExecutePartial(w, r, name, nil)
 }
 
 type RenderedPaste struct {
@@ -641,23 +642,25 @@ func init() {
 	arguments.parse()
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	RegisterTemplateFunction("encryptionAllowed", func(ri *RenderContext) bool { return Env() == EnvironmentDevelopment || RequestIsHTTPS(ri.Request) })
-	RegisterTemplateFunction("editAllowed", func(ri *RenderContext) bool { return isEditAllowed(ri.Obj.(pastes.Paste), ri.Request) })
-	RegisterTemplateFunction("render", renderPaste)
-	RegisterTemplateFunction("pasteURL", func(e string, p pastes.Paste) string {
+	templatePack.AddFunction("encryptionAllowed", func(ri *templatepack.Context) bool {
+		return Env() == EnvironmentDevelopment || RequestIsHTTPS(ri.Request)
+	})
+	templatePack.AddFunction("editAllowed", func(ri *templatepack.Context) bool { return isEditAllowed(ri.Obj.(pastes.Paste), ri.Request) })
+	templatePack.AddFunction("render", renderPaste)
+	templatePack.AddFunction("pasteURL", func(e string, p pastes.Paste) string {
 		return pasteURL(e, p.GetID())
 	})
-	RegisterTemplateFunction("pasteWillExpire", func(p pastes.Paste) bool {
+	templatePack.AddFunction("pasteWillExpire", func(p pastes.Paste) bool {
 		return p.GetExpiration() != "" && p.GetExpiration() != "-1"
 	})
-	RegisterTemplateFunction("pasteFromID", func(id pastes.ID) pastes.Paste {
+	templatePack.AddFunction("pasteFromID", func(id pastes.ID) pastes.Paste {
 		p, err := pasteStore.Get(id, nil)
 		if err != nil {
 			return nil
 		}
 		return p
 	})
-	RegisterTemplateFunction("truncatedPasteBody", func(p pastes.Paste, lines int) string {
+	templatePack.AddFunction("truncatedPasteBody", func(p pastes.Paste, lines int) string {
 		reader, _ := p.Reader()
 		defer reader.Close()
 		bufReader := bufio.NewReader(reader)
@@ -679,15 +682,15 @@ func init() {
 		}
 		return s
 	})
-	RegisterTemplateFunction("pasteBody", func(p pastes.Paste) string {
+	templatePack.AddFunction("pasteBody", func(p pastes.Paste) string {
 		reader, _ := p.Reader()
 		defer reader.Close()
 		b := &bytes.Buffer{}
 		io.Copy(b, reader)
 		return b.String()
 	})
-	RegisterTemplateFunction("requestVariable", requestVariable)
-	RegisterTemplateFunction("languageNamed", func(name string) *Language {
+	templatePack.AddFunction("requestVariable", requestVariable)
+	templatePack.AddFunction("languageNamed", func(name string) *Language {
 		return LanguageNamed(name)
 	})
 
@@ -836,7 +839,7 @@ func main() {
 	router.Path("/admin").Handler(requiresUserPermission(accounts.UserPermissionAdmin, RenderPageHandler("admin_home")))
 
 	router.Path("/admin/reports").Handler(requiresUserPermission(accounts.UserPermissionAdmin, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		RenderPage(w, r, "admin_reports", reportStore.Reports)
+		templatePack.ExecutePage(w, r, "admin_reports", reportStore.Reports)
 	})))
 
 	router.Methods("POST").Path("/admin/promote").Handler(requiresUserPermission(accounts.UserPermissionAdmin, http.HandlerFunc(adminPromoteHandler)))
@@ -877,7 +880,7 @@ func main() {
 		dur = dur - (dur % time.Second)
 		stats["uptime"] = fmt.Sprintf("%v", dur)
 		stats["expiring"] = fmt.Sprintf("%d", pasteExpirator.Len())
-		RenderPage(w, r, "stats", stats)
+		templatePack.ExecutePage(w, r, "stats", stats)
 	}))
 
 	router.Methods("GET").

@@ -165,7 +165,7 @@ func loadLanguageConfig() {
 }
 
 func init() {
-	RegisterTemplateFunction("langByLexer", LanguageNamed)
+	templatePack.AddFunction("langByLexer", LanguageNamed)
 
 	RegisterReloadFunction(loadLanguageConfig)
 }

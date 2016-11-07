@@ -38,7 +38,7 @@ func RenderError(e error, statusCode int, w http.ResponseWriter) {
 	if cte, ok := e.(CustomTemplateError); ok {
 		page = cte.ErrorTemplateName()
 	}
-	RenderPage(w, nil, page, e)
+	templatePack.ExecutePage(w, nil, page, e)
 }
 
 func errorRecoveryHandler(w http.ResponseWriter) {
@@ -58,34 +58,26 @@ func errorRecoveryHandler(w http.ResponseWriter) {
 func RenderPageForModel(page string) ModelRenderFunc {
 	// We don't defer the error handler here because it happened a step up
 	return func(o Model, w http.ResponseWriter, r *http.Request) {
-		RenderPage(w, r, page, o)
+		templatePack.ExecutePage(w, r, page, o)
 	}
 }
 
 func RenderPageHandler(page string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer errorRecoveryHandler(w)
-		RenderPage(w, r, page, nil)
+		templatePack.ExecutePage(w, r, page, nil)
 	})
-}
-
-func RenderPage(w io.Writer, r *http.Request, page string, obj interface{}) {
-	ExecuteTemplate(w, "tmpl_page", &RenderContext{Request: r, Page: page, Obj: obj})
 }
 
 func RenderPartialHandler(page string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				RenderPartial(w, r, "error", err.(error))
+				templatePack.ExecutePartial(w, r, "error", err.(error))
 			}
 		}()
-		RenderPartial(w, r, page, nil)
+		templatePack.ExecutePartial(w, r, page, nil)
 	})
-}
-
-func RenderPartial(w io.Writer, r *http.Request, name string, obj interface{}) {
-	ExecuteTemplate(w, "partial_"+name, &RenderContext{Request: r, Page: name, Obj: obj})
 }
 
 func RequiredModelObjectHandler(lookup ModelLookupFunc, fn ModelRenderFunc) http.HandlerFunc {
@@ -139,7 +131,7 @@ func init() {
 			ghosts[i] = " " + v[1:]
 		}
 	})
-	RegisterTemplateFunction("randomGhost", func() string {
+	templatePack.AddFunction("randomGhost", func() string {
 		if len(ghosts) == 0 {
 			return "[no ghosts found :(]"
 		}

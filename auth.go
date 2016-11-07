@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/DHowett/ghostbin/lib/accounts"
+	"github.com/DHowett/ghostbin/lib/templatepack"
 	"github.com/golang/glog"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
@@ -232,7 +233,7 @@ func authTokenPageHandler(w http.ResponseWriter, r *http.Request) {
 	if user != nil {
 		ephStore.Put("A|U|"+token, user, 30*time.Minute)
 	}
-	RenderPage(w, r, "authtoken", map[string]string{"token": token})
+	templatePack.ExecutePage(w, r, "authtoken", map[string]string{"token": token})
 }
 
 type AuthChallengeProvider struct{}
@@ -391,7 +392,7 @@ func adminPromoteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func init() {
-	RegisterTemplateFunction("user", func(r *RenderContext) accounts.User {
+	templatePack.AddFunction("user", func(r *templatepack.Context) accounts.User {
 		return GetUser(r.Request)
 	})
 }
