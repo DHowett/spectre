@@ -637,11 +637,12 @@ func init() {
 	// N.B. this should not be necessary.
 	gob.Register(map[pastes.ID][]byte(nil))
 	gob.Register(map[pastes.ID]accounts.Permission{})
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	arguments.register()
-	arguments.parse()
+}
 
-	runtime.GOMAXPROCS(runtime.NumCPU())
+func initTemplateFunctions() {
 	templatePack.AddFunction("encryptionAllowed", func(ri *templatepack.Context) bool {
 		return Env() == EnvironmentDevelopment || RequestIsHTTPS(ri.Request)
 	})
@@ -693,31 +694,34 @@ func init() {
 	templatePack.AddFunction("languageNamed", func(name string) *Language {
 		return LanguageNamed(name)
 	})
+}
+
+func loadOrGenerateSessionKey(path string, keyLength int) (data []byte, err error) {
+	data, err = SlurpFile(path)
+	if err != nil {
+		data = securecookie.GenerateRandomKey(keyLength)
+		err = ioutil.WriteFile(path, data, 0600)
+	}
+	return
+}
+
+func initSessionStore() {
+	sessionKeyFile := filepath.Join(arguments.root, "session.key")
+	sessionKey, err := loadOrGenerateSessionKey(sessionKeyFile, 32)
+	if err != nil {
+		glog.Fatal("session.key not found, and an attempt to create one failed: ", err)
+	}
 
 	sesdir := filepath.Join(arguments.root, "sessions")
 	os.Mkdir(sesdir, 0700)
-
-	sessionKeyFile := filepath.Join(arguments.root, "session.key")
-	sessionKey, err := SlurpFile(sessionKeyFile)
-	if err != nil {
-		sessionKey = securecookie.GenerateRandomKey(32)
-		err = ioutil.WriteFile(sessionKeyFile, sessionKey, 0600)
-		if err != nil {
-			glog.Fatal("session.key not found, and an attempt to create one failed: ", err)
-		}
-	}
 	sessionStore = sessions.NewFilesystemStore(sesdir, sessionKey)
 	sessionStore.Options.Path = "/"
 	sessionStore.Options.MaxAge = 86400 * 365
 
 	clientKeyFile := filepath.Join(arguments.root, "client_session_enc.key")
-	clientOnlySessionEncryptionKey, err := SlurpFile(clientKeyFile)
+	clientOnlySessionEncryptionKey, err := loadOrGenerateSessionKey(clientKeyFile, 32)
 	if err != nil {
-		clientOnlySessionEncryptionKey = securecookie.GenerateRandomKey(32)
-		err = ioutil.WriteFile(clientKeyFile, clientOnlySessionEncryptionKey, 0600)
-		if err != nil {
-			glog.Fatal("client_session_enc.key not found, and an attempt to create one failed: ", err)
-		}
+		glog.Fatal("client_session_enc.key not found, and an attempt to create one failed: ", err)
 	}
 	clientOnlySessionStore = sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
 	if Env() != EnvironmentDevelopment {
@@ -732,22 +736,27 @@ func init() {
 	}
 	clientLongtermSessionStore.Options.Path = "/"
 	clientLongtermSessionStore.Options.MaxAge = 86400 * 365
+}
+
+func initPasteStore() {
+
+	dbDialect := "sqlite3"
+	sqlDb, err := sql.Open(dbDialect, "ghostbin.db")
+	//dbDialect := "postgres"
+	//sqlDb, err := sql.Open(dbDialect, "postgres://postgres:password@antares:32768/ghostbin?sslmode=disable")
+	//  "postgres://postgres:password@antares:32768/ghostbin?sslmode=disable"
+	if err != nil {
+		panic(err)
+	}
 
 	pastedir := filepath.Join(arguments.root, "pastes")
 	os.Mkdir(pastedir, 0700)
-	pasteStore = NewFilesystemPasteStore(pastedir)
-	//pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback) // TODO(DH): Find a good model for callbacks.
+	//pasteStore = NewFilesystemPasteStore(pastedir)
+	pasteStore, _ = sqlite.NewGormStore(dbDialect, sqlDb)
+	//pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 
 	pasteExpirator = gotimeout.NewExpirator(filepath.Join(arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
 	ephStore = gotimeout.NewMap()
-
-	accountPath := filepath.Join(arguments.root, "accounts")
-	os.Mkdir(accountPath, 0700)
-	userStore = nil
-}
-
-func main() {
-	ReloadAll()
 
 	go func() {
 		for {
@@ -757,10 +766,31 @@ func main() {
 			}
 		}
 	}()
+}
 
-	router = mux.NewRouter()
-	pasteRouter = router.PathPrefix("/paste").Subrouter()
+func initAccountStore() {
+	accountPath := filepath.Join(arguments.root, "accounts")
+	os.Mkdir(accountPath, 0700)
+	/*
+		userStore = &PromoteFirstUserToAdminStore{
+			Path: accountPath,
+			AccountStore: &CachingUserStore{
+				AccountStore: &ManglingUserStore{
+					account.NewFilesystemStore(accountPath, &AuthChallengeProvider{}),
+				},
+			},
+		}
+	*/
 
+	gormUserStore, _ := accounts.NewGormStore(dbDialect, sqlDb, &AuthChallengeProvider{})
+	userStore = &PromoteFirstUserToAdminStore{
+		&ManglingUserStore{
+			gormUserStore,
+		},
+	}
+}
+
+func initPasteRoutes(pasteRouter *mux.Router) {
 	pasteRouter.Methods("GET").
 		Path("/new").
 		Handler(RedirectHandler("/"))
@@ -835,7 +865,10 @@ func main() {
 		MatcherFunc(NonHTTPSMuxMatcher).
 		Path("/{id}/authenticate").
 		Handler(RenderPageHandler("paste_authenticate_disallowed"))
+}
 
+func initHandledRoutes(router *mux.Router) {
+	/* ADMIN */
 	router.Path("/admin").Handler(requiresUserPermission(accounts.UserPermissionAdmin, RenderPageHandler("admin_home")))
 
 	router.Path("/admin/reports").Handler(requiresUserPermission(accounts.UserPermissionAdmin, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -854,11 +887,15 @@ func main() {
 		Handler(requiresUserPermission(accounts.UserPermissionAdmin, http.HandlerFunc(reportClear))).
 		Name("reportclear")
 
+	/* SESSION */
+	router.Path("/session").Handler(http.HandlerFunc(sessionHandler))
+	router.Path("/session/raw").Handler(http.HandlerFunc(sessionHandler))
+
+	/* GENERAL */
 	pasteRouter.Methods("GET").Path("/").Handler(RedirectHandler("/"))
 
 	router.Path("/paste").Handler(RedirectHandler("/"))
-	router.Path("/session").Handler(http.HandlerFunc(sessionHandler))
-	router.Path("/session/raw").Handler(http.HandlerFunc(sessionHandler))
+
 	router.Path("/about").Handler(RenderPageHandler("about"))
 	router.Methods("GET", "HEAD").Path("/languages.json").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -883,20 +920,47 @@ func main() {
 		templatePack.ExecutePage(w, r, "stats", stats)
 	}))
 
+	/* PARTIAL */
 	router.Methods("GET").
 		Path("/partial/{id}").
 		Handler(http.HandlerFunc(partialGetHandler))
 
-	router.Methods("POST").Path("/auth/login").Handler(http.HandlerFunc(authLoginPostHandler))
-	router.Methods("POST").Path("/auth/logout").Handler(http.HandlerFunc(authLogoutPostHandler))
-	router.Methods("GET").Path("/auth/token").Handler(http.HandlerFunc(authTokenHandler))
-	router.Methods("GET").Path("/auth/token/{token}").Handler(http.HandlerFunc(authTokenPageHandler)).Name("auth_token_login")
-
 	router.Path("/").Handler(RenderPageHandler("index"))
+}
+
+func initAuthRoutes(router *mux.Router) {
+	// Nominally mounted under /auth
+	router.Methods("POST").Path("/login").Handler(http.HandlerFunc(authLoginPostHandler))
+	router.Methods("POST").Path("/logout").Handler(http.HandlerFunc(authLogoutPostHandler))
+	router.Methods("GET").Path("/token").Handler(http.HandlerFunc(authTokenHandler))
+	router.Methods("GET").Path("/token/{token}").Handler(http.HandlerFunc(authTokenPageHandler)).Name("auth_token_login")
+}
+
+func main() {
+	arguments.parse()
+
+	initSessionStore()
+	initPasteStore()
+	initAccountStore()
+
+	ReloadAll()
+
+	initTemplateFunctions()
+
+	router = mux.NewRouter()
+	pasteRouter = router.PathPrefix("/paste").Subrouter()
+	authRouter = router.PathPrefix("/auth").Subrouter()
+	initPasteRoutes(pasteRouter)
+	initAuthRoutes(authRouter)
+	initHandledRoutes(router)
+
+	// Permission handler for all routes that may require a user context.
 	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		route.Handler(permissionMigrationWrapperHandler{route.GetHandler()})
 		return nil
 	})
+
+	// Static file routes.
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("public")))
 	http.Handle("/", four.WrapHandler(router, RenderPageHandler("404")))
 
