@@ -25,11 +25,6 @@ const PASTE_CACHE_MAX_ENTRIES int = 1000
 const PASTE_MAXIMUM_LENGTH ByteSize = 1048576 // 1 MB
 const MAX_EXPIRE_DURATION time.Duration = 15 * 24 * time.Hour
 
-type PastePathHandler struct {
-	Router     *mux.Router
-	PasteStore pastes.PasteStore
-}
-
 type PasteAccessDeniedError struct {
 	action string
 	ID     pastes.ID
@@ -50,7 +45,7 @@ func (e PasteAccessDeniedError) StatusCode() int {
 
 func (e PasteNotFoundError) ErrorTemplateName() string {
 	return "paste_not_found"
-}A*/
+} TODO(DH) Fix paste not found errors. */
 
 type PasteTooLargeError ByteSize
 
@@ -62,7 +57,12 @@ func (e PasteTooLargeError) StatusCode() int {
 	return http.StatusBadRequest
 }
 
-func (pph *PastePathHandler) getPasteJSONHandler(o Model, w http.ResponseWriter, r *http.Request) {
+type PasteController struct {
+	Router     *mux.Router
+	PasteStore pastes.PasteStore
+}
+
+func (pc *PasteController) getPasteJSONHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(pastes.Paste)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
@@ -83,7 +83,7 @@ func (pph *PastePathHandler) getPasteJSONHandler(o Model, w http.ResponseWriter,
 	w.Write(json)
 }
 
-func (pph *PastePathHandler) getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) getPasteRawHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "null")
 	w.Header().Set("Vary", "Origin")
 
@@ -115,7 +115,7 @@ func (pph *PastePathHandler) getPasteRawHandler(o Model, w http.ResponseWriter, 
 	io.Copy(w, reader)
 }
 
-func (pph *PastePathHandler) pasteGrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) pasteGrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(pastes.Paste)
 
 	grantKey := grantStore.NewGrant(p.GetID())
@@ -131,7 +131,7 @@ func (pph *PastePathHandler) pasteGrantHandler(o Model, w http.ResponseWriter, r
 	})
 }
 
-func (pph *PastePathHandler) pasteUngrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) pasteUngrantHandler(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(pastes.Paste)
 	GetPastePermissionScope(p.GetID(), r).Revoke(accounts.PastePermissionAll)
 	SavePastePermissionScope(w, r)
@@ -141,7 +141,7 @@ func (pph *PastePathHandler) pasteUngrantHandler(o Model, w http.ResponseWriter,
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func (pph *PastePathHandler) grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
 	v := mux.Vars(r)
 	grantKey := GrantID(v["grantkey"])
 	pID, ok := grantStore.Get(grantKey)
@@ -177,11 +177,11 @@ func requiresEditPermission(fn ModelRenderFunc) ModelRenderFunc {
 	}
 }
 
-func (pph *PastePathHandler) pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
-	pph.pasteUpdateCore(o, w, r, false)
+func (pc *PasteController) pasteUpdate(o Model, w http.ResponseWriter, r *http.Request) {
+	pc.pasteUpdateCore(o, w, r, false)
 }
 
-func (pph *PastePathHandler) pasteUpdateCore(o Model, w http.ResponseWriter, r *http.Request, newPaste bool) {
+func (pc *PasteController) pasteUpdateCore(o Model, w http.ResponseWriter, r *http.Request, newPaste bool) {
 	p := o.(pastes.Paste)
 	body := r.FormValue("text")
 	if len(strings.TrimSpace(body)) == 0 {
@@ -240,7 +240,7 @@ func (pph *PastePathHandler) pasteUpdateCore(o Model, w http.ResponseWriter, r *
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func (pph *PastePathHandler) pasteCreate(w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 	body := r.FormValue("text")
 	if len(strings.TrimSpace(body)) == 0 {
 		// 400 here, 200 above (one is displayed to the user, one could be an API response.)
@@ -274,7 +274,7 @@ func (pph *PastePathHandler) pasteCreate(w http.ResponseWriter, r *http.Request)
 
 		v, _ := ephStore.Get(hashToken)
 		if hashedPaste, ok := v.(pastes.Paste); ok {
-			pph.pasteUpdateCore(hashedPaste, w, r, true)
+			pc.pasteUpdateCore(hashedPaste, w, r, true)
 			// TODO(DH) EARLY RETURN
 			return
 		}
@@ -313,10 +313,10 @@ func (pph *PastePathHandler) pasteCreate(w http.ResponseWriter, r *http.Request)
 		glog.Errorln(err)
 	}
 
-	pph.pasteUpdateCore(p, w, r, true)
+	pc.pasteUpdateCore(p, w, r, true)
 }
 
-func (pph *PastePathHandler) pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) pasteDelete(o Model, w http.ResponseWriter, r *http.Request) {
 	p := o.(pastes.Paste)
 
 	oldId := p.GetID()
@@ -337,7 +337,7 @@ func (pph *PastePathHandler) pasteDelete(o Model, w http.ResponseWriter, r *http
 	w.WriteHeader(http.StatusFound)
 }
 
-func (pph *PastePathHandler) lookupPasteWithRequest(r *http.Request) (Model, error) {
+func (pc *PasteController) lookupPasteWithRequest(r *http.Request) (Model, error) {
 	id := pastes.IDFromString(mux.Vars(r)["id"])
 	var passphrase []byte
 
@@ -374,7 +374,7 @@ func (pph *PastePathHandler) lookupPasteWithRequest(r *http.Request) (Model, err
 	return p, err
 }
 
-func (pph *PastePathHandler) authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
 	if throttleAuthForRequest(r) {
 		RenderError(fmt.Errorf("Cool it."), 420, w)
 		return
@@ -485,78 +485,78 @@ func renderPaste(p pastes.Paste) template.HTML {
 	}
 }
 
-func (pph *PastePathHandler) InitRoutes() {
-	pph.Router.Methods("GET").
+func (pc *PasteController) InitRoutes() {
+	pc.Router.Methods("GET").
 		Path("/new").
 		Handler(RedirectHandler("/"))
 
-	pph.Router.Methods("POST").
+	pc.Router.Methods("POST").
 		Path("/new").
-		Handler(http.HandlerFunc(pph.pasteCreate))
+		Handler(http.HandlerFunc(pc.pasteCreate))
 
-	pph.Router.Methods("GET").
+	pc.Router.Methods("GET").
 		Path("/{id}.json").
-		Handler(RequiredModelObjectHandler(pph.lookupPasteWithRequest, ModelRenderFunc(pph.getPasteJSONHandler))).
+		Handler(RequiredModelObjectHandler(pc.lookupPasteWithRequest, ModelRenderFunc(pc.getPasteJSONHandler))).
 		Name("show")
 
-	pph.Router.Methods("GET").
+	pc.Router.Methods("GET").
 		Path("/{id}").
-		Handler(RequiredModelObjectHandler(pph.lookupPasteWithRequest, RenderPageForModel("paste_show"))).
+		Handler(RequiredModelObjectHandler(pc.lookupPasteWithRequest, RenderPageForModel("paste_show"))).
 		Name("show")
 
-	pph.Router.Methods("POST").
+	pc.Router.Methods("POST").
 		Path("/{id}/grant/new").
-		Handler(RequiredModelObjectHandler(pph.lookupPasteWithRequest, requiresEditPermission(ModelRenderFunc(pph.pasteGrantHandler)))).
+		Handler(RequiredModelObjectHandler(pc.lookupPasteWithRequest, requiresEditPermission(ModelRenderFunc(pc.pasteGrantHandler)))).
 		Name("grant")
-	pph.Router.Methods("GET").
+	pc.Router.Methods("GET").
 		Path("/grant/{grantkey}/accept").
-		Handler(http.HandlerFunc(pph.grantAcceptHandler)).
+		Handler(http.HandlerFunc(pc.grantAcceptHandler)).
 		Name("grant_accept")
-	pph.Router.Methods("GET").
+	pc.Router.Methods("GET").
 		Path("/{id}/disavow").
-		Handler(RequiredModelObjectHandler(pph.lookupPasteWithRequest, requiresEditPermission(ModelRenderFunc(pph.pasteUngrantHandler))))
+		Handler(RequiredModelObjectHandler(pc.lookupPasteWithRequest, requiresEditPermission(ModelRenderFunc(pc.pasteUngrantHandler))))
 
-	pph.Router.Methods("GET").
+	pc.Router.Methods("GET").
 		Path("/{id}/raw").
-		Handler(RequiredModelObjectHandler(pph.lookupPasteWithRequest, ModelRenderFunc(pph.getPasteRawHandler))).
+		Handler(RequiredModelObjectHandler(pc.lookupPasteWithRequest, ModelRenderFunc(pc.getPasteRawHandler))).
 		Name("raw")
-	pph.Router.Methods("GET").
+	pc.Router.Methods("GET").
 		Path("/{id}/download").
-		Handler(RequiredModelObjectHandler(pph.lookupPasteWithRequest, ModelRenderFunc(pph.getPasteRawHandler))).
+		Handler(RequiredModelObjectHandler(pc.lookupPasteWithRequest, ModelRenderFunc(pc.getPasteRawHandler))).
 		Name("download")
 
-	pph.Router.Methods("GET").
+	pc.Router.Methods("GET").
 		Path("/{id}/edit").
-		Handler(RequiredModelObjectHandler(pph.lookupPasteWithRequest, requiresEditPermission(RenderPageForModel("paste_edit")))).
+		Handler(RequiredModelObjectHandler(pc.lookupPasteWithRequest, requiresEditPermission(RenderPageForModel("paste_edit")))).
 		Name("edit")
-	pph.Router.Methods("POST").
+	pc.Router.Methods("POST").
 		Path("/{id}/edit").
-		Handler(RequiredModelObjectHandler(pph.lookupPasteWithRequest, requiresEditPermission(pph.pasteUpdate)))
+		Handler(RequiredModelObjectHandler(pc.lookupPasteWithRequest, requiresEditPermission(pc.pasteUpdate)))
 
-	pph.Router.Methods("GET").
+	pc.Router.Methods("GET").
 		Path("/{id}/delete").
-		Handler(RequiredModelObjectHandler(pph.lookupPasteWithRequest, requiresEditPermission(RenderPageForModel("paste_delete_confirm")))).
+		Handler(RequiredModelObjectHandler(pc.lookupPasteWithRequest, requiresEditPermission(RenderPageForModel("paste_delete_confirm")))).
 		Name("delete")
-	pph.Router.Methods("POST").
+	pc.Router.Methods("POST").
 		Path("/{id}/delete").
-		Handler(RequiredModelObjectHandler(pph.lookupPasteWithRequest, requiresEditPermission(pph.pasteDelete)))
+		Handler(RequiredModelObjectHandler(pc.lookupPasteWithRequest, requiresEditPermission(pc.pasteDelete)))
 
-	pph.Router.Methods("POST").
+	pc.Router.Methods("POST").
 		Path("/{id}/report").
-		Handler(RequiredModelObjectHandler(pph.lookupPasteWithRequest, pph.reportPaste)).
+		Handler(RequiredModelObjectHandler(pc.lookupPasteWithRequest, pc.reportPaste)).
 		Name("report")
 
-	pph.Router.Methods("GET").
+	pc.Router.Methods("GET").
 		MatcherFunc(HTTPSMuxMatcher).
 		Path("/{id}/authenticate").
 		Handler(RenderPageHandler("paste_authenticate")).
 		Name("authenticate")
-	pph.Router.Methods("POST").
+	pc.Router.Methods("POST").
 		MatcherFunc(HTTPSMuxMatcher).
 		Path("/{id}/authenticate").
-		Handler(http.HandlerFunc(pph.authenticatePastePOSTHandler))
+		Handler(http.HandlerFunc(pc.authenticatePastePOSTHandler))
 
-	pph.Router.Methods("GET").
+	pc.Router.Methods("GET").
 		MatcherFunc(NonHTTPSMuxMatcher).
 		Path("/{id}/authenticate").
 		Handler(RenderPageHandler("paste_authenticate_disallowed"))
