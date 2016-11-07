@@ -52,16 +52,6 @@ func errorRecoveryHandler(w http.ResponseWriter) {
 	}
 }
 
-// renderModelWith takes a template name and
-// returns a function that takes a single model object,
-// which when called will render the given template using that object.
-func RenderPageForModel(page string) ModelRenderFunc {
-	// We don't defer the error handler here because it happened a step up
-	return func(o Model, w http.ResponseWriter, r *http.Request) {
-		templatePack.ExecutePage(w, r, page, o)
-	}
-}
-
 func RenderPageHandler(page string) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer errorRecoveryHandler(w)
