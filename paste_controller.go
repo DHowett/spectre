@@ -21,6 +21,7 @@ import (
 )
 
 // paste http bindings
+const CURRENT_ENCRYPTION_METHOD pastes.EncryptionMethod = pastes.EncryptionMethodAES_CTR
 const PASTE_CACHE_MAX_ENTRIES int = 1000
 const PASTE_MAXIMUM_LENGTH ByteSize = 1048576 // 1 MB
 const MAX_EXPIRE_DURATION time.Duration = 15 * 24 * time.Hour
