@@ -11,8 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/DHowett/ghostbin/lib/pastes"
-
+	"github.com/DHowett/ghostbin/model"
 	"github.com/golang/glog"
 )
 
@@ -127,7 +126,7 @@ func FormatStream(r io.Reader, language *Language) (string, error) {
 	return formatter.Format(r, language.ID)
 }
 
-func FormatPaste(p pastes.Paste) (string, error) {
+func FormatPaste(p model.Paste) (string, error) {
 	reader, _ := p.Reader()
 	defer reader.Close()
 	return FormatStream(reader, LanguageNamed(p.GetLanguageName()))

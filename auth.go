@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/DHowett/ghostbin/lib/accounts"
 	"github.com/DHowett/ghostbin/lib/templatepack"
+	"github.com/DHowett/ghostbin/model"
 	"github.com/golang/glog"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
@@ -51,7 +51,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 		enc.Encode(reply)
 	}()
 
-	var user accounts.User
+	var user model.User
 
 	loginType := r.FormValue("type")
 	if loginType == "username" {
@@ -165,7 +165,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 			reply.InvalidFields = []string{"token"}
 			return
 		}
-		user = u.(accounts.User)
+		user = u.(model.User)
 	} else {
 		reply.Reason = "invalid login type"
 		reply.InvalidFields = []string{"type"}
@@ -266,8 +266,8 @@ func (a *AuthChallengeProvider) Challenge(message []byte, key []byte) []byte {
 	return challenge
 }
 
-func GetUser(r *http.Request) accounts.User {
-	user, present := context.Get(r, userContextKey).(accounts.User)
+func GetUser(r *http.Request) model.User {
+	user, present := context.Get(r, userContextKey).(model.User)
 	if user == nil || !present {
 		ses, _ := clientLongtermSessionStore.Get(r, "authentication")
 		uid, ok := ses.Values["acct_id"].(uint)
@@ -283,7 +283,7 @@ func GetUser(r *http.Request) accounts.User {
 }
 
 type ManglingUserStore struct {
-	accounts.Store
+	model.Broker
 }
 
 func (m *ManglingUserStore) mangle(name string) string {
@@ -294,12 +294,12 @@ func (m *ManglingUserStore) mangle(name string) string {
 	return "1$" + base32Encoder.EncodeToString(sum[:])
 }
 
-func (m *ManglingUserStore) GetUserNamed(name string) (accounts.User, error) {
-	return m.Store.GetUserNamed(m.mangle(name))
+func (m *ManglingUserStore) GetUserNamed(name string) (model.User, error) {
+	return m.Broker.GetUserNamed(m.mangle(name))
 }
 
-func (m *ManglingUserStore) CreateUser(name string) (accounts.User, error) {
-	return m.Store.CreateUser(m.mangle(name))
+func (m *ManglingUserStore) CreateUser(name string) (model.User, error) {
+	return m.Broker.CreateUser(m.mangle(name))
 }
 
 /*
@@ -356,17 +356,17 @@ func (c *CachingUserStore) Create(name string) *account.User {
 */
 
 type PromoteFirstUserToAdminStore struct {
-	accounts.Store
+	model.Broker
 }
 
-func (c *PromoteFirstUserToAdminStore) CreateUser(name string) (accounts.User, error) {
-	u, err := c.Store.CreateUser(name)
+func (c *PromoteFirstUserToAdminStore) CreateUser(name string) (model.User, error) {
+	u, err := c.Broker.CreateUser(name)
 	if err != nil {
 		return u, err
 	}
 
 	if u.GetID() == 1 {
-		err = u.Permissions(accounts.PermissionClassUser).Grant(accounts.UserPermissionAdmin)
+		err = u.Permissions(model.PermissionClassUser).Grant(model.UserPermissionAdmin)
 		if err != nil {
 			return nil, err
 		}
@@ -378,7 +378,7 @@ func adminPromoteHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	user, _ := userStore.GetUserNamed(username)
 	if user != nil {
-		err := user.Permissions(accounts.PermissionClassUser).Grant(accounts.UserPermissionAdmin)
+		err := user.Permissions(model.PermissionClassUser).Grant(model.UserPermissionAdmin)
 		if err != nil {
 			SetFlash(w, "success", "Promoted "+username+".")
 		} else {
@@ -396,7 +396,7 @@ func init() {
 		Priority: 10,
 		Name:     "auth",
 		Do: func() error {
-			templatePack.AddFunction("user", func(r *templatepack.Context) accounts.User {
+			templatePack.AddFunction("user", func(r *templatepack.Context) model.User {
 				return GetUser(r.Request)
 			})
 			return nil

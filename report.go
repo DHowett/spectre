@@ -7,15 +7,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/DHowett/ghostbin/lib/pastes"
-
+	"github.com/DHowett/ghostbin/model"
 	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 )
 
 type ReportInfo map[string]int
 type ReportStore struct {
-	Reports  map[pastes.ID]ReportInfo
+	Reports  map[model.PasteID]ReportInfo
 	filename string
 }
 
@@ -32,7 +31,7 @@ func (r *ReportStore) Save() error {
 	return enc.Encode(r)
 }
 
-func (r *ReportStore) Add(id pastes.ID, kind string) {
+func (r *ReportStore) Add(id model.PasteID, kind string) {
 	currentReportsForPaste, ok := r.Reports[id]
 
 	if !ok {
@@ -44,7 +43,7 @@ func (r *ReportStore) Add(id pastes.ID, kind string) {
 	r.Save()
 }
 
-func (r *ReportStore) Delete(p pastes.ID) {
+func (r *ReportStore) Delete(p model.PasteID) {
 	delete(r.Reports, p)
 	glog.Info(p, " deleted from report history.")
 	r.Save()
@@ -63,12 +62,12 @@ func LoadReportStore(filename string) *ReportStore {
 		decoded_reports.filename = filename
 		return decoded_reports
 	}
-	return &ReportStore{Reports: map[pastes.ID]ReportInfo{}, filename: filename}
+	return &ReportStore{Reports: map[model.PasteID]ReportInfo{}, filename: filename}
 }
 
 var reportStore *ReportStore
 
-func reportPaste(p pastes.Paste, w http.ResponseWriter, r *http.Request) {
+func reportPaste(p model.Paste, w http.ResponseWriter, r *http.Request) {
 	if throttleAuthForRequest(r) {
 		RenderError(fmt.Errorf("Cool it."), 420, w)
 		return
@@ -86,7 +85,7 @@ func reportPaste(p pastes.Paste, w http.ResponseWriter, r *http.Request) {
 func reportClear(w http.ResponseWriter, r *http.Request) {
 	defer errorRecoveryHandler(w)
 
-	id := pastes.IDFromString(mux.Vars(r)["id"])
+	id := model.PasteIDFromString(mux.Vars(r)["id"])
 	reportStore.Delete(id)
 
 	SetFlash(w, "success", fmt.Sprintf("Report for %v cleared.", id))

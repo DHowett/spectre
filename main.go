@@ -21,10 +21,7 @@ import (
 
 	"github.com/DHowett/ghostbin/lib/four"
 	"github.com/DHowett/ghostbin/lib/templatepack"
-
-	"github.com/DHowett/ghostbin/lib/accounts"
-	"github.com/DHowett/ghostbin/lib/pastes"
-	"howett.net/paste_sqlite"
+	"github.com/DHowett/ghostbin/model"
 
 	"github.com/DHowett/gotimeout"
 	"github.com/golang/glog"
@@ -36,17 +33,17 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
-func isEditAllowed(p pastes.Paste, r *http.Request) bool {
-	return GetPastePermissionScope(p.GetID(), r).Has(accounts.PastePermissionEdit)
+func isEditAllowed(p model.Paste, r *http.Request) bool {
+	return GetPastePermissionScope(p.GetID(), r).Has(model.PastePermissionEdit)
 }
 
-func requiresUserPermission(permission accounts.Permission, handler http.Handler) http.Handler {
+func requiresUserPermission(permission model.Permission, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer errorRecoveryHandler(w)
 
 		user := GetUser(r)
 		if user != nil {
-			if user.Permissions(accounts.PermissionClassUser).Has(permission) {
+			if user.Permissions(model.PermissionClassUser).Has(permission) {
 				handler.ServeHTTP(w, r)
 				return
 			}
@@ -56,13 +53,13 @@ func requiresUserPermission(permission accounts.Permission, handler http.Handler
 	})
 }
 
-func pasteURL(routeType string, p pastes.ID) string {
+func pasteURL(routeType string, p model.PasteID) string {
 	url, _ := pasteRouter.Get(routeType).URL("id", p.String())
 	return url.String()
 }
 
 func sessionHandler(w http.ResponseWriter, r *http.Request) {
-	var ids []pastes.ID
+	var ids []model.PasteID
 
 	// Assumption: due to the migration handler wrapper, a logged-in session will
 	// never have v3 perms and user perms.
@@ -77,9 +74,9 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 		// Failed lookup is non-fatal here.
 		cookieSession, _ := sessionStore.Get(r, "session")
 		v3EntriesI, _ := cookieSession.Values["v3permissions"]
-		v3Perms, _ := v3EntriesI.(map[pastes.ID]accounts.Permission)
+		v3Perms, _ := v3EntriesI.(map[model.PasteID]model.Permission)
 
-		ids = make([]pastes.ID, len(v3Perms))
+		ids = make([]model.PasteID, len(v3Perms))
 		n := 0
 		for pid, _ := range v3Perms {
 			ids[n] = pid
@@ -97,7 +94,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionPastes, err := pasteStore.GetAll(ids)
+	sessionPastes, err := pasteStore.GetPastes(ids)
 	if err != nil {
 		panic(err)
 	}
@@ -124,7 +121,7 @@ func partialGetHandler(w http.ResponseWriter, r *http.Request) {
 	templatePack.ExecutePartial(w, r, name, nil)
 }
 
-func pasteDestroyCallback(p pastes.Paste) {
+func pasteDestroyCallback(p model.Paste) {
 	tok := "P|H|" + p.GetID().String()
 	v, _ := ephStore.Get(tok)
 	if hash, ok := v.(string); ok {
@@ -147,13 +144,15 @@ func pasteDestroyCallback(p pastes.Paste) {
 	reportStore.Delete(p.GetID())
 }
 
-var pasteStore pastes.PasteStore
+var pasteStore model.Broker
+var grantStore model.Broker
+var userStore model.Broker
+
 var pasteExpirator *gotimeout.Expirator
 var sessionStore *sessions.FilesystemStore
 var clientOnlySessionStore *sessions.CookieStore
 var clientLongtermSessionStore *sessions.CookieStore
 var ephStore *gotimeout.Map
-var userStore accounts.Store
 var pasteRouter *mux.Router
 var router *mux.Router
 
@@ -186,8 +185,8 @@ var arguments = &args{}
 
 func init() {
 	// N.B. this should not be necessary.
-	gob.Register(map[pastes.ID][]byte(nil))
-	gob.Register(map[pastes.ID]accounts.Permission{})
+	gob.Register(map[model.PasteID][]byte(nil))
+	gob.Register(map[model.PasteID]model.Permission{})
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	arguments.register()
@@ -203,23 +202,23 @@ func initTemplateFunctions() {
 	templatePack.AddFunction("encryptionAllowed", func(ri *templatepack.Context) bool {
 		return Env() == EnvironmentDevelopment || RequestIsHTTPS(ri.Request)
 	})
-	templatePack.AddFunction("editAllowed", func(ri *templatepack.Context) bool { return isEditAllowed(ri.Obj.(pastes.Paste), ri.Request) })
+	templatePack.AddFunction("editAllowed", func(ri *templatepack.Context) bool { return isEditAllowed(ri.Obj.(model.Paste), ri.Request) })
 	// TODO(DH) MOVE
 	templatePack.AddFunction("render", renderPaste)
-	templatePack.AddFunction("pasteURL", func(e string, p pastes.Paste) string {
+	templatePack.AddFunction("pasteURL", func(e string, p model.Paste) string {
 		return pasteURL(e, p.GetID())
 	})
-	templatePack.AddFunction("pasteWillExpire", func(p pastes.Paste) bool {
+	templatePack.AddFunction("pasteWillExpire", func(p model.Paste) bool {
 		return p.GetExpiration() != "" && p.GetExpiration() != "-1"
 	})
-	templatePack.AddFunction("pasteFromID", func(id pastes.ID) pastes.Paste {
-		p, err := pasteStore.Get(id, nil)
+	templatePack.AddFunction("pasteFromID", func(id model.PasteID) model.Paste {
+		p, err := pasteStore.GetPaste(id, nil)
 		if err != nil {
 			return nil
 		}
 		return p
 	})
-	templatePack.AddFunction("truncatedPasteBody", func(p pastes.Paste, lines int) string {
+	templatePack.AddFunction("truncatedPasteBody", func(p model.Paste, lines int) string {
 		reader, _ := p.Reader()
 		defer reader.Close()
 		bufReader := bufio.NewReader(reader)
@@ -241,7 +240,7 @@ func initTemplateFunctions() {
 		}
 		return s
 	})
-	templatePack.AddFunction("pasteBody", func(p pastes.Paste) string {
+	templatePack.AddFunction("pasteBody", func(p model.Paste) string {
 		reader, _ := p.Reader()
 		defer reader.Close()
 		b := &bytes.Buffer{}
@@ -296,7 +295,7 @@ func initSessionStore() {
 	clientLongtermSessionStore.Options.MaxAge = 86400 * 365
 }
 
-func initPasteStore() {
+func initModelBroker() {
 	dbDialect := "sqlite3"
 	sqlDb, err := sql.Open(dbDialect, "ghostbin.db")
 	//dbDialect := "postgres"
@@ -306,10 +305,12 @@ func initPasteStore() {
 		panic(err)
 	}
 
-	pastedir := filepath.Join(arguments.root, "pastes")
-	os.Mkdir(pastedir, 0700)
-	//pasteStore = NewFilesystemPasteStore(pastedir)
-	pasteStore, _ = sqlite.NewGormStore(dbDialect, sqlDb)
+	broker, err := model.NewDatabaseBroker(dbDialect, sqlDb, &AuthChallengeProvider{})
+	if err != nil {
+		panic(err)
+	}
+
+	// TODO(DH): destruction callbacks
 	//pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 
 	pasteExpirator = gotimeout.NewExpirator(filepath.Join(arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
@@ -323,52 +324,36 @@ func initPasteStore() {
 			}
 		}
 	}()
-}
 
-func initAccountStore() {
-	dbDialect := "sqlite3"
-	sqlDb, _ := sql.Open(dbDialect, "ghostbin.db")
-	accountPath := filepath.Join(arguments.root, "accounts")
-	os.Mkdir(accountPath, 0700)
-	/*
-		userStore = &PromoteFirstUserToAdminStore{
-			Path: accountPath,
-			AccountStore: &CachingUserStore{
-				AccountStore: &ManglingUserStore{
-					account.NewFilesystemStore(accountPath, &AuthChallengeProvider{}),
-				},
-			},
-		}
-	*/
-
-	gormUserStore, _ := accounts.NewGormStore(dbDialect, sqlDb, &AuthChallengeProvider{})
+	grantStore = broker
+	pasteStore = broker
 	userStore = &PromoteFirstUserToAdminStore{
 		&ManglingUserStore{
-			gormUserStore,
+			broker,
 		},
 	}
 }
 
 func initHandledRoutes(router *mux.Router) {
 	/* ADMIN */
-	router.Path("/admin").Handler(requiresUserPermission(accounts.UserPermissionAdmin, RenderPageHandler("admin_home")))
+	router.Path("/admin").Handler(requiresUserPermission(model.UserPermissionAdmin, RenderPageHandler("admin_home")))
 
-	router.Path("/admin/reports").Handler(requiresUserPermission(accounts.UserPermissionAdmin, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.Path("/admin/reports").Handler(requiresUserPermission(model.UserPermissionAdmin, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		templatePack.ExecutePage(w, r, "admin_reports", reportStore.Reports)
 	})))
 
-	router.Methods("POST").Path("/admin/promote").Handler(requiresUserPermission(accounts.UserPermissionAdmin, http.HandlerFunc(adminPromoteHandler)))
+	router.Methods("POST").Path("/admin/promote").Handler(requiresUserPermission(model.UserPermissionAdmin, http.HandlerFunc(adminPromoteHandler)))
 
 	// TODO(DH)
 	/*
 		router.Methods("POST").
 			Path("/admin/paste/{id}/delete").
-			Handler(requiresUserPermission(accounts.UserPermissionAdmin, RequiredModelObjectHandler(lookupPasteWithRequest, pasteDelete))).
+			Handler(requiresUserPermission(model.UserPermissionAdmin, RequiredModelObjectHandler(lookupPasteWithRequest, pasteDelete))).
 			Name("admindelete")
 
 		router.Methods("POST").
 			Path("/admin/paste/{id}/clear_report").
-			Handler(requiresUserPermission(accounts.UserPermissionAdmin, http.HandlerFunc(reportClear))).
+			Handler(requiresUserPermission(model.UserPermissionAdmin, http.HandlerFunc(reportClear))).
 			Name("reportclear")
 	*/
 
@@ -445,9 +430,7 @@ func main() {
 	}()
 
 	initSessionStore()
-	initPasteStore()
-	initGrantStore()
-	initAccountStore()
+	initModelBroker()
 
 	router = mux.NewRouter()
 	pasteRouter = router.PathPrefix("/paste").Subrouter()

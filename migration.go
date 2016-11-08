@@ -4,8 +4,7 @@ import (
 	"encoding/gob"
 	"net/http"
 
-	"github.com/DHowett/ghostbin/lib/accounts"
-	"github.com/DHowett/ghostbin/lib/pastes"
+	"github.com/DHowett/ghostbin/model"
 	"github.com/gorilla/sessions"
 )
 
@@ -19,13 +18,13 @@ type PastePermissionSet struct {
 // wrap all requests (after user lookup, so that we can merge into user)
 // in a translation layer for legacy, v2 and v3 perms.
 
-func getV3Perms(r *http.Request) (map[pastes.ID]accounts.Permission, bool) {
+func getV3Perms(r *http.Request) (map[model.PasteID]model.Permission, bool) {
 	cookieSession, _ := sessionStore.Get(r, "session")
-	v, ok := cookieSession.Values["v3permissions"].(map[pastes.ID]accounts.Permission)
+	v, ok := cookieSession.Values["v3permissions"].(map[model.PasteID]model.Permission)
 	return v, ok
 }
 
-func mergeLegacyPermsToV3(v3Perms map[pastes.ID]accounts.Permission, r *http.Request) bool {
+func mergeLegacyPermsToV3(v3Perms map[model.PasteID]model.Permission, r *http.Request) bool {
 	var hasV1, hasV2 bool
 	cookieSession, _ := sessionStore.Get(r, "session")
 
@@ -55,20 +54,20 @@ func mergeLegacyPermsToV3(v3Perms map[pastes.ID]accounts.Permission, r *http.Req
 	if (hasV1 || hasV2) && len(legacyEntries) > 0 {
 		// update.
 		for pid, pperm := range legacyEntries {
-			var newPerm accounts.Permission
+			var newPerm model.Permission
 			if pperm["grant"] {
-				newPerm |= accounts.PastePermissionGrant
+				newPerm |= model.PastePermissionGrant
 			}
 			if pperm["edit"] {
-				newPerm |= accounts.PastePermissionEdit
+				newPerm |= model.PastePermissionEdit
 			}
 
 			// legacy grant + edit = all future permissions
-			if newPerm == accounts.PastePermissionGrant|accounts.PastePermissionEdit {
-				newPerm = accounts.PastePermissionAll
+			if newPerm == model.PastePermissionGrant|model.PastePermissionEdit {
+				newPerm = model.PastePermissionAll
 			}
 
-			v3Perms[pastes.IDFromString(string(pid))] = newPerm
+			v3Perms[model.PasteIDFromString(string(pid))] = newPerm
 		}
 		return true
 	}
@@ -77,10 +76,10 @@ func mergeLegacyPermsToV3(v3Perms map[pastes.ID]accounts.Permission, r *http.Req
 
 }
 
-func mergeV3PermsToUser(v3Perms map[pastes.ID]accounts.Permission, user accounts.User) bool {
+func mergeV3PermsToUser(v3Perms map[model.PasteID]model.Permission, user model.User) bool {
 	if len(v3Perms) > 0 && user != nil {
 		for pid, pperm := range v3Perms {
-			user.Permissions(accounts.PermissionClassPaste, pid).Grant(pperm)
+			user.Permissions(model.PermissionClassPaste, pid).Grant(pperm)
 		}
 		return true
 	}
@@ -96,7 +95,7 @@ func (h permissionMigrationWrapperHandler) ServeHTTP(w http.ResponseWriter, r *h
 
 	v3Perms, hasV3 := getV3Perms(r)
 	if !hasV3 {
-		v3Perms = make(map[pastes.ID]accounts.Permission)
+		v3Perms = make(map[model.PasteID]model.Permission)
 	}
 
 	merged := mergeLegacyPermsToV3(v3Perms, r)

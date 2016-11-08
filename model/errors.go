@@ -1,7 +1,7 @@
-package pastes
+package model
 
 type PasteEncryptedError struct {
-	ID ID
+	ID PasteID
 }
 
 func (e PasteEncryptedError) Error() string {
@@ -13,7 +13,7 @@ type PasteInvalidKeyError PasteEncryptedError
 func (e PasteInvalidKeyError) Error() string { return "" }
 
 type PasteNotFoundError struct {
-	ID ID
+	ID PasteID
 }
 
 func (e PasteNotFoundError) Error() string {

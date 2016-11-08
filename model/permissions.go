@@ -1,4 +1,4 @@
-package accounts
+package model
 
 const (
 	UserPermissionUnknown Permission = (0)

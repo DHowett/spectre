@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DHowett/ghostbin/lib/accounts"
-	"github.com/DHowett/ghostbin/lib/pastes"
+	"github.com/DHowett/ghostbin/model"
+
 	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/mux"
@@ -21,14 +21,14 @@ import (
 )
 
 // paste http bindings
-const CURRENT_ENCRYPTION_METHOD pastes.EncryptionMethod = pastes.EncryptionMethodAES_CTR
+const CURRENT_ENCRYPTION_METHOD model.PasteEncryptionMethod = model.PasteEncryptionMethodAES_CTR
 const PASTE_CACHE_MAX_ENTRIES int = 1000
 const PASTE_MAXIMUM_LENGTH ByteSize = 1048576 // 1 MB
 const MAX_EXPIRE_DURATION time.Duration = 15 * 24 * time.Hour
 
 type PasteAccessDeniedError struct {
 	action string
-	ID     pastes.ID
+	ID     model.PasteID
 }
 
 func (e PasteAccessDeniedError) Error() string {
@@ -60,44 +60,44 @@ func (e PasteTooLargeError) StatusCode() int {
 
 type PasteController struct {
 	Router     *mux.Router
-	PasteStore pastes.PasteStore
+	PasteStore model.Broker
 }
 
-func (pc *PasteController) getPasteFromRequest(r *http.Request) (pastes.Paste, error) {
-	id := pastes.IDFromString(mux.Vars(r)["id"])
+func (pc *PasteController) getPasteFromRequest(r *http.Request) (model.Paste, error) {
+	id := model.PasteIDFromString(mux.Vars(r)["id"])
 	var passphrase []byte
 
 	cliSession, err := clientOnlySessionStore.Get(r, "c_session")
 	if err != nil {
 		glog.Errorln(err)
 	}
-	if pasteKeys, ok := cliSession.Values["paste_passphrases"].(map[pastes.ID][]byte); ok {
+	if pasteKeys, ok := cliSession.Values["paste_passphrases"].(map[model.PasteID][]byte); ok {
 		if _key, ok := pasteKeys[id]; ok {
 			passphrase = _key
 		}
 	}
 
-	return pasteStore.Get(id, passphrase)
+	return pasteStore.GetPaste(id, passphrase)
 }
 
-type pasteHandlerFunc func(p pastes.Paste, w http.ResponseWriter, r *http.Request)
+type pasteHandlerFunc func(p model.Paste, w http.ResponseWriter, r *http.Request)
 
 func (pc *PasteController) wrapPasteHandler(handler pasteHandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		enc := false
 		p, err := pc.getPasteFromRequest(r)
-		if _, ok := err.(pastes.PasteEncryptedError); ok {
+		if _, ok := err.(model.PasteEncryptedError); ok {
 			enc = true
 		}
 
-		if _, ok := err.(pastes.PasteInvalidKeyError); ok {
+		if _, ok := err.(model.PasteInvalidKeyError); ok {
 			enc = true
 		}
 
 		if enc {
-			id := pastes.IDFromString(mux.Vars(r)["id"])
+			id := model.PasteIDFromString(mux.Vars(r)["id"])
 			url, _ := pc.Router.Get("authenticate").URL("id", id.String())
-			if _, ok := err.(pastes.PasteInvalidKeyError); ok {
+			if _, ok := err.(model.PasteInvalidKeyError); ok {
 				url.RawQuery = "i=1"
 			}
 
@@ -119,7 +119,7 @@ func (pc *PasteController) wrapPasteHandler(handler pasteHandlerFunc) http.Handl
 }
 
 func (pc *PasteController) wrapPasteEditHandler(fn pasteHandlerFunc) pasteHandlerFunc {
-	return func(p pastes.Paste, w http.ResponseWriter, r *http.Request) {
+	return func(p model.Paste, w http.ResponseWriter, r *http.Request) {
 		if !isEditAllowed(p, r) {
 			accerr := PasteAccessDeniedError{"modify", p.GetID()}
 			panic(accerr)
@@ -128,7 +128,7 @@ func (pc *PasteController) wrapPasteEditHandler(fn pasteHandlerFunc) pasteHandle
 	}
 }
 
-func (pc *PasteController) getPasteJSONHandler(p pastes.Paste, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) getPasteJSONHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	reader, _ := p.Reader()
@@ -148,7 +148,7 @@ func (pc *PasteController) getPasteJSONHandler(p pastes.Paste, w http.ResponseWr
 	w.Write(json)
 }
 
-func (pc *PasteController) getPasteRawHandler(p pastes.Paste, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) getPasteRawHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "null")
 	w.Header().Set("Vary", "Origin")
 
@@ -179,22 +179,22 @@ func (pc *PasteController) getPasteRawHandler(p pastes.Paste, w http.ResponseWri
 	io.Copy(w, reader)
 }
 
-func (pc *PasteController) pasteGrantHandler(p pastes.Paste, w http.ResponseWriter, r *http.Request) {
-	grantKey := grantStore.NewGrant(p.GetID())
+func (pc *PasteController) pasteGrantHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
+	grant, _ := grantStore.CreateGrant(p)
 
-	acceptURL, _ := pasteRouter.Get("grant_accept").URL("grantkey", string(grantKey))
+	acceptURL, _ := pasteRouter.Get("grant_accept").URL("grantkey", string(grant.GetID()))
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	enc := json.NewEncoder(w)
 	enc.Encode(map[string]string{
 		"acceptURL": BaseURLForRequest(r).ResolveReference(acceptURL).String(),
-		"key":       string(grantKey),
+		"key":       string(grant.GetID()),
 		"id":        p.GetID().String(),
 	})
 }
 
-func (pc *PasteController) pasteUngrantHandler(p pastes.Paste, w http.ResponseWriter, r *http.Request) {
-	GetPastePermissionScope(p.GetID(), r).Revoke(accounts.PastePermissionAll)
+func (pc *PasteController) pasteUngrantHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
+	GetPastePermissionScope(p.GetID(), r).Revoke(model.PastePermissionAll)
 	SavePastePermissionScope(w, r)
 
 	SetFlash(w, "success", fmt.Sprintf("Paste %v disavowed.", p.GetID()))
@@ -204,31 +204,34 @@ func (pc *PasteController) pasteUngrantHandler(p pastes.Paste, w http.ResponseWr
 
 func (pc *PasteController) grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
 	v := mux.Vars(r)
-	grantKey := GrantID(v["grantkey"])
-	pID, ok := grantStore.Get(grantKey)
-	if !ok {
+	grantKey := model.GrantID(v["grantkey"])
+	grant, err := grantStore.GetGrant(grantKey)
+	if err != nil {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Hey."))
 		return
 	}
+	_ = grant
 
-	GetPastePermissionScope(pID, r).Grant(accounts.PastePermissionEdit)
+	// TODO(DH): grant.Realize or grant.Destroy or something
+	pID := model.PasteIDFromString("ABCDE")
+	GetPastePermissionScope(pID, r).Grant(model.PastePermissionEdit)
 	SavePastePermissionScope(w, r)
 
 	// delete(grants, grantKey)
-	grantStore.Delete(grantKey)
+	//grantStore.Delete(grantKey)
 
 	SetFlash(w, "success", fmt.Sprintf("You now have edit rights to Paste %v.", pID))
 	w.Header().Set("Location", pasteURL("show", pID))
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func (pc *PasteController) pasteUpdate(p pastes.Paste, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) pasteUpdate(p model.Paste, w http.ResponseWriter, r *http.Request) {
 	pc.pasteUpdateCore(p, w, r, false)
 }
 
-func (pc *PasteController) pasteUpdateCore(p pastes.Paste, w http.ResponseWriter, r *http.Request, newPaste bool) {
+func (pc *PasteController) pasteUpdateCore(p model.Paste, w http.ResponseWriter, r *http.Request, newPaste bool) {
 	body := r.FormValue("text")
 	if len(strings.TrimSpace(body)) == 0 {
 		w.Header().Set("Location", pasteURL("delete", p.GetID()))
@@ -309,7 +312,7 @@ func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var p pastes.Paste
+	var p model.Paste
 	var err error
 
 	if !encrypted {
@@ -319,13 +322,13 @@ func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 		hashToken := "H|" + SourceIPForRequest(r) + "|" + base32Encoder.EncodeToString(hasher.Sum(nil))
 
 		v, _ := ephStore.Get(hashToken)
-		if hashedPaste, ok := v.(pastes.Paste); ok {
+		if hashedPaste, ok := v.(model.Paste); ok {
 			pc.pasteUpdateCore(hashedPaste, w, r, true)
 			// TODO(DH) EARLY RETURN
 			return
 		}
 
-		p, err = pasteStore.NewPaste()
+		p, err = pasteStore.CreatePaste()
 		if err != nil {
 			panic(err)
 		}
@@ -333,7 +336,7 @@ func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 		ephStore.Put(hashToken, p, 5*time.Minute)
 		ephStore.Put("P|H|"+p.GetID().String(), hashToken, 5*time.Minute)
 	} else {
-		p, err = pasteStore.NewEncryptedPaste(CURRENT_ENCRYPTION_METHOD, []byte(password))
+		p, err = pasteStore.CreateEncryptedPaste(CURRENT_ENCRYPTION_METHOD, []byte(password))
 		if err != nil {
 			panic(err)
 		}
@@ -342,16 +345,16 @@ func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			glog.Errorln(err)
 		}
-		pasteKeys, ok := cliSession.Values["paste_passphrases"].(map[pastes.ID][]byte)
+		pasteKeys, ok := cliSession.Values["paste_passphrases"].(map[model.PasteID][]byte)
 		if !ok {
-			pasteKeys = map[pastes.ID][]byte{}
+			pasteKeys = map[model.PasteID][]byte{}
 		}
 
 		pasteKeys[p.GetID()] = []byte(password)
 		cliSession.Values["paste_passphrases"] = pasteKeys
 	}
 
-	GetPastePermissionScope(p.GetID(), r).Grant(accounts.PastePermissionAll)
+	GetPastePermissionScope(p.GetID(), r).Grant(model.PastePermissionAll)
 	SavePastePermissionScope(w, r)
 
 	err = sessions.Save(r, w)
@@ -362,11 +365,11 @@ func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 	pc.pasteUpdateCore(p, w, r, true)
 }
 
-func (pc *PasteController) pasteDelete(p pastes.Paste, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) pasteDelete(p model.Paste, w http.ResponseWriter, r *http.Request) {
 	oldId := p.GetID()
 	p.Erase()
 
-	GetPastePermissionScope(oldId, r).Revoke(accounts.PastePermissionAll)
+	GetPastePermissionScope(oldId, r).Revoke(model.PastePermissionAll)
 	SavePastePermissionScope(w, r)
 
 	SetFlash(w, "success", fmt.Sprintf("Paste %v deleted.", oldId))
@@ -387,13 +390,13 @@ func (pc *PasteController) authenticatePastePOSTHandler(w http.ResponseWriter, r
 		return
 	}
 
-	id := pastes.IDFromString(mux.Vars(r)["id"])
+	id := model.PasteIDFromString(mux.Vars(r)["id"])
 	passphrase := []byte(r.FormValue("password"))
 
 	cliSession, _ := clientOnlySessionStore.Get(r, "c_session")
-	pasteKeys, ok := cliSession.Values["paste_passphrases"].(map[pastes.ID][]byte)
+	pasteKeys, ok := cliSession.Values["paste_passphrases"].(map[model.PasteID][]byte)
 	if !ok {
-		pasteKeys = map[pastes.ID][]byte{}
+		pasteKeys = map[model.PasteID][]byte{}
 	}
 
 	pasteKeys[id] = passphrase
@@ -450,7 +453,7 @@ var renderCache struct {
 }
 
 // TODO(DH) MOVE
-func renderPaste(p pastes.Paste) template.HTML {
+func renderPaste(p model.Paste) template.HTML {
 	renderCache.mu.RLock()
 	var cached *renderedPaste
 	var cval interface{}
@@ -494,7 +497,7 @@ func renderPaste(p pastes.Paste) template.HTML {
 
 func (pc *PasteController) generateRenderPageHandler(page string) pasteHandlerFunc {
 	// We don't defer the error handler here because it happened a step up
-	return func(p pastes.Paste, w http.ResponseWriter, r *http.Request) {
+	return func(p model.Paste, w http.ResponseWriter, r *http.Request) {
 		templatePack.ExecutePage(w, r, page, p)
 	}
 }
