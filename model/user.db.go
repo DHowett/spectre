@@ -6,8 +6,8 @@ import (
 )
 
 type dbUserPastePermission struct {
-	UserID      uint   `gorm:"primary_key"`
-	PasteID     string `gorm:"primary_key"`
+	UserID      uint   `gorm:"unique_index:uix_user_paste_perm"`
+	PasteID     string `gorm:"unique_index:uix_user_paste_perm;type:varchar(256)"`
 	Permissions Permission
 }
 
