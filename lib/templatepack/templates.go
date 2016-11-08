@@ -71,15 +71,10 @@ func (p *Pack) ExecutePartial(w io.Writer, r *http.Request, name string, obj int
 	})
 }
 
-func New(glob string) (*Pack, error) {
+func New(glob string) *Pack {
 	pack := &Pack{
 		funcs: make(template.FuncMap),
 		glob:  glob,
-	}
-
-	err := pack.Reload()
-	if err != nil {
-		return nil, err
 	}
 
 	pack.AddFunction("equal", func(t1, t2 string) bool { return t1 == t2 })
@@ -109,5 +104,5 @@ func New(glob string) (*Pack, error) {
 		return time.Now()
 	})
 
-	return pack, nil
+	return pack
 }

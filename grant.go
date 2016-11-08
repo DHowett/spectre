@@ -115,8 +115,6 @@ func (e *GrantStore) LoadExpirationHandles() (*gotimeout.HandleMap, error) {
 
 var grantStore *GrantStore
 
-func init() {
-	arguments.register()
-	arguments.parse()
+func initGrantStore() {
 	grantStore = LoadGrantStore(filepath.Join(arguments.root, "grants.gob"))
 }

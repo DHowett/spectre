@@ -556,7 +556,7 @@ func (pc *PasteController) InitRoutes() {
 
 	pc.Router.Methods("POST").
 		Path("/{id}/report").
-		Handler(pc.wrapPasteHandler(pc.reportPaste)).
+		Handler(pc.wrapPasteHandler(reportPaste)).
 		Name("report")
 
 	pc.Router.Methods("GET").

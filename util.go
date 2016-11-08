@@ -9,11 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
-	"github.com/golang/glog"
 	"github.com/gorilla/mux"
 	"gopkg.in/yaml.v2"
 )
@@ -119,20 +116,6 @@ func NonHTTPSMuxMatcher(r *http.Request, rm *mux.RouteMatch) bool {
 	return !HTTPSMuxMatcher(r, rm)
 }
 
-type ReloadFunction func()
-
-var reloadFunctions = []ReloadFunction{}
-
-func RegisterReloadFunction(f ReloadFunction) {
-	reloadFunctions = append(reloadFunctions, f)
-}
-
-func ReloadAll() {
-	for _, f := range reloadFunctions {
-		f()
-	}
-}
-
 type ByteSize float64
 
 const (
@@ -176,19 +159,24 @@ func Env() string {
 }
 
 func init() {
-	environment = os.Getenv("GHOSTBIN_ENV")
-	if environment != EnvironmentProduction {
-		environment = EnvironmentDevelopment
-	}
+	globalInit.Add(&InitHandler{
+		Priority: 2,
+		Name:     "environment",
+		Do: func() error {
+			environment = os.Getenv("GHOSTBIN_ENV")
+			if environment != EnvironmentProduction {
+				environment = EnvironmentDevelopment
+			}
+			return nil
+		},
+	})
 
-	templatePack.AddFunction("env", func() string { return environment })
-
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGHUP)
-	go func() {
-		for _ = range sigChan {
-			glog.Info("Received SIGHUP")
-			ReloadAll()
-		}
-	}()
+	globalInit.Add(&InitHandler{
+		Priority: 25,
+		Name:     "environment_template",
+		Do: func() error {
+			templatePack.AddFunction("env", func() string { return environment })
+			return nil
+		},
+	})
 }

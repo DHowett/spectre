@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"io"
+	"sync"
 
 	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
@@ -34,14 +35,16 @@ func NewMkdHtmlRenderer() *MkdHtmlRenderer {
 
 var mkdHtmlRenderer blackfriday.Renderer
 var sanitationPolicy *bluemonday.Policy
-
-func init() {
-	mkdHtmlRenderer = NewMkdHtmlRenderer()
-	sanitationPolicy = bluemonday.UGCPolicy()
-	sanitationPolicy.AllowAttrs("class").OnElements("div", "i", "span")
-}
+var markdownOnce sync.Once
 
 func markdownFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
+	markdownOnce.Do(func() {
+		// one-time init
+		mkdHtmlRenderer = NewMkdHtmlRenderer()
+		sanitationPolicy = bluemonday.UGCPolicy()
+		sanitationPolicy.AllowAttrs("class").OnElements("div", "i", "span")
+	})
+
 	buf := &bytes.Buffer{}
 	io.Copy(buf, stream)
 	md := blackfriday.Markdown(buf.Bytes(), mkdHtmlRenderer,

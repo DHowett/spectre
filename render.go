@@ -3,12 +3,11 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
-	"io"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"net/url"
-
-	"github.com/golang/glog"
+	"runtime/debug"
 )
 
 type Model interface{}
@@ -49,6 +48,7 @@ func errorRecoveryHandler(w http.ResponseWriter) {
 		}
 
 		RenderError(err.(error), status, w)
+		fmt.Println(string(debug.Stack()))
 	}
 }
 
@@ -110,21 +110,31 @@ func SetFlash(w http.ResponseWriter, kind, body string) {
 
 var ghosts []string
 
+func _loadGhosts() error {
+	ghosts = []string{}
+	err := YAMLUnmarshalFile("ghosts.yml", &ghosts)
+	if err != nil {
+		return err
+	}
+	for i, v := range ghosts {
+		ghosts[i] = " " + v[1:]
+	}
+	return nil
+}
+
 func init() {
-	RegisterReloadFunction(func() {
-		ghosts = []string{}
-		err := YAMLUnmarshalFile("ghosts.yml", &ghosts)
-		if err != nil {
-			glog.Error(err)
-		}
-		for i, v := range ghosts {
-			ghosts[i] = " " + v[1:]
-		}
-	})
-	templatePack.AddFunction("randomGhost", func() string {
-		if len(ghosts) == 0 {
-			return "[no ghosts found :(]"
-		}
-		return ghosts[rand.Intn(len(ghosts))]
+	globalInit.Add(&InitHandler{
+		Priority: 20,
+		Name:     "ghosts",
+		Do: func() error {
+			templatePack.AddFunction("randomGhost", func() string {
+				if len(ghosts) == 0 {
+					return "[no ghosts found :(]"
+				}
+				return ghosts[rand.Intn(len(ghosts))]
+			})
+			return _loadGhosts()
+		},
+		Redo: _loadGhosts,
 	})
 }

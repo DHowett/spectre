@@ -392,7 +392,14 @@ func adminPromoteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func init() {
-	templatePack.AddFunction("user", func(r *templatepack.Context) accounts.User {
-		return GetUser(r.Request)
+	globalInit.Add(&InitHandler{
+		Priority: 10,
+		Name:     "auth",
+		Do: func() error {
+			templatePack.AddFunction("user", func(r *templatepack.Context) accounts.User {
+				return GetUser(r.Request)
+			})
+			return nil
+		},
 	})
 }

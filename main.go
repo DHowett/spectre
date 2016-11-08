@@ -11,10 +11,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/DHowett/ghostbin/lib/four"
@@ -155,6 +157,8 @@ var userStore accounts.Store
 var pasteRouter *mux.Router
 var router *mux.Router
 
+var globalInit Initializer
+
 type args struct {
 	root, addr string
 	rebuild    bool
@@ -171,10 +175,11 @@ func (a *args) register() {
 	})
 }
 
-func (a *args) parse() {
+func (a *args) parse() error {
 	a.parseOnce.Do(func() {
 		flag.Parse()
 	})
+	return nil
 }
 
 var arguments = &args{}
@@ -186,6 +191,12 @@ func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	arguments.register()
+
+	globalInit.Add(&InitHandler{
+		Priority: 1,
+		Name:     "args",
+		Do:       arguments.parse,
+	})
 }
 
 func initTemplateFunctions() {
@@ -286,7 +297,6 @@ func initSessionStore() {
 }
 
 func initPasteStore() {
-
 	dbDialect := "sqlite3"
 	sqlDb, err := sql.Open(dbDialect, "ghostbin.db")
 	//dbDialect := "postgres"
@@ -316,6 +326,8 @@ func initPasteStore() {
 }
 
 func initAccountStore() {
+	dbDialect := "sqlite3"
+	sqlDb, _ := sql.Open(dbDialect, "ghostbin.db")
 	accountPath := filepath.Join(arguments.root, "accounts")
 	os.Mkdir(accountPath, 0700)
 	/*
@@ -347,15 +359,18 @@ func initHandledRoutes(router *mux.Router) {
 
 	router.Methods("POST").Path("/admin/promote").Handler(requiresUserPermission(accounts.UserPermissionAdmin, http.HandlerFunc(adminPromoteHandler)))
 
-	router.Methods("POST").
-		Path("/admin/paste/{id}/delete").
-		Handler(requiresUserPermission(accounts.UserPermissionAdmin, RequiredModelObjectHandler(lookupPasteWithRequest, pasteDelete))).
-		Name("admindelete")
+	// TODO(DH)
+	/*
+		router.Methods("POST").
+			Path("/admin/paste/{id}/delete").
+			Handler(requiresUserPermission(accounts.UserPermissionAdmin, RequiredModelObjectHandler(lookupPasteWithRequest, pasteDelete))).
+			Name("admindelete")
 
-	router.Methods("POST").
-		Path("/admin/paste/{id}/clear_report").
-		Handler(requiresUserPermission(accounts.UserPermissionAdmin, http.HandlerFunc(reportClear))).
-		Name("reportclear")
+		router.Methods("POST").
+			Path("/admin/paste/{id}/clear_report").
+			Handler(requiresUserPermission(accounts.UserPermissionAdmin, http.HandlerFunc(reportClear))).
+			Name("reportclear")
+	*/
 
 	/* SESSION */
 	router.Path("/session").Handler(http.HandlerFunc(sessionHandler))
@@ -407,20 +422,41 @@ func initAuthRoutes(router *mux.Router) {
 }
 
 func main() {
-	arguments.parse()
+	globalInit.Add(&InitHandler{
+		Priority: 80,
+		Name:     "main_template_funcs",
+		Do: func() error {
+			initTemplateFunctions()
+			return nil
+		},
+	})
+	if err := globalInit.Do(); err != nil {
+		panic(err)
+	}
+
+	// Establish a signal handler to trigger the reinitializer.
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGHUP)
+	go func() {
+		for _ = range sigChan {
+			glog.Info("Received SIGHUP")
+			globalInit.Redo()
+		}
+	}()
 
 	initSessionStore()
 	initPasteStore()
+	initGrantStore()
 	initAccountStore()
-
-	ReloadAll()
-
-	initTemplateFunctions()
 
 	router = mux.NewRouter()
 	pasteRouter = router.PathPrefix("/paste").Subrouter()
-	authRouter = router.PathPrefix("/auth").Subrouter()
-	initPasteRoutes(pasteRouter)
+	authRouter := router.PathPrefix("/auth").Subrouter()
+	pasteController := &PasteController{
+		PasteStore: pasteStore,
+		Router:     pasteRouter,
+	}
+	pasteController.InitRoutes()
 	initAuthRoutes(authRouter)
 	initHandledRoutes(router)
 

@@ -68,13 +68,12 @@ func LoadReportStore(filename string) *ReportStore {
 
 var reportStore *ReportStore
 
-func reportPaste(o Model, w http.ResponseWriter, r *http.Request) {
+func reportPaste(p pastes.Paste, w http.ResponseWriter, r *http.Request) {
 	if throttleAuthForRequest(r) {
 		RenderError(fmt.Errorf("Cool it."), 420, w)
 		return
 	}
 
-	p := o.(pastes.Paste)
 	reason := r.FormValue("reason")
 
 	reportStore.Add(p.GetID(), reason)
@@ -95,8 +94,6 @@ func reportClear(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusFound)
 }
 
-func init() {
-	arguments.register()
-	arguments.parse()
+func initReportStore() {
 	reportStore = LoadReportStore(filepath.Join(arguments.root, "reports.gob"))
 }

@@ -133,12 +133,12 @@ func FormatPaste(p pastes.Paste) (string, error) {
 	return FormatStream(reader, LanguageNamed(p.GetLanguageName()))
 }
 
-func loadLanguageConfig() {
+func loadLanguageConfig() error {
 	languageConfig = _LanguageConfiguration{}
 
 	err := YAMLUnmarshalFile("languages.yml", &languageConfig)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	languageConfig.languageMap = make(map[string]*Language)
@@ -162,10 +162,17 @@ func loadLanguageConfig() {
 	languageConfig.modtime = fi.ModTime()
 	languageJSON, _ := json.Marshal(languageConfig.LanguageGroups)
 	languageConfig.languageJSONReader = bytes.NewReader(languageJSON)
+	return nil
 }
 
 func init() {
-	templatePack.AddFunction("langByLexer", LanguageNamed)
-
-	RegisterReloadFunction(loadLanguageConfig)
+	globalInit.Add(&InitHandler{
+		Priority: 15,
+		Name:     "languages",
+		Do: func() error {
+			templatePack.AddFunction("langByLexer", LanguageNamed)
+			return loadLanguageConfig()
+		},
+		Redo: loadLanguageConfig,
+	})
 }

@@ -1,23 +1,24 @@
 package main
 
-import (
-	"github.com/DHowett/ghostbin/lib/templatepack"
-	"github.com/golang/glog"
-)
+import "github.com/DHowett/ghostbin/lib/templatepack"
 
 var templatePack *templatepack.Pack
 
-func init() {
-	tpack, err := templatepack.New("templates/*.tmpl")
-	if err != nil {
-		panic(err)
-	}
-	templatePack = tpack
+func _initTemplatePack() error {
+	templatePack = templatepack.New("templates/*.tmpl")
+	return nil
+}
 
-	RegisterReloadFunction(func() {
-		err := templatePack.Reload()
-		if err != nil {
-			glog.Error("Error reloading templates:", err)
-		}
+func init() {
+	globalInit.Add(&InitHandler{
+		Priority: 5,
+		Name:     "template_init",
+		Do:       _initTemplatePack,
+	})
+	globalInit.Add(&InitHandler{
+		Priority: 90,
+		Name:     "template_load",
+		Do:       func() error { return templatePack.Reload() },
+		Redo:     func() error { return templatePack.Reload() },
 	})
 }
