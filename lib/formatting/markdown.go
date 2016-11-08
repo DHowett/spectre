@@ -1,4 +1,4 @@
-package main
+package formatting
 
 import (
 	"bytes"
@@ -22,6 +22,7 @@ func (h *MkdHtmlRenderer) BlockCode(out *bytes.Buffer, text []byte, lang string)
 	r := bytes.NewReader(text)
 	rendered, err := FormatStream(r, language)
 	if err == nil {
+		// TODO(DH): remove html from formatters subpackage.
 		out.WriteString(`<div class="code code-` + language.DisplayStyle + `">` + rendered + `</div>`)
 	} else {
 		out.WriteString(`<div class="well well-error"><i class="icon icon-warning"></i> <strong>Code block failed to render.</strong><br></div>`)

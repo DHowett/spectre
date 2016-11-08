@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DHowett/ghostbin/lib/formatting"
 	"github.com/DHowett/ghostbin/model"
 
 	"github.com/golang/glog"
@@ -159,7 +160,7 @@ func (pc *PasteController) getPasteRawHandler(p model.Paste, w http.ResponseWrit
 
 	ext := "txt"
 	if mux.CurrentRoute(r).GetName() == "download" {
-		lang := LanguageNamed(p.GetLanguageName())
+		lang := formatting.LanguageNamed(p.GetLanguageName())
 		if lang != nil {
 			if len(lang.Extensions) > 0 {
 				ext = lang.Extensions[0]
@@ -254,11 +255,11 @@ func (pc *PasteController) pasteUpdateCore(p model.Paste, w http.ResponseWriter,
 		}
 	}
 
-	var lang *Language = LanguageNamed(p.GetLanguageName())
+	lang := formatting.LanguageNamed(p.GetLanguageName())
 	pw, _ := p.Writer()
 	pw.Write([]byte(body))
 	if r.FormValue("lang") != "" {
-		lang = LanguageNamed(r.FormValue("lang"))
+		lang = formatting.LanguageNamed(r.FormValue("lang"))
 	}
 
 	if lang != nil {

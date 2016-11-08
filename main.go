@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/DHowett/ghostbin/lib/formatting"
 	"github.com/DHowett/ghostbin/lib/four"
 	"github.com/DHowett/ghostbin/lib/templatepack"
 	"github.com/DHowett/ghostbin/model"
@@ -248,8 +249,8 @@ func initTemplateFunctions() {
 		return b.String()
 	})
 	templatePack.AddFunction("requestVariable", requestVariable)
-	templatePack.AddFunction("languageNamed", func(name string) *Language {
-		return LanguageNamed(name)
+	templatePack.AddFunction("languageNamed", func(name string) *formatting.Language {
+		return formatting.LanguageNamed(name)
 	})
 }
 
@@ -369,7 +370,8 @@ func initHandledRoutes(router *mux.Router) {
 	router.Path("/about").Handler(RenderPageHandler("about"))
 	router.Methods("GET", "HEAD").Path("/languages.json").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		http.ServeContent(w, r, "languages.json", languageConfig.modtime, languageConfig.languageJSONReader)
+		modtime, reader := formatting.GetLanguagesJSON()
+		http.ServeContent(w, r, "languages.json", modtime, reader)
 	}))
 
 	launchTime := time.Now()
