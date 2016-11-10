@@ -170,13 +170,4 @@ func init() {
 			return nil
 		},
 	})
-
-	globalInit.Add(&InitHandler{
-		Priority: 25,
-		Name:     "environment_template",
-		Do: func() error {
-			templatePack.AddFunction("env", func() string { return environment })
-			return nil
-		},
-	})
 }
