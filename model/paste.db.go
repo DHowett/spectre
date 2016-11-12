@@ -73,6 +73,7 @@ func (p *dbPaste) GetExpiration() string {
 	return ""
 }
 func (p *dbPaste) SetExpiration(expiration string) {
+	p.Expiration.Valid = (expiration != "")
 	p.Expiration.String = expiration
 }
 
@@ -83,6 +84,7 @@ func (p *dbPaste) GetTitle() string {
 	return ""
 }
 func (p *dbPaste) SetTitle(title string) {
+	p.Title.Valid = (title != "")
 	p.Title.String = title
 }
 
@@ -95,7 +97,6 @@ func (p *dbPaste) Erase() error {
 }
 
 func (p *dbPaste) Reader() (io.ReadCloser, error) {
-	_ = "breakpoint"
 	var b dbPasteBody
 	if err := p.broker.Model(p).Related(&b, "PasteID").Error; err != nil {
 		glog.Errorln(err)
@@ -129,7 +130,6 @@ func newPasteWriter(broker *dbBroker, p *dbPaste) (*pasteWriter, error) {
 }
 
 func (pw *pasteWriter) Close() error {
-	_ = "breakpoint"
 	newData := pw.Buffer.Bytes()
 	tx := pw.broker.Begin()
 
