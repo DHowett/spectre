@@ -100,21 +100,33 @@ func (broker *dbBroker) CreateEncryptedPaste(method PasteEncryptionMethod, passp
 func (broker *dbBroker) GetPaste(id PasteID, passphraseMaterial []byte) (Paste, error) {
 	var paste dbPaste
 	if err := broker.Find(&paste, "id = ?", id.String()).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, PasteNotFoundError
+		}
+
 		return nil, err
 	}
 	paste.broker = broker
 
 	// This paste is encrypted
 	if paste.IsEncrypted() {
-		encryptedErr := PasteEncryptedError{ID: id}
+		// If they haven't requested decryption, we can
+		// still tell them that a paste exists.
+		// It will be a stub/placeholder that only has an ID.
+		if passphraseMaterial == nil {
+			return &encryptedPastePlaceholder{
+				ID: id,
+			}, PasteEncryptedError
+		}
+
 		key, err := getPasteEncryptionCodec(paste.EncryptionMethod).DeriveKey(passphraseMaterial, paste.EncryptionSalt)
 		if err != nil {
-			return nil, encryptedErr
+			return nil, PasteEncryptedError
 		}
 
 		ok := getPasteEncryptionCodec(paste.EncryptionMethod).Authenticate(id, paste.EncryptionSalt, key, paste.HMAC)
 		if !ok {
-			return nil, encryptedErr
+			return nil, PasteInvalidKeyError
 		}
 
 		paste.encryptionKey = key
@@ -137,7 +149,13 @@ func (broker *dbBroker) GetPastes(ids []PasteID) ([]Paste, error) {
 	iPastes := make([]Paste, len(ps))
 	for i, p := range ps {
 		p.broker = broker
-		iPastes[i] = p
+		if p.IsEncrypted() {
+			iPastes[i] = &encryptedPastePlaceholder{
+				ID: p.GetID(),
+			}
+		} else {
+			iPastes[i] = p
+		}
 	}
 	return iPastes, nil
 }

@@ -41,14 +41,6 @@ func (e PasteAccessDeniedError) StatusCode() int {
 	return http.StatusForbidden
 }
 
-/*func (e PasteNotFoundError) StatusCode() int {
-	return http.StatusNotFound
-}
-
-func (e PasteNotFoundError) ErrorTemplateName() string {
-	return "paste_not_found"
-} TODO(DH) Fix paste not found errors. */
-
 type PasteTooLargeError ByteSize
 
 func (e PasteTooLargeError) Error() string {
@@ -85,20 +77,12 @@ type pasteHandlerFunc func(p model.Paste, w http.ResponseWriter, r *http.Request
 
 func (pc *PasteController) wrapPasteHandler(handler pasteHandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		enc := false
+		id := model.PasteIDFromString(mux.Vars(r)["id"])
 		p, err := pc.getPasteFromRequest(r)
-		if _, ok := err.(model.PasteEncryptedError); ok {
-			enc = true
-		}
 
-		if _, ok := err.(model.PasteInvalidKeyError); ok {
-			enc = true
-		}
-
-		if enc {
-			id := model.PasteIDFromString(mux.Vars(r)["id"])
+		if err == model.PasteEncryptedError || err == model.PasteInvalidKeyError {
 			url, _ := pc.Router.Get("authenticate").URL("id", id.String())
-			if _, ok := err.(model.PasteInvalidKeyError); ok {
+			if err == model.PasteInvalidKeyError {
 				url.RawQuery = "i=1"
 			}
 
@@ -111,7 +95,14 @@ func (pc *PasteController) wrapPasteHandler(handler pasteHandlerFunc) http.Handl
 			w.WriteHeader(http.StatusFound)
 		} else {
 			if err != nil {
-				panic(err)
+				if err == model.PasteNotFoundError {
+					w.WriteHeader(http.StatusNotFound)
+					templatePack.ExecutePage(w, r, "paste_not_found", id)
+				} else {
+					w.WriteHeader(http.StatusInternalServerError)
+					templatePack.ExecutePage(w, r, "error", err)
+				}
+				return
 			}
 
 			handler(p, w, r)
