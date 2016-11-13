@@ -137,7 +137,7 @@ func (pw *pasteWriter) Close() error {
 	modelStruct := scope.GetModelStruct()
 	table := modelStruct.TableName(tx)
 
-	query, err := pw.broker.qb.Build(&querybuilder.UpsertQuery{
+	query, err := pw.broker.QB.Build(&querybuilder.UpsertQuery{
 		Table:        table,
 		ConflictKeys: []string{"paste_id"},
 		Fields:       []string{"paste_id", "data"},

@@ -11,10 +11,8 @@ import (
 
 type dbBroker struct {
 	*gorm.DB
-	qb querybuilder.QueryBuilder
-
-	//db                *gorm.DB
-	challengeProvider crypto.ChallengeProvider
+	QB                querybuilder.QueryBuilder
+	ChallengeProvider crypto.ChallengeProvider
 }
 
 // User
@@ -45,10 +43,6 @@ func (broker *dbBroker) CreateUser(name string) (User, error) {
 		return nil, err
 	}
 	return u, nil
-}
-
-func (broker *dbBroker) GetChallengeProvider() crypto.ChallengeProvider {
-	return broker.challengeProvider
 }
 
 // Paste
@@ -200,8 +194,8 @@ func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.C
 	}
 
 	return &dbBroker{
-		qb:                querybuilder.New(dialect),
 		DB:                db,
-		challengeProvider: challengeProvider,
+		QB:                querybuilder.New(dialect),
+		ChallengeProvider: challengeProvider,
 	}, nil
 }

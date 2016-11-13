@@ -45,7 +45,7 @@ func (u *dbUser) SetSource(source UserSource) {
 
 func (u *dbUser) UpdateChallenge(password string) {
 	tx := u.broker.Begin().Model(u)
-	challengeProvider := u.broker.GetChallengeProvider()
+	challengeProvider := u.broker.ChallengeProvider
 
 	salt := challengeProvider.RandomSalt()
 	key := challengeProvider.DeriveKey(password, salt)
@@ -63,20 +63,12 @@ func (u *dbUser) UpdateChallenge(password string) {
 	tx.Commit()
 }
 
-func (u *dbUser) GetPersona() bool {
-	return u.Persona
-}
-
-func (u *dbUser) SetPersona(persona bool) error {
-	return u.broker.Model(u).Update("persona", persona).Error
-}
-
 func (u *dbUser) Check(password string) bool {
 	salt := u.Salt
 	if salt == nil {
 		return false
 	}
-	challengeProvider := u.broker.GetChallengeProvider()
+	challengeProvider := u.broker.ChallengeProvider
 	key := challengeProvider.DeriveKey(password, salt)
 	challengeMessage := append(salt, []byte(u.Name)...)
 	newChallenge := challengeProvider.Challenge(challengeMessage, key)

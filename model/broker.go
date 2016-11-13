@@ -1,11 +1,6 @@
 package model
 
-import "github.com/DHowett/ghostbin/lib/crypto"
-
 type Broker interface {
-	// Generic
-	GetChallengeProvider() crypto.ChallengeProvider
-
 	// User Management
 	GetUserNamed(name string) (User, error)
 	GetUserByID(id uint) (User, error)

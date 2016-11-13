@@ -34,7 +34,7 @@ func (s *userPastePermissionScope) Grant(p Permission) error {
 	modelStruct := scope.GetModelStruct()
 	table := modelStruct.TableName(db)
 
-	query, err := s.broker.qb.Build(&querybuilder.UpsertQuery{
+	query, err := s.broker.QB.Build(&querybuilder.UpsertQuery{
 		Table:        table,
 		ConflictKeys: []string{"user_id", "paste_id"},
 		Fields:       []string{"user_id", "paste_id", "permissions"},

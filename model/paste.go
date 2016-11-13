@@ -15,22 +15,6 @@ func PasteIDFromString(s string) PasteID {
 	return PasteID(s)
 }
 
-type PasteIDGenerator interface {
-	NewPasteID(encrypted bool) PasteID
-}
-
-type PasteIDGeneratorFunc func(encrypted bool) PasteID
-
-func (f PasteIDGeneratorFunc) NewPasteID(encrypted bool) PasteID {
-	return f(encrypted)
-}
-
-var DefaultPasteIDGenerator PasteIDGenerator
-
-func GeneratePasteID(encrypted bool) PasteID {
-	return DefaultPasteIDGenerator.NewPasteID(encrypted)
-}
-
 type Paste interface {
 	GetID() PasteID
 
