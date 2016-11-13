@@ -142,7 +142,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 					glog.Error(err)
 				}
 			}
-			user.SetPersona(true)
+			user.SetSource(model.UserSourceMozillaPersona)
 			reply.ExtraData["persona"] = email
 		} else {
 			reply.Reason = verifyResponseJSON["reason"].(string)

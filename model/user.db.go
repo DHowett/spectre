@@ -19,7 +19,7 @@ type dbUser struct {
 	Salt      []byte
 	Challenge []byte
 
-	Persona bool
+	Source UserSource
 
 	UserPermissions  Permission `gorm:"column:permissions"`
 	PastePermissions []*dbUserPastePermission
@@ -33,6 +33,14 @@ func (u *dbUser) GetID() uint {
 
 func (u *dbUser) GetName() string {
 	return u.Name
+}
+
+func (u *dbUser) GetSource() UserSource {
+	return u.Source
+}
+
+func (u *dbUser) SetSource(source UserSource) {
+	u.Source = source
 }
 
 func (u *dbUser) UpdateChallenge(password string) {
