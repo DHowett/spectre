@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"runtime/debug"
 )
 
@@ -19,17 +18,6 @@ type CustomTemplateError interface {
 type HTTPError interface {
 	StatusCode() int
 }
-
-type DeferLookupError struct {
-	Interstitial *url.URL
-}
-
-func (d DeferLookupError) Error() string {
-	return ""
-}
-
-type ModelRenderFunc func(Model, http.ResponseWriter, *http.Request)
-type ModelLookupFunc func(*http.Request) (Model, error)
 
 func RenderError(e error, statusCode int, w http.ResponseWriter) {
 	w.WriteHeader(statusCode)
@@ -67,28 +55,6 @@ func RenderPartialHandler(page string) http.HandlerFunc {
 			}
 		}()
 		templatePack.ExecutePartial(w, r, page, nil)
-	})
-}
-
-func RequiredModelObjectHandler(lookup ModelLookupFunc, fn ModelRenderFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer errorRecoveryHandler(w)
-
-		if obj, err := lookup(r); err != nil {
-			if dle, ok := err.(DeferLookupError); ok {
-				http.SetCookie(w, &http.Cookie{
-					Name:  "destination",
-					Value: r.URL.String(),
-					Path:  "/",
-				})
-				w.Header().Set("Location", dle.Interstitial.String())
-				w.WriteHeader(http.StatusFound)
-			} else {
-				panic(err)
-			}
-		} else {
-			fn(obj, w, r)
-		}
 	})
 }
 
