@@ -204,15 +204,12 @@ func (pc *PasteController) grantAcceptHandler(w http.ResponseWriter, r *http.Req
 		w.Write([]byte("Hey."))
 		return
 	}
-	_ = grant
 
-	// TODO(DH): grant.Realize or grant.Destroy or something
-	pID := model.PasteIDFromString("ABCDE")
+	pID := grant.GetPasteID()
 	GetPastePermissionScope(pID, r).Grant(model.PastePermissionEdit)
 	SavePastePermissionScope(w, r)
 
-	// delete(grants, grantKey)
-	//grantStore.Delete(grantKey)
+	grant.Destroy()
 
 	SetFlash(w, "success", fmt.Sprintf("You now have edit rights to Paste %v.", pID))
 	w.Header().Set("Location", pasteURL("show", pID))
