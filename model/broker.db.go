@@ -95,7 +95,7 @@ func (broker *dbBroker) GetPaste(id PasteID, passphraseMaterial []byte) (Paste, 
 	var paste dbPaste
 	if err := broker.Find(&paste, "id = ?", id.String()).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, PasteNotFoundError
+			return nil, ErrNotFound
 		}
 
 		return nil, err
@@ -110,17 +110,17 @@ func (broker *dbBroker) GetPaste(id PasteID, passphraseMaterial []byte) (Paste, 
 		if passphraseMaterial == nil {
 			return &encryptedPastePlaceholder{
 				ID: id,
-			}, PasteEncryptedError
+			}, ErrPasteEncrypted
 		}
 
 		key, err := getPasteEncryptionCodec(paste.EncryptionMethod).DeriveKey(passphraseMaterial, paste.EncryptionSalt)
 		if err != nil {
-			return nil, PasteEncryptedError
+			return nil, ErrPasteEncrypted
 		}
 
 		ok := getPasteEncryptionCodec(paste.EncryptionMethod).Authenticate(id, paste.EncryptionSalt, key, paste.HMAC)
 		if !ok {
-			return nil, PasteInvalidKeyError
+			return nil, ErrInvalidKey
 		}
 
 		paste.encryptionKey = key

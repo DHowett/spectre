@@ -3,7 +3,7 @@ package model
 import "errors"
 
 var (
-	PasteInvalidKeyError = errors.New("invalid password")
-	PasteEncryptedError  = errors.New("paste encrypted")
-	PasteNotFoundError   = errors.New("paste not found")
+	ErrInvalidKey     = errors.New("invalid password")
+	ErrPasteEncrypted = errors.New("paste encrypted")
+	ErrNotFound       = errors.New("record not found")
 )

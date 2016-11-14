@@ -74,17 +74,17 @@ func (e *encryptedPastePlaceholder) GetModificationTime() time.Time {
 }
 
 func (e *encryptedPastePlaceholder) Reader() (io.ReadCloser, error) {
-	return nil, PasteEncryptedError
+	return nil, ErrPasteEncrypted
 }
 
 func (e *encryptedPastePlaceholder) Writer() (io.WriteCloser, error) {
-	return nil, PasteEncryptedError
+	return nil, ErrPasteEncrypted
 }
 
 func (e *encryptedPastePlaceholder) Commit() error {
-	return PasteEncryptedError
+	return ErrPasteEncrypted
 }
 
 func (e *encryptedPastePlaceholder) Erase() error {
-	return PasteEncryptedError
+	return ErrPasteEncrypted
 }

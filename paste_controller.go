@@ -80,10 +80,10 @@ func (pc *PasteController) wrapPasteHandler(handler pasteHandlerFunc) http.Handl
 		id := model.PasteIDFromString(mux.Vars(r)["id"])
 		p, err := pc.getPasteFromRequest(r)
 
-		if err == model.PasteEncryptedError || err == model.PasteInvalidKeyError {
+		if err == model.ErrPasteEncrypted || err == model.ErrInvalidKey {
 			url, _ := pc.Router.Get("authenticate").URL("id", id.String())
-			if err == model.PasteInvalidKeyError {
-				url.RawQuery = "i=1"
+			if err == model.ErrInvalidKey {
+				url.Query().Set("i", "1")
 			}
 
 			http.SetCookie(w, &http.Cookie{
@@ -95,7 +95,7 @@ func (pc *PasteController) wrapPasteHandler(handler pasteHandlerFunc) http.Handl
 			w.WriteHeader(http.StatusFound)
 		} else {
 			if err != nil {
-				if err == model.PasteNotFoundError {
+				if err == model.ErrNotFound {
 					w.WriteHeader(http.StatusNotFound)
 					templatePack.ExecutePage(w, r, "paste_not_found", id)
 				} else {

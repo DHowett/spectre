@@ -191,7 +191,7 @@ func TestPasteEncryption(t *testing.T) {
 	}
 
 	pFacade, err := broker.GetPaste(p.GetID(), nil)
-	if err != PasteEncryptedError {
+	if err != ErrPasteEncrypted {
 		t.Error("didn't get an error reading an encrypted paste")
 	}
 
