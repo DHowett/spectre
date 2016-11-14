@@ -1,59 +1,26 @@
 package model
 
 import (
-	"database/sql"
-	"flag"
-	"os"
 	"testing"
-
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
-type noopChallengeProvider struct{}
-
-func (n *noopChallengeProvider) DeriveKey(string, []byte) []byte {
-	return []byte{'a'}
-}
-
-func (n *noopChallengeProvider) RandomSalt() []byte {
-	return []byte{'b'}
-}
-
-func (n *noopChallengeProvider) Challenge(message []byte, key []byte) []byte {
-	return append(message, key...)
-}
-
-var gormDb *gorm.DB
-
-var gStore Broker
-
-func TestMain(m *testing.M) {
-	flag.Parse()
-	os.Remove("test.db")
-	sqlDb, _ := sql.Open("sqlite3", "test.db")
-	gStore, _ = NewDatabaseBroker("sqlite3", sqlDb, &noopChallengeProvider{})
-	e := m.Run()
-	os.Exit(e)
-}
-
-func TestStore(t *testing.T) {
-	u, err := gStore.CreateUser("DHowett")
+func TestUserCreate(t *testing.T) {
+	u, err := broker.CreateUser("DHowett")
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	u.SetPersona(true)
+	u.SetSource(UserSourceMozillaPersona)
 
-	u, err = gStore.CreateUser("Timward")
+	u, err = broker.CreateUser("Timward")
 	if err != nil {
 		t.Error(err)
 		return
 	}
 }
 
-func TestGetName(t *testing.T) {
-	u, err := gStore.GetUserNamed("DHowett")
+func TestUserGetByName(t *testing.T) {
+	u, err := broker.GetUserNamed("DHowett")
 	if err != nil {
 		t.Error(err)
 	}
@@ -62,8 +29,8 @@ func TestGetName(t *testing.T) {
 	}
 }
 
-func TestGetID(t *testing.T) {
-	u, err := gStore.GetUserByID(1)
+func TestUserGetByID(t *testing.T) {
+	u, err := broker.GetUserByID(1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -72,8 +39,8 @@ func TestGetID(t *testing.T) {
 	}
 }
 
-func TestGrantPermission(t *testing.T) {
-	u, err := gStore.GetUserByID(1)
+func TestUserGrantUserPermission(t *testing.T) {
+	u, err := broker.GetUserByID(1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -89,9 +56,9 @@ func TestGrantPermission(t *testing.T) {
 	}
 }
 
-func TestRevokePermission(t *testing.T) {
+func TestUserRevokeUserPermission(t *testing.T) {
 	// permission was granted in the previous test.
-	u, err := gStore.GetUserNamed("DHowett")
+	u, err := broker.GetUserNamed("DHowett")
 	if err != nil {
 		t.Error(err)
 	}
@@ -108,10 +75,8 @@ func TestRevokePermission(t *testing.T) {
 	if u.Permissions(PermissionClassUser).Has(UserPermissionAdmin) {
 		t.Error("user still has admin permissions")
 	}
-}
 
-func TestPostRevocation(t *testing.T) {
-	u, err := gStore.GetUserNamed("DHowett")
+	u, err = broker.GetUserNamed("DHowett")
 	if err != nil {
 		t.Error(err)
 	}
@@ -121,8 +86,8 @@ func TestPostRevocation(t *testing.T) {
 	}
 }
 
-func TestUpdateChallenge(t *testing.T) {
-	u, err := gStore.GetUserNamed("DHowett")
+func TestUserUpdateChallenge(t *testing.T) {
+	u, err := broker.GetUserNamed("DHowett")
 	if err != nil {
 		t.Error(err)
 	}
@@ -133,8 +98,8 @@ func TestUpdateChallenge(t *testing.T) {
 	}
 }
 
-func TestGrantPastePermissions(t *testing.T) {
-	u, err := gStore.GetUserNamed("DHowett")
+func TestUserGrantPastePermissions(t *testing.T) {
+	u, err := broker.GetUserNamed("DHowett")
 	if err != nil {
 		t.Error(err)
 	}
@@ -164,8 +129,8 @@ func TestGrantPastePermissions(t *testing.T) {
 	}
 }
 
-func TestRevokePastePermissions(t *testing.T) {
-	u, err := gStore.GetUserNamed("DHowett")
+func TestUserRevokePastePermissions(t *testing.T) {
+	u, err := broker.GetUserNamed("DHowett")
 	if err != nil {
 		t.Error(err)
 	}
@@ -185,10 +150,22 @@ func TestRevokePastePermissions(t *testing.T) {
 		t.Error("user still has edit on scope for abcde?")
 	}
 
+	// lookup anew
+	u, err = broker.GetUserNamed("DHowett")
+	if err != nil {
+		t.Error(err)
+	}
+
+	permScope = u.Permissions(PermissionClassPaste, "abcde")
+
+	if permScope.Has(PastePermissionEdit) {
+		t.Error("user still has edit on scope for abcde?")
+	}
+
 }
 
-func TestGrantRevokeGrant(t *testing.T) {
-	u, err := gStore.GetUserNamed("DHowett")
+func TestUserGrantRevokeGrant(t *testing.T) {
+	u, err := broker.GetUserNamed("DHowett")
 	if err != nil {
 		t.Error(err)
 	}
@@ -222,22 +199,8 @@ func TestGrantRevokeGrant(t *testing.T) {
 	}
 }
 
-func TestPostRevokePastePermissions(t *testing.T) {
-	u, err := gStore.GetUserNamed("DHowett")
-	if err != nil {
-		t.Error(err)
-	}
-
-	permScope := u.Permissions(PermissionClassPaste, "abcde")
-
-	if permScope.Has(PastePermissionEdit) {
-		t.Error("user still has edit on scope for abcde?")
-	}
-
-}
-
-func TestGetPastes(t *testing.T) {
-	u, err := gStore.GetUserNamed("DHowett")
+func TestUserGetPastes(t *testing.T) {
+	u, err := broker.GetUserNamed("DHowett")
 	if err != nil {
 		t.Error(err)
 	}
