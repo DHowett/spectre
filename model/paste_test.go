@@ -144,12 +144,12 @@ func TestPasteReadAfterDestroy(t *testing.T) {
 		return
 	}
 
-	reader, err := p.Reader()
+	err = p.Erase()
 	if err != nil {
 		t.Error(err)
 	}
 
-	err = p.Erase()
+	reader, err := p.Reader()
 	if err != nil {
 		t.Error(err)
 	}
@@ -158,4 +158,86 @@ func TestPasteReadAfterDestroy(t *testing.T) {
 	if err != nil {
 		t.Errorf("got an error reading on a deleted paste: %v", err)
 	}
+}
+
+func TestPasteEncryption(t *testing.T) {
+	p, err := broker.CreateEncryptedPaste(PasteEncryptionMethodAES_CTR, []byte("passphrase"))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	p.SetTitle("My Test Paste")
+
+	w, err := p.Writer()
+	if err != nil {
+		t.Error(err)
+	}
+
+	data := []byte("secret data!")
+	_, err = w.Write(data)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = w.Close()
+	if err != nil {
+		t.Error(err)
+	}
+
+	pBad, err := broker.GetPaste(p.GetID(), []byte("bad!"))
+	if pBad != nil || err == nil {
+		t.Error("got back a paste with a bad passphrase!")
+	}
+
+	pFacade, err := broker.GetPaste(p.GetID(), nil)
+	if err != PasteEncryptedError {
+		t.Error("didn't get an error reading an encrypted paste")
+	}
+
+	if pFacade == nil {
+		t.Error("didn't get an encrypted paste facade")
+	}
+
+	if pFacade.GetID() != p.GetID() {
+		t.Errorf("IDs didn't match! Facade %v, real %v", pFacade.GetID(), p.GetID())
+	}
+
+	if pFacade.GetTitle() == p.GetTitle() {
+		t.Error("title still accessible")
+	}
+
+	reader, err := pFacade.Reader()
+	if reader != nil || err == nil {
+		t.Error("encrypted paste retrieved without password readable?")
+	}
+
+	pReal, err := broker.GetPaste(p.GetID(), []byte("passphrase"))
+	if err != nil {
+		t.Error(err)
+	}
+
+	if pReal.GetID() != p.GetID() {
+		t.Errorf("IDs didn't match! Facade %v, real %v", pFacade.GetID(), p.GetID())
+	}
+
+	if pReal.GetTitle() != p.GetTitle() {
+		t.Errorf("Titles didn't match! Facade %v, real %v", pFacade.GetTitle(), p.GetTitle())
+	}
+
+	realReader, err := pReal.Reader()
+	if err != nil {
+		t.Error(err)
+	}
+
+	rereadData, err := ioutil.ReadAll(realReader)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !bytes.Equal(data, rereadData) {
+		t.Errorf("incomprehensible paste data; real <%s>, readback <%s>", string(data), string(rereadData))
+	}
+
+	p.Erase()
 }
