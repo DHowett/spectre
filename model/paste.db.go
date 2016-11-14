@@ -93,7 +93,7 @@ func (p *dbPaste) Commit() error {
 }
 
 func (p *dbPaste) Erase() error {
-	return p.broker.Delete(p).Error
+	return p.broker.Delete(p).Delete(&dbPasteBody{PasteID: p.ID}).Error
 }
 
 func (p *dbPaste) Reader() (io.ReadCloser, error) {
