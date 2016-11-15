@@ -164,26 +164,3 @@ func LoadLanguageConfig(path string) error {
 	languageConfig.languageJSONReader = bytes.NewReader(languageJSON)
 	return nil
 }
-
-/*
-func FormatPaste(p model.Paste) (string, error) {
-	reader, _ := p.Reader()
-	defer reader.Close()
-	return FormatStream(reader, LanguageNamed(p.GetLanguageName()))
-}
-
-func loadLanguageConfig() error {
-}
-
-func init() {
-	globalInit.Add(&InitHandler{
-		Priority: 15,
-		Name:     "languages",
-		Do: func() error {
-			templatePack.AddFunction("langByLexer", LanguageNamed)
-			return loadLanguageConfig()
-		},
-		Redo: loadLanguageConfig,
-	})
-}
-*/

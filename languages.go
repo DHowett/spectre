@@ -19,10 +19,7 @@ func init() {
 	globalInit.Add(&InitHandler{
 		Priority: 15,
 		Name:     "languages",
-		Do: func() error {
-			templatePack.AddFunction("langByLexer", formatting.LanguageNamed)
-			return _initLanguages()
-		},
-		Redo: _initLanguages,
+		Do:       _initLanguages,
+		Redo:     _initLanguages,
 	})
 }
