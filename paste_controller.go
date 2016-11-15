@@ -51,7 +51,8 @@ func (e PasteTooLargeError) StatusCode() int {
 }
 
 type PasteController struct {
-	Router     *mux.Router
+	App Application
+
 	PasteStore model.Broker
 }
 
@@ -77,7 +78,7 @@ func (pc *PasteController) wrapPasteHandler(handler pasteHandlerFunc) http.Handl
 		p, err := pc.getPasteFromRequest(r)
 
 		if err == model.ErrPasteEncrypted || err == model.ErrInvalidKey {
-			url, _ := pc.Router.Get("authenticate").URL("id", id.String())
+			url := pc.App.GenerateURL(URLTypePasteAuthenticate, "id", id.String())
 			if err == model.ErrInvalidKey {
 				url.Query().Set("i", "1")
 			}
@@ -170,7 +171,7 @@ func (pc *PasteController) getPasteRawHandler(p model.Paste, w http.ResponseWrit
 func (pc *PasteController) pasteGrantHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
 	grant, _ := grantStore.CreateGrant(p)
 
-	acceptURL, _ := pasteRouter.Get("grant_accept").URL("grantkey", string(grant.GetID()))
+	acceptURL := pc.App.GenerateURL(URLTypePasteGrantAccept, "grantkey", string(grant.GetID()))
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	enc := json.NewEncoder(w)
@@ -483,79 +484,96 @@ func (pc *PasteController) generateRenderPageHandler(page string) pasteHandlerFu
 	}
 }
 
-func (pc *PasteController) InitRoutes() {
-	pc.Router.Methods("GET").
+func (pc *PasteController) InitRoutes(router *mux.Router) {
+	router.Methods("GET").
 		Path("/new").
 		Handler(RedirectHandler("/"))
 
-	pc.Router.Methods("POST").
+	router.Methods("POST").
 		Path("/new").
 		Handler(http.HandlerFunc(pc.pasteCreate))
 
-	pc.Router.Methods("GET").
+	router.Methods("GET").
 		Path("/{id}.json").
-		Handler(pc.wrapPasteHandler(pc.getPasteJSONHandler)).
-		Name("show")
+		Handler(pc.wrapPasteHandler(pc.getPasteJSONHandler))
 
-	pc.Router.Methods("GET").
-		Path("/{id}").
-		Handler(pc.wrapPasteHandler(pc.generateRenderPageHandler("paste_show"))).
-		Name("show")
+	pasteShowRoute :=
+		router.Methods("GET").
+			Path("/{id}").
+			Handler(pc.wrapPasteHandler(pc.generateRenderPageHandler("paste_show")))
 
-	pc.Router.Methods("POST").
-		Path("/{id}/grant/new").
-		Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.pasteGrantHandler))).
-		Name("grant")
-	pc.Router.Methods("GET").
-		Path("/grant/{grantkey}/accept").
-		Handler(http.HandlerFunc(pc.grantAcceptHandler)).
-		Name("grant_accept")
-	pc.Router.Methods("GET").
+	pasteGrantRoute :=
+		router.Methods("POST").
+			Path("/{id}/grant/new").
+			Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.pasteGrantHandler)))
+
+	pasteGrantAcceptRoute :=
+		router.Methods("GET").
+			Path("/grant/{grantkey}/accept").
+			Handler(http.HandlerFunc(pc.grantAcceptHandler))
+
+	router.Methods("GET").
 		Path("/{id}/disavow").
 		Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.pasteUngrantHandler)))
 
-	pc.Router.Methods("GET").
-		Path("/{id}/raw").
-		Handler(pc.wrapPasteHandler(pc.getPasteRawHandler)).
-		Name("raw")
-	pc.Router.Methods("GET").
-		Path("/{id}/download").
-		Handler(pc.wrapPasteHandler(pc.getPasteRawHandler)).
-		Name("download")
+	pasteRawRoute :=
+		router.Methods("GET").
+			Path("/{id}/raw").
+			Handler(pc.wrapPasteHandler(pc.getPasteRawHandler))
 
-	pc.Router.Methods("GET").
-		Path("/{id}/edit").
-		Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.generateRenderPageHandler("paste_edit")))).
-		Name("edit")
-	pc.Router.Methods("POST").
+	pasteDownloadRoute :=
+		router.Methods("GET").
+			Path("/{id}/download").
+			Handler(pc.wrapPasteHandler(pc.getPasteRawHandler))
+
+	pasteEditRoute :=
+		router.Methods("GET").
+			Path("/{id}/edit").
+			Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.generateRenderPageHandler("paste_edit"))))
+	router.Methods("POST").
 		Path("/{id}/edit").
 		Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.pasteUpdate)))
 
-	pc.Router.Methods("GET").
-		Path("/{id}/delete").
-		Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.generateRenderPageHandler("paste_delete_confirm")))).
-		Name("delete")
-	pc.Router.Methods("POST").
+	pasteDeleteRoute :=
+		router.Methods("GET").
+			Path("/{id}/delete").
+			Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.generateRenderPageHandler("paste_delete_confirm"))))
+
+	router.Methods("POST").
 		Path("/{id}/delete").
 		Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.pasteDelete)))
 
-	pc.Router.Methods("POST").
-		Path("/{id}/report").
-		Handler(pc.wrapPasteHandler(reportPaste)).
-		Name("report")
+	pasteReportRoute :=
+		router.Methods("POST").
+			Path("/{id}/report").
+			Handler(pc.wrapPasteHandler(reportPaste))
 
-	pc.Router.Methods("GET").
-		MatcherFunc(HTTPSMuxMatcher).
-		Path("/{id}/authenticate").
-		Handler(RenderPageHandler("paste_authenticate")).
-		Name("authenticate")
-	pc.Router.Methods("POST").
+	pasteAuthenticateRoute :=
+		router.Methods("GET").
+			MatcherFunc(HTTPSMuxMatcher).
+			Path("/{id}/authenticate").
+			Handler(RenderPageHandler("paste_authenticate"))
+	router.Methods("POST").
 		MatcherFunc(HTTPSMuxMatcher).
 		Path("/{id}/authenticate").
 		Handler(http.HandlerFunc(pc.authenticatePastePOSTHandler))
 
-	pc.Router.Methods("GET").
+	router.Methods("GET").
 		MatcherFunc(NonHTTPSMuxMatcher).
 		Path("/{id}/authenticate").
 		Handler(RenderPageHandler("paste_authenticate_disallowed"))
+
+	// catch-all rule that redirects paste/ to /
+	router.Methods("GET").Path("/").Handler(RedirectHandler("/"))
+
+	pc.App.RegisterRouteForURLType(URLTypePasteShow, pasteShowRoute)
+	pc.App.RegisterRouteForURLType(URLTypePasteGrant, pasteGrantRoute)
+	pc.App.RegisterRouteForURLType(URLTypePasteGrantAccept, pasteGrantAcceptRoute)
+	pc.App.RegisterRouteForURLType(URLTypePasteRaw, pasteRawRoute)
+	pc.App.RegisterRouteForURLType(URLTypePasteDownload, pasteDownloadRoute)
+	pc.App.RegisterRouteForURLType(URLTypePasteEdit, pasteEditRoute)
+	pc.App.RegisterRouteForURLType(URLTypePasteDelete, pasteDeleteRoute)
+	pc.App.RegisterRouteForURLType(URLTypePasteReport, pasteReportRoute)
+	pc.App.RegisterRouteForURLType(URLTypePasteAuthenticate, pasteAuthenticateRoute)
+
 }

@@ -30,7 +30,9 @@ type authReply struct {
 	InvalidFields []string          `json:"invalid_fields,omitempty"`
 }
 
-type authController struct{}
+type authController struct {
+	App Application
+}
 
 func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Request) {
 	session := sessionBroker.Get(r)
@@ -194,7 +196,7 @@ func (ac *authController) logoutPostHandler(w http.ResponseWriter, r *http.Reque
 func (ac *authController) tokenHandler(w http.ResponseWriter, r *http.Request) {
 	authToken, _ := generateRandomBase32String(20, 32)
 	ephStore.Put("A|"+authToken, true, 30*time.Minute)
-	url, _ := router.Get("auth_token_login").URL("token", authToken)
+	url := ac.App.GenerateURL(URLTypeAuthToken, "token", authToken)
 	w.Header().Set("Location", url.String())
 	w.WriteHeader(http.StatusSeeOther)
 }
@@ -217,7 +219,10 @@ func (ac *authController) InitRoutes(router *mux.Router) {
 	router.Methods("POST").Path("/login").HandlerFunc(ac.loginPostHandler)
 	router.Methods("POST").Path("/logout").HandlerFunc(ac.logoutPostHandler)
 	router.Methods("GET").Path("/token").HandlerFunc(ac.tokenHandler)
-	router.Methods("GET").Path("/token/{token}").HandlerFunc(ac.tokenPageHandler).Name("auth_token_login")
+	authTokenRoute :=
+		router.Methods("GET").Path("/token/{token}").HandlerFunc(ac.tokenPageHandler)
+
+	ac.App.RegisterRouteForURLType(URLTypeAuthToken, authTokenRoute)
 }
 
 type AuthChallengeProvider struct{}

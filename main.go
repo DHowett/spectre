@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/gob"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -54,9 +56,26 @@ func requiresUserPermission(permission model.Permission, handler http.Handler) h
 	})
 }
 
+// DEPRECATED
 func pasteURL(routeType string, p model.PasteID) string {
-	url, _ := pasteRouter.Get(routeType).URL("id", p.String())
-	return url.String()
+	var ut URLType
+	switch routeType {
+	case "show":
+		ut = URLTypePasteShow
+	case "edit":
+		ut = URLTypePasteEdit
+	case "delete":
+		ut = URLTypePasteDelete
+	case "raw":
+		ut = URLTypePasteRaw
+	case "download":
+		ut = URLTypePasteDownload
+	case "report":
+		ut = URLTypePasteReport
+	case "grant":
+		ut = URLTypePasteGrant
+	}
+	return ghostbin.GenerateURL(ut, "id", p.String()).String()
 }
 
 func sessionHandler(w http.ResponseWriter, r *http.Request) {
@@ -152,8 +171,6 @@ var sessionBroker *SessionBroker
 
 var pasteExpirator *gotimeout.Expirator
 var ephStore *gotimeout.Map
-var pasteRouter *mux.Router
-var router *mux.Router
 
 var globalInit Initializer
 
@@ -366,9 +383,6 @@ func initHandledRoutes(router *mux.Router) {
 	router.Path("/session").Handler(http.HandlerFunc(sessionHandler))
 	router.Path("/session/raw").Handler(http.HandlerFunc(sessionHandler))
 
-	/* GENERAL */
-	pasteRouter.Methods("GET").Path("/").Handler(RedirectHandler("/"))
-
 	router.Path("/paste").Handler(RedirectHandler("/"))
 
 	router.Path("/about").Handler(RenderPageHandler("about"))
@@ -404,6 +418,45 @@ func initHandledRoutes(router *mux.Router) {
 	router.Path("/").Handler(RenderPageHandler("index"))
 }
 
+type ghostbinApplication struct {
+	mutex     sync.RWMutex
+	urlRoutes map[URLType]*mux.Route
+}
+
+func (a *ghostbinApplication) RegisterRouteForURLType(ut URLType, route *mux.Route) {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+
+	if a.urlRoutes == nil {
+		a.urlRoutes = make(map[URLType]*mux.Route)
+	}
+	a.urlRoutes[ut] = route
+}
+
+func (a *ghostbinApplication) GenerateURL(ut URLType, params ...string) *url.URL {
+	a.mutex.RLock()
+	defer a.mutex.RUnlock()
+
+	u, ok := a.urlRoutes[ut]
+	err := errors.New("route doesn't exist!")
+	var ret *url.URL
+	if ok {
+		ret, err = u.URL(params...)
+	}
+
+	if err != nil {
+		glog.Error("unable to generate url type <%s> (params %v): %v", ut, params, err)
+
+		return &url.URL{
+			Path: "/",
+		}
+	}
+	return ret
+}
+
+// TODO(DH) DO NOT LEAVE GLOBAL
+var ghostbin = &ghostbinApplication{}
+
 func main() {
 	globalInit.Add(&InitHandler{
 		Priority: 80,
@@ -430,15 +483,17 @@ func main() {
 	initSessionStore()
 	initModelBroker()
 
-	router = mux.NewRouter()
-	pasteRouter = router.PathPrefix("/paste").Subrouter()
+	router := mux.NewRouter()
+	pasteRouter := router.PathPrefix("/paste").Subrouter()
 	authRouter := router.PathPrefix("/auth").Subrouter()
 	pasteController := &PasteController{
+		App:        ghostbin,
 		PasteStore: pasteStore,
-		Router:     pasteRouter,
 	}
-	pasteController.InitRoutes()
-	authController := &authController{}
+	pasteController.InitRoutes(pasteRouter)
+	authController := &authController{
+		App: ghostbin,
+	}
 	authController.InitRoutes(authRouter)
 	initHandledRoutes(router)
 
