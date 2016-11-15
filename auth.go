@@ -30,7 +30,9 @@ type authReply struct {
 	InvalidFields []string          `json:"invalid_fields,omitempty"`
 }
 
-func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
+type authController struct{}
+
+func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Request) {
 	session := sessionBroker.Get(r)
 
 	reply := &authReply{
@@ -181,13 +183,13 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 	// reply serialized in defer above. just for fun.
 }
 
-func authLogoutPostHandler(w http.ResponseWriter, r *http.Request) {
+func (ac *authController) logoutPostHandler(w http.ResponseWriter, r *http.Request) {
 	session := sessionBroker.Get(r)
 	session.Delete(SessionScopeClient, "acct_id")
 	session.Save()
 }
 
-func authTokenHandler(w http.ResponseWriter, r *http.Request) {
+func (ac *authController) tokenHandler(w http.ResponseWriter, r *http.Request) {
 	authToken, _ := generateRandomBase32String(20, 32)
 	ephStore.Put("A|"+authToken, true, 30*time.Minute)
 	url, _ := router.Get("auth_token_login").URL("token", authToken)
@@ -195,7 +197,7 @@ func authTokenHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func authTokenPageHandler(w http.ResponseWriter, r *http.Request) {
+func (ac *authController) tokenPageHandler(w http.ResponseWriter, r *http.Request) {
 	token := mux.Vars(r)["token"]
 	_, ok := ephStore.Get("A|" + token)
 	if !ok {
@@ -207,6 +209,13 @@ func authTokenPageHandler(w http.ResponseWriter, r *http.Request) {
 		ephStore.Put("A|U|"+token, user, 30*time.Minute)
 	}
 	templatePack.ExecutePage(w, r, "authtoken", map[string]string{"token": token})
+}
+
+func (ac *authController) InitRoutes(router *mux.Router) {
+	router.Methods("POST").Path("/login").HandlerFunc(ac.loginPostHandler)
+	router.Methods("POST").Path("/logout").HandlerFunc(ac.logoutPostHandler)
+	router.Methods("GET").Path("/token").HandlerFunc(ac.tokenHandler)
+	router.Methods("GET").Path("/token/{token}").HandlerFunc(ac.tokenPageHandler).Name("auth_token_login")
 }
 
 type AuthChallengeProvider struct{}

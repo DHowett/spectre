@@ -404,14 +404,6 @@ func initHandledRoutes(router *mux.Router) {
 	router.Path("/").Handler(RenderPageHandler("index"))
 }
 
-func initAuthRoutes(router *mux.Router) {
-	// Nominally mounted under /auth
-	router.Methods("POST").Path("/login").Handler(http.HandlerFunc(authLoginPostHandler))
-	router.Methods("POST").Path("/logout").Handler(http.HandlerFunc(authLogoutPostHandler))
-	router.Methods("GET").Path("/token").Handler(http.HandlerFunc(authTokenHandler))
-	router.Methods("GET").Path("/token/{token}").Handler(http.HandlerFunc(authTokenPageHandler)).Name("auth_token_login")
-}
-
 func main() {
 	globalInit.Add(&InitHandler{
 		Priority: 80,
@@ -446,7 +438,8 @@ func main() {
 		Router:     pasteRouter,
 	}
 	pasteController.InitRoutes()
-	initAuthRoutes(authRouter)
+	authController := &authController{}
+	authController.InitRoutes(authRouter)
 	initHandledRoutes(router)
 
 	// Permission handler for all routes that may require a user context.
