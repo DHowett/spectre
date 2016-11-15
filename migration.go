@@ -25,18 +25,18 @@ func getV3Perms(r *http.Request) (map[model.PasteID]model.Permission, bool) {
 
 func mergeLegacyPermsToV3(v3Perms map[model.PasteID]model.Permission, r *http.Request) bool {
 	var hasV1, hasV2 bool
-	session := sessionBroker.Get(r)
+	session := sessionBroker.Get(r).Scope(SessionScopeServer)
 
 	var legacyEntries map[PasteID]PastePermission
 	// Attempt to get hold of the v2-style permission set.
-	if sessionPermissionSet, hasV2 := session.GetOk(SessionScopeServer, "permissions"); hasV2 {
+	if sessionPermissionSet, hasV2 := session.GetOk("permissions"); hasV2 {
 		// presume user perms to have been migrated already. don't merge
 		v2Perms := sessionPermissionSet.(*PastePermissionSet)
 		legacyEntries = v2Perms.Entries
 	}
 
 	// Attempt to get hold of the original list of pastes
-	if oldPasteList, hasV1 := session.GetOk(SessionScopeServer, "pastes"); hasV1 {
+	if oldPasteList, hasV1 := session.GetOk("pastes"); hasV1 {
 		if legacyEntries == nil {
 			legacyEntries = make(map[PasteID]PastePermission)
 		}
@@ -86,7 +86,7 @@ func mergeV3PermsToUser(v3Perms map[model.PasteID]model.Permission, user model.U
 }
 
 func MigrateLegacyPermissionsForRequest(w http.ResponseWriter, r *http.Request) {
-	session := sessionBroker.Get(r)
+	session := sessionBroker.Get(r).Scope(SessionScopeServer)
 
 	v3Perms, hasV3 := getV3Perms(r)
 	if !hasV3 {
@@ -96,19 +96,19 @@ func MigrateLegacyPermissionsForRequest(w http.ResponseWriter, r *http.Request) 
 	merged := mergeLegacyPermsToV3(v3Perms, r)
 	if merged {
 		// Had v1 or v2 perms: delete them.
-		session.Delete(SessionScopeServer, "permissions")
-		session.Delete(SessionScopeServer, "pastes")
+		session.Delete("permissions")
+		session.Delete("pastes")
 	}
 
 	merged = mergeV3PermsToUser(v3Perms, GetUser(r))
 	if hasV3 && merged {
 		// Had a user, had v3 perms: delete them, they're on the user now.
-		session.Delete(SessionScopeServer, "v3permissions")
+		session.Delete("v3permissions")
 	}
 
 	if !hasV3 && !merged && len(v3Perms) != 0 {
 		// Didn't have a user and didn't have v3 perms: store v3 perms.
-		session.Set(SessionScopeServer, "v3permissions", v3Perms)
+		session.Set("v3permissions", v3Perms)
 	}
 
 	session.Save()

@@ -328,13 +328,14 @@ func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 
-		pasteKeys, ok := session.Get(SessionScopeSensitive, "paste_passphrases").(map[model.PasteID][]byte)
+		sensitiveScope := session.Scope(SessionScopeSensitive)
+		pasteKeys, ok := sensitiveScope.Get("paste_passphrases").(map[model.PasteID][]byte)
 		if !ok {
 			pasteKeys = map[model.PasteID][]byte{}
 		}
 
 		pasteKeys[p.GetID()] = []byte(password)
-		session.Set(SessionScopeSensitive, "paste_passphrases", pasteKeys)
+		sensitiveScope.Set("paste_passphrases", pasteKeys)
 	}
 
 	GetPastePermissionScope(p.GetID(), r).Grant(model.PastePermissionAll)
@@ -373,14 +374,14 @@ func (pc *PasteController) authenticatePastePOSTHandler(w http.ResponseWriter, r
 	id := model.PasteIDFromString(mux.Vars(r)["id"])
 	passphrase := []byte(r.FormValue("password"))
 
-	session := sessionBroker.Get(r)
-	pasteKeys, ok := session.Get(SessionScopeSensitive, "paste_passphrases").(map[model.PasteID][]byte)
+	session := sessionBroker.Get(r).Scope(SessionScopeSensitive)
+	pasteKeys, ok := session.Get("paste_passphrases").(map[model.PasteID][]byte)
 	if !ok {
 		pasteKeys = map[model.PasteID][]byte{}
 	}
 
 	pasteKeys[id] = passphrase
-	session.Set(SessionScopeSensitive, "paste_passphrases", pasteKeys)
+	session.Set("paste_passphrases", pasteKeys)
 	session.Save()
 
 	dest := pasteURL("show", id)

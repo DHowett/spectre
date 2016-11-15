@@ -50,12 +50,12 @@ func GetPastePermissionScope(pID model.PasteID, r *http.Request) model.Permissio
 		userScope = user.Permissions(model.PermissionClassPaste, pID)
 	}
 
-	session := sessionBroker.Get(r)
-	v3EntriesI := session.Get(SessionScopeServer, "v3permissions")
+	session := sessionBroker.Get(r).Scope(SessionScopeServer)
+	v3EntriesI := session.Get("v3permissions")
 	v3Entries, ok := v3EntriesI.(map[model.PasteID]model.Permission)
 	if !ok || v3Entries == nil {
 		v3Entries = make(map[model.PasteID]model.Permission)
-		session.Set(SessionScopeServer, "v3permissions", v3Entries)
+		session.Set("v3permissions", v3Entries)
 	}
 
 	return &globalPermissionScope{

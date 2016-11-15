@@ -144,6 +144,13 @@ func (s *Session) getGorillaSession(scope SessionScope, create bool) (*sessions.
 	return session, nil
 }
 
+func (s *Session) Scope(scope SessionScope) *ScopedSession {
+	return &ScopedSession{
+		session: s,
+		scope:   scope,
+	}
+}
+
 func (s *Session) GetOk(scope SessionScope, key string) (interface{}, bool) {
 	store, err := s.getGorillaSession(scope, false)
 	if err != nil {
@@ -223,4 +230,33 @@ func (s *Session) Delete(scope SessionScope, key string) {
 
 	// If it didn't exist, don't dirty the session.
 	s.dirty[scope] = s.dirty[scope] || dirty
+}
+
+type ScopedSession struct {
+	session *Session
+	scope   SessionScope
+}
+
+func (s *ScopedSession) Save() {
+	s.session.Save()
+}
+
+func (s *ScopedSession) GetOk(key string) (interface{}, bool) {
+	return s.session.GetOk(s.scope, key)
+}
+
+func (s *ScopedSession) Get(key string) interface{} {
+	return s.session.Get(s.scope, key)
+}
+
+func (s *ScopedSession) Set(key string, val interface{}) {
+	s.session.Set(s.scope, key, val)
+}
+
+func (s *ScopedSession) Delete(key string) {
+	s.session.Delete(s.scope, key)
+}
+
+func (s *ScopedSession) MarkDirty() {
+	s.session.MarkDirty(s.scope)
 }
