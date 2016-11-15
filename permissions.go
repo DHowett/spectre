@@ -14,6 +14,8 @@ type globalPermissionScope struct {
 	// User's paste perm scope for this ID
 	uScope model.PermissionScope
 
+	session *ScopedSession
+
 	v3Entries map[model.PasteID]model.Permission
 }
 
@@ -29,6 +31,7 @@ func (g *globalPermissionScope) Grant(p model.Permission) error {
 		return g.uScope.Grant(p)
 	}
 	g.v3Entries[g.pID] = g.v3Entries[g.pID] | p
+	g.session.MarkDirty()
 	return nil
 }
 
@@ -40,6 +43,7 @@ func (g *globalPermissionScope) Revoke(p model.Permission) error {
 	if g.v3Entries[g.pID] == 0 {
 		delete(g.v3Entries, g.pID)
 	}
+	g.session.MarkDirty()
 	return nil
 }
 
@@ -61,6 +65,7 @@ func GetPastePermissionScope(pID model.PasteID, r *http.Request) model.Permissio
 	return &globalPermissionScope{
 		pID:       pID,
 		uScope:    userScope,
+		session:   session,
 		v3Entries: v3Entries,
 	}
 }
@@ -69,7 +74,6 @@ func SavePastePermissionScope(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	if user == nil {
 		session := sessionBroker.Get(r)
-		session.MarkDirty(SessionScopeServer)
 		session.Save()
 	}
 }
