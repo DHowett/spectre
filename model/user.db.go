@@ -40,7 +40,11 @@ func (u *dbUser) GetSource() UserSource {
 }
 
 func (u *dbUser) SetSource(source UserSource) {
-	u.Source = source
+	tx := u.broker.Begin().Model(u)
+	if err := tx.Updates(map[string]interface{}{"Source": source}).Error; err != nil {
+		tx.Rollback()
+	}
+	tx.Commit()
 }
 
 func (u *dbUser) UpdateChallenge(password string) {
