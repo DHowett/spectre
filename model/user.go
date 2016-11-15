@@ -3,8 +3,8 @@ package model
 type UserSource int
 
 const (
-	UserSourceUnknown             = -1
-	UserSourceGhostbin UserSource = iota
+	UserSourceUnknown  UserSource = -1
+	UserSourceGhostbin            = iota
 	UserSourceMozillaPersona
 )
 
