@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/DHowett/ghostbin/model"
-	"github.com/gorilla/sessions"
 )
 
 type PasteID string
@@ -19,25 +18,25 @@ type PastePermissionSet struct {
 // in a translation layer for legacy, v2 and v3 perms.
 
 func getV3Perms(r *http.Request) (map[model.PasteID]model.Permission, bool) {
-	cookieSession, _ := sessionStore.Get(r, "session")
-	v, ok := cookieSession.Values["v3permissions"].(map[model.PasteID]model.Permission)
+	session := sessionBroker.Get(r)
+	v, ok := session.Get(SessionScopeServer, "v3permissions").(map[model.PasteID]model.Permission)
 	return v, ok
 }
 
 func mergeLegacyPermsToV3(v3Perms map[model.PasteID]model.Permission, r *http.Request) bool {
 	var hasV1, hasV2 bool
-	cookieSession, _ := sessionStore.Get(r, "session")
+	session := sessionBroker.Get(r)
 
 	var legacyEntries map[PasteID]PastePermission
 	// Attempt to get hold of the v2-style permission set.
-	if sessionPermissionSet, hasV2 := cookieSession.Values["permissions"]; hasV2 {
+	if sessionPermissionSet, hasV2 := session.GetOk(SessionScopeServer, "permissions"); hasV2 {
 		// presume user perms to have been migrated already. don't merge
 		v2Perms := sessionPermissionSet.(*PastePermissionSet)
 		legacyEntries = v2Perms.Entries
 	}
 
 	// Attempt to get hold of the original list of pastes
-	if oldPasteList, hasV1 := cookieSession.Values["pastes"]; hasV1 {
+	if oldPasteList, hasV1 := session.GetOk(SessionScopeServer, "pastes"); hasV1 {
 		if legacyEntries == nil {
 			legacyEntries = make(map[PasteID]PastePermission)
 		}
@@ -86,12 +85,8 @@ func mergeV3PermsToUser(v3Perms map[model.PasteID]model.Permission, user model.U
 	return false
 }
 
-type permissionMigrationWrapperHandler struct {
-	http.Handler
-}
-
-func (h permissionMigrationWrapperHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	cookieSession, _ := sessionStore.Get(r, "session")
+func MigrateLegacyPermissionsForRequest(w http.ResponseWriter, r *http.Request) {
+	session := sessionBroker.Get(r)
 
 	v3Perms, hasV3 := getV3Perms(r)
 	if !hasV3 {
@@ -101,22 +96,30 @@ func (h permissionMigrationWrapperHandler) ServeHTTP(w http.ResponseWriter, r *h
 	merged := mergeLegacyPermsToV3(v3Perms, r)
 	if merged {
 		// Had v1 or v2 perms: delete them.
-		delete(cookieSession.Values, "permissions")
-		delete(cookieSession.Values, "pastes")
+		session.Delete(SessionScopeServer, "permissions")
+		session.Delete(SessionScopeServer, "pastes")
 	}
 
 	merged = mergeV3PermsToUser(v3Perms, GetUser(r))
 	if hasV3 && merged {
 		// Had a user, had v3 perms: delete them, they're on the user now.
-		delete(cookieSession.Values, "v3permissions")
+		session.Delete(SessionScopeServer, "v3permissions")
 	}
 
-	if !hasV3 && !merged {
+	if !hasV3 && !merged && len(v3Perms) != 0 {
 		// Didn't have a user and didn't have v3 perms: store v3 perms.
-		cookieSession.Values["v3permissions"] = v3Perms
+		session.Set(SessionScopeServer, "v3permissions", v3Perms)
 	}
 
-	sessions.Save(r, w)
+	session.Save()
+}
+
+type permissionMigrationWrapperHandler struct {
+	http.Handler
+}
+
+func (h permissionMigrationWrapperHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	MigrateLegacyPermissionsForRequest(w, r)
 	h.Handler.ServeHTTP(w, r)
 }
 

@@ -18,7 +18,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
 )
 
 // paste http bindings
@@ -60,11 +59,8 @@ func (pc *PasteController) getPasteFromRequest(r *http.Request) (model.Paste, er
 	id := model.PasteIDFromString(mux.Vars(r)["id"])
 	var passphrase []byte
 
-	cliSession, err := clientOnlySessionStore.Get(r, "c_session")
-	if err != nil {
-		glog.Errorln(err)
-	}
-	if pasteKeys, ok := cliSession.Values["paste_passphrases"].(map[model.PasteID][]byte); ok {
+	session := sessionBroker.Get(r)
+	if pasteKeys, ok := session.Get(SessionScopeSensitive, "paste_passphrases").(map[model.PasteID][]byte); ok {
 		if _key, ok := pasteKeys[id]; ok {
 			passphrase = _key
 		}
@@ -279,6 +275,8 @@ func (pc *PasteController) pasteUpdateCore(p model.Paste, w http.ResponseWriter,
 }
 
 func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
+	session := sessionBroker.Get(r)
+
 	body := r.FormValue("text")
 	if len(strings.TrimSpace(body)) == 0 {
 		// 400 here, 200 above (one is displayed to the user, one could be an API response.)
@@ -330,26 +328,19 @@ func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 
-		cliSession, err := clientOnlySessionStore.Get(r, "c_session")
-		if err != nil {
-			glog.Errorln(err)
-		}
-		pasteKeys, ok := cliSession.Values["paste_passphrases"].(map[model.PasteID][]byte)
+		pasteKeys, ok := session.Get(SessionScopeSensitive, "paste_passphrases").(map[model.PasteID][]byte)
 		if !ok {
 			pasteKeys = map[model.PasteID][]byte{}
 		}
 
 		pasteKeys[p.GetID()] = []byte(password)
-		cliSession.Values["paste_passphrases"] = pasteKeys
+		session.Set(SessionScopeSensitive, "paste_passphrases", pasteKeys)
 	}
 
 	GetPastePermissionScope(p.GetID(), r).Grant(model.PastePermissionAll)
 	SavePastePermissionScope(w, r)
 
-	err = sessions.Save(r, w)
-	if err != nil {
-		glog.Errorln(err)
-	}
+	session.Save()
 
 	pc.pasteUpdateCore(p, w, r, true)
 }
@@ -382,15 +373,15 @@ func (pc *PasteController) authenticatePastePOSTHandler(w http.ResponseWriter, r
 	id := model.PasteIDFromString(mux.Vars(r)["id"])
 	passphrase := []byte(r.FormValue("password"))
 
-	cliSession, _ := clientOnlySessionStore.Get(r, "c_session")
-	pasteKeys, ok := cliSession.Values["paste_passphrases"].(map[model.PasteID][]byte)
+	session := sessionBroker.Get(r)
+	pasteKeys, ok := session.Get(SessionScopeSensitive, "paste_passphrases").(map[model.PasteID][]byte)
 	if !ok {
 		pasteKeys = map[model.PasteID][]byte{}
 	}
 
 	pasteKeys[id] = passphrase
-	cliSession.Values["paste_passphrases"] = pasteKeys
-	sessions.Save(r, w)
+	session.Set(SessionScopeSensitive, "paste_passphrases", pasteKeys)
+	session.Save()
 
 	dest := pasteURL("show", id)
 	if destCookie, err := r.Cookie("destination"); err != nil {

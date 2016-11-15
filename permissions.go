@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/DHowett/ghostbin/model"
-	"github.com/gorilla/sessions"
 )
 
 type globalPermissionScope struct {
@@ -51,12 +50,12 @@ func GetPastePermissionScope(pID model.PasteID, r *http.Request) model.Permissio
 		userScope = user.Permissions(model.PermissionClassPaste, pID)
 	}
 
-	cookieSession, _ := sessionStore.Get(r, "session")
-	v3EntriesI := cookieSession.Values["v3permissions"]
+	session := sessionBroker.Get(r)
+	v3EntriesI := session.Get(SessionScopeServer, "v3permissions")
 	v3Entries, ok := v3EntriesI.(map[model.PasteID]model.Permission)
 	if !ok || v3Entries == nil {
 		v3Entries = make(map[model.PasteID]model.Permission)
-		cookieSession.Values["v3permissions"] = v3Entries
+		session.Set(SessionScopeServer, "v3permissions", v3Entries)
 	}
 
 	return &globalPermissionScope{
@@ -69,6 +68,8 @@ func GetPastePermissionScope(pID model.PasteID, r *http.Request) model.Permissio
 func SavePastePermissionScope(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r)
 	if user == nil {
-		sessions.Save(r, w)
+		session := sessionBroker.Get(r)
+		session.MarkDirty(SessionScopeServer)
+		session.Save()
 	}
 }

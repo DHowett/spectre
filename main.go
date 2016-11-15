@@ -71,10 +71,9 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 			ids = uPastes
 		}
 	} else {
-
 		// Failed lookup is non-fatal here.
-		cookieSession, _ := sessionStore.Get(r, "session")
-		v3EntriesI, _ := cookieSession.Values["v3permissions"]
+		session := sessionBroker.Get(r)
+		v3EntriesI := session.Get(SessionScopeServer, "v3permissions")
 		v3Perms, _ := v3EntriesI.(map[model.PasteID]model.Permission)
 
 		ids = make([]model.PasteID, len(v3Perms))
@@ -149,10 +148,9 @@ var pasteStore model.Broker
 var grantStore model.Broker
 var userStore model.Broker
 
+var sessionBroker *SessionBroker
+
 var pasteExpirator *gotimeout.Expirator
-var sessionStore *sessions.FilesystemStore
-var clientOnlySessionStore *sessions.CookieStore
-var clientLongtermSessionStore *sessions.CookieStore
 var ephStore *gotimeout.Map
 var pasteRouter *mux.Router
 var router *mux.Router
@@ -272,28 +270,34 @@ func initSessionStore() {
 
 	sesdir := filepath.Join(arguments.root, "sessions")
 	os.Mkdir(sesdir, 0700)
-	sessionStore = sessions.NewFilesystemStore(sesdir, sessionKey)
-	sessionStore.Options.Path = "/"
-	sessionStore.Options.MaxAge = 86400 * 365
+	serverSessionStore := sessions.NewFilesystemStore(sesdir, sessionKey)
+	serverSessionStore.Options.Path = "/"
+	serverSessionStore.Options.MaxAge = 86400 * 365
 
 	clientKeyFile := filepath.Join(arguments.root, "client_session_enc.key")
 	clientOnlySessionEncryptionKey, err := loadOrGenerateSessionKey(clientKeyFile, 32)
 	if err != nil {
 		glog.Fatal("client_session_enc.key not found, and an attempt to create one failed: ", err)
 	}
-	clientOnlySessionStore = sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
+	sensitiveSessionStore := sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
 	if Env() != EnvironmentDevelopment {
-		clientOnlySessionStore.Options.Secure = true
+		sensitiveSessionStore.Options.Secure = true
 	}
-	clientOnlySessionStore.Options.Path = "/"
-	clientOnlySessionStore.Options.MaxAge = 0
+	sensitiveSessionStore.Options.Path = "/"
+	sensitiveSessionStore.Options.MaxAge = 0
 
-	clientLongtermSessionStore = sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
+	clientSessionStore := sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
 	if Env() != EnvironmentDevelopment {
-		clientLongtermSessionStore.Options.Secure = true
+		clientSessionStore.Options.Secure = true
 	}
-	clientLongtermSessionStore.Options.Path = "/"
-	clientLongtermSessionStore.Options.MaxAge = 86400 * 365
+	clientSessionStore.Options.Path = "/"
+	clientSessionStore.Options.MaxAge = 86400 * 365
+
+	sessionBroker = NewSessionBroker(map[SessionScope]sessions.Store{
+		SessionScopeServer:    serverSessionStore,
+		SessionScopeClient:    clientSessionStore,
+		SessionScopeSensitive: sensitiveSessionStore,
+	})
 }
 
 func initModelBroker() {
@@ -453,7 +457,7 @@ func main() {
 
 	// Static file routes.
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("public")))
-	http.Handle("/", four.WrapHandler(router, RenderPageHandler("404")))
+	http.Handle("/", sessionBroker.Handler(four.WrapHandler(router, RenderPageHandler("404"))))
 
 	var addr string = arguments.addr
 	server := &http.Server{

@@ -13,7 +13,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/scrypt"
 )
 
@@ -32,14 +31,7 @@ type authReply struct {
 }
 
 func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
-	clientSession, err := clientLongtermSessionStore.Get(r, "authentication")
-	if err != nil {
-		glog.Errorln(err)
-	}
-	serverSession, err := sessionStore.Get(r, "session")
-	if err != nil {
-		glog.Errorln(err)
-	}
+	session := sessionBroker.Get(r)
 
 	reply := &authReply{
 		Status:    "invalid",
@@ -78,7 +70,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 				reply.InvalidFields = []string{"password", "confirm_password"}
 				return
 			}
-			newuser, err = userStore.CreateUser(username)
+			newuser, err := userStore.CreateUser(username)
 			if err != nil {
 				// TODO(DH): propagate.
 				glog.Error(err)
@@ -175,27 +167,11 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 	if user != nil {
 		context.Set(r, userContextKey, user)
 
-		// TODO(DH) paste perms
-		_ = serverSession
-		// Attempt to aggregate user, session, and old perms.
-		//pastePerms := GetPastePermissions(r)
-		//user.Values["permissions"] = pastePerms
-		//delete(serverSession.Values, "pastes")      // delete old perms
-		//delete(serverSession.Values, "permissions") // delete new session perms
-
-		//err := userStore.SaveUser(user)
-		//if err != nil {
-		//reply.Reason = "failed to save user"
-		//reply.ExtraData["error"] = err.Error()
-		//} else {
 		reply.Status = "valid"
 		reply.ExtraData["username"] = user.GetName()
-		//}
-		clientSession.Values["acct_id"] = user.GetID()
-		err = sessions.Save(r, w)
-		if err != nil {
-			glog.Errorln(err)
-		}
+
+		session.Set(SessionScopeClient, "acct_id", user.GetID())
+		session.Save()
 
 		if token := r.FormValue("requested_auth_token"); token != "" {
 			ephStore.Put("A|U|"+token, user, 30*time.Minute)
@@ -206,12 +182,9 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func authLogoutPostHandler(w http.ResponseWriter, r *http.Request) {
-	ses, _ := clientLongtermSessionStore.Get(r, "authentication")
-	delete(ses.Values, "acct_id")
-	err := sessions.Save(r, w)
-	if err != nil {
-		glog.Errorln(err)
-	}
+	session := sessionBroker.Get(r)
+	session.Delete(SessionScopeClient, "acct_id")
+	session.Save()
 }
 
 func authTokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -269,8 +242,8 @@ func (a *AuthChallengeProvider) Challenge(message []byte, key []byte) []byte {
 func GetUser(r *http.Request) model.User {
 	user, present := context.Get(r, userContextKey).(model.User)
 	if user == nil || !present {
-		ses, _ := clientLongtermSessionStore.Get(r, "authentication")
-		uid, ok := ses.Values["acct_id"].(uint)
+		session := sessionBroker.Get(r)
+		uid, ok := session.Get(SessionScopeClient, "acct_id").(uint)
 		if ok {
 			var err error
 			user, err = userStore.GetUserByID(uid)
