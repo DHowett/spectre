@@ -169,6 +169,8 @@ func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 	if user != nil {
 		context.Set(r, userContextKey, user)
 
+		MigrateLegacyPermissionsForRequest(w, r)
+
 		reply.Status = "valid"
 		reply.ExtraData["username"] = user.GetName()
 
