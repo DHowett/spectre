@@ -38,22 +38,6 @@ func isEditAllowed(p model.Paste, r *http.Request) bool {
 	return GetPastePermissionScope(p.GetID(), r).Has(model.PastePermissionEdit)
 }
 
-func requiresUserPermission(permission model.Permission, handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer errorRecoveryHandler(w)
-
-		user := GetLoggedInUser(r)
-		if user != nil {
-			if user.Permissions(model.PermissionClassUser).Has(permission) {
-				handler.ServeHTTP(w, r)
-				return
-			}
-		}
-
-		panic(fmt.Errorf("You are not allowed to be here. >:|"))
-	})
-}
-
 // DEPRECATED
 func pasteURL(routeType string, p model.PasteID) string {
 	var ut URLType
