@@ -281,30 +281,6 @@ func establishModelConnection() model.Broker {
 }
 
 func initHandledRoutes(router *mux.Router) {
-	/* ADMIN */
-	router.Path("/admin").Handler(requiresUserPermission(model.UserPermissionAdmin, RenderPageHandler("admin_home")))
-
-	router.Path("/admin/reports").Handler(requiresUserPermission(model.UserPermissionAdmin, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		templatePack.ExecutePage(w, r, "admin_reports", reportStore.Reports)
-	})))
-
-	router.Methods("POST").Path("/admin/promote").Handler(requiresUserPermission(model.UserPermissionAdmin, http.HandlerFunc(adminPromoteHandler)))
-
-	// TODO(DH)
-	/*
-		router.Methods("POST").
-			Path("/admin/paste/{id}/delete").
-			Handler(requiresUserPermission(model.UserPermissionAdmin, RequiredModelObjectHandler(lookupPasteWithRequest, pasteDelete))).
-			Name("admindelete")
-
-		router.Methods("POST").
-			Path("/admin/paste/{id}/clear_report").
-			Handler(requiresUserPermission(model.UserPermissionAdmin, http.HandlerFunc(reportClear))).
-			Name("reportclear")
-	*/
-
-	router.Path("/paste").Handler(RedirectHandler("/"))
-
 	router.Path("/about").Handler(RenderPageHandler("about"))
 	router.Methods("GET", "HEAD").Path("/languages.json").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -415,6 +391,10 @@ func main() {
 		{
 			PathPrefix: "/session",
 			Controller: NewSessionController(ghostbin, modelBroker),
+		},
+		{
+			PathPrefix: "/admin",
+			Controller: NewAdminController(ghostbin, modelBroker),
 		},
 	}
 

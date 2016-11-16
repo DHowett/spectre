@@ -343,23 +343,6 @@ func (c *PromoteFirstUserToAdminStore) CreateUser(name string) (model.User, erro
 	return u, nil
 }
 
-func adminPromoteHandler(w http.ResponseWriter, r *http.Request) {
-	username := r.FormValue("username")
-	user, _ := userStore.GetUserNamed(username)
-	if user != nil {
-		err := user.Permissions(model.PermissionClassUser).Grant(model.UserPermissionAdmin)
-		if err != nil {
-			SetFlash(w, "success", "Promoted "+username+".")
-		} else {
-			SetFlash(w, "error", "Failed to promote "+username+".")
-		}
-	} else {
-		SetFlash(w, "error", "Couldn't find "+username+" to promote.")
-	}
-	w.Header().Set("Location", "/admin")
-	w.WriteHeader(http.StatusSeeOther)
-}
-
 func init() {
 	globalInit.Add(&InitHandler{
 		Priority: 10,

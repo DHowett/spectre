@@ -22,6 +22,7 @@ const (
 	URLTypeAuthToken = "auth.token"
 
 	URLTypeReportClear      = "report.clear"
+	URLTypeAdminReportList  = "admin.reports"
 	URLTypeAdminPasteDelete = "admin.paste.delete"
 )
 
