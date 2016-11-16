@@ -78,48 +78,6 @@ func pasteURL(routeType string, p model.PasteID) string {
 	return ghostbin.GenerateURL(ut, "id", p.String()).String()
 }
 
-func sessionHandler(w http.ResponseWriter, r *http.Request) {
-	var ids []model.PasteID
-
-	// Assumption: due to the migration handler wrapper, a logged-in session will
-	// never have v3 perms and user perms.
-	user := GetLoggedInUser(r)
-	if user != nil {
-		uPastes, err := user.GetPastes()
-		if err == nil {
-			ids = uPastes
-		}
-	} else {
-		// Failed lookup is non-fatal here.
-		session := sessionBroker.Get(r)
-		v3EntriesI := session.Get(SessionScopeServer, "v3permissions")
-		v3Perms, _ := v3EntriesI.(map[model.PasteID]model.Permission)
-
-		ids = make([]model.PasteID, len(v3Perms))
-		n := 0
-		for pid, _ := range v3Perms {
-			ids[n] = pid
-			n++
-		}
-	}
-
-	if strings.HasSuffix(r.URL.Path, "/raw") {
-		stringIDs := make([]string, len(ids))
-		for i, v := range ids {
-			stringIDs[i] = v.String()
-		}
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Write([]byte(strings.Join(stringIDs, " ")))
-		return
-	}
-
-	sessionPastes, err := pasteStore.GetPastes(ids)
-	if err != nil {
-		panic(err)
-	}
-	templatePack.ExecutePage(w, r, "session", sessionPastes)
-}
-
 func requestVariable(rc *templatepack.Context, variable string) string {
 	v, _ := mux.Vars(rc.Request)[variable]
 	if v == "" {
@@ -379,10 +337,6 @@ func initHandledRoutes(router *mux.Router) {
 			Name("reportclear")
 	*/
 
-	/* SESSION */
-	router.Path("/session").Handler(http.HandlerFunc(sessionHandler))
-	router.Path("/session/raw").Handler(http.HandlerFunc(sessionHandler))
-
 	router.Path("/paste").Handler(RedirectHandler("/"))
 
 	router.Path("/about").Handler(RenderPageHandler("about"))
@@ -491,6 +445,10 @@ func main() {
 		{
 			PathPrefix: "/auth",
 			Controller: NewAuthController(ghostbin, userStore /* for now, b/c CreateUser */),
+		},
+		{
+			PathPrefix: "/session",
+			Controller: NewSessionController(ghostbin, pasteStore),
 		},
 	}
 
