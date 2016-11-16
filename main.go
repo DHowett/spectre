@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"database/sql"
 	"encoding/gob"
@@ -16,7 +15,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -121,8 +119,6 @@ func pasteDestroyCallback(p model.Paste) {
 	reportStore.Delete(p.GetID())
 }
 
-var pasteStore model.Broker
-var grantStore model.Broker
 var userStore model.Broker
 
 var sessionBroker *SessionBroker
@@ -185,35 +181,6 @@ func initTemplateFunctions() {
 	templatePack.AddFunction("pasteWillExpire", func(p model.Paste) bool {
 		return p.GetExpiration() != "" && p.GetExpiration() != "-1"
 	})
-	templatePack.AddFunction("pasteFromID", func(id model.PasteID) model.Paste {
-		p, err := pasteStore.GetPaste(id, nil)
-		if err != nil {
-			return nil
-		}
-		return p
-	})
-	templatePack.AddFunction("truncatedPasteBody", func(p model.Paste, lines int) string {
-		reader, _ := p.Reader()
-		defer reader.Close()
-		bufReader := bufio.NewReader(reader)
-		s := ""
-		n := 0
-		for n < lines {
-			line, err := bufReader.ReadString('\n')
-			if err != io.EOF && err != nil {
-				break
-			}
-			s = s + line
-			if err == io.EOF {
-				break
-			}
-			n++
-		}
-		if n == lines {
-			s += "..."
-		}
-		return s
-	})
 	templatePack.AddFunction("pasteBody", func(p model.Paste) string {
 		reader, _ := p.Reader()
 		defer reader.Close()
@@ -275,7 +242,7 @@ func initSessionStore() {
 	})
 }
 
-func initModelBroker() {
+func establishModelConnection() model.Broker {
 	dbDialect := "sqlite3"
 	sqlDb, err := sql.Open(dbDialect, "ghostbin.db")
 	//dbDialect := "postgres"
@@ -293,7 +260,7 @@ func initModelBroker() {
 	// TODO(DH): destruction callbacks
 	//pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 
-	pasteExpirator = gotimeout.NewExpirator(filepath.Join(arguments.root, "expiry.gob"), &ExpiringPasteStore{pasteStore})
+	pasteExpirator = gotimeout.NewExpirator(filepath.Join(arguments.root, "expiry.gob"), &ExpiringPasteStore{broker})
 	ephStore = gotimeout.NewMap()
 
 	go func() {
@@ -305,13 +272,12 @@ func initModelBroker() {
 		}
 	}()
 
-	grantStore = broker
-	pasteStore = broker
 	userStore = &PromoteFirstUserToAdminStore{
 		&ManglingUserStore{
 			broker,
 		},
 	}
+	return userStore
 }
 
 func initHandledRoutes(router *mux.Router) {
@@ -435,12 +401,12 @@ func main() {
 	}()
 
 	initSessionStore()
-	initModelBroker()
+	modelBroker := establishModelConnection()
 
 	routedControllers := []ControllerRoute{
 		{
 			PathPrefix: "/paste",
-			Controller: NewPasteController(ghostbin, pasteStore),
+			Controller: NewPasteController(ghostbin, modelBroker),
 		},
 		{
 			PathPrefix: "/auth",
@@ -448,7 +414,7 @@ func main() {
 		},
 		{
 			PathPrefix: "/session",
-			Controller: NewSessionController(ghostbin, pasteStore),
+			Controller: NewSessionController(ghostbin, modelBroker),
 		},
 	}
 
