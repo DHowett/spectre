@@ -29,14 +29,16 @@ func mergeLegacyPermsToV3(v3Perms map[model.PasteID]model.Permission, r *http.Re
 
 	var legacyEntries map[PasteID]PastePermission
 	// Attempt to get hold of the v2-style permission set.
-	if sessionPermissionSet, hasV2 := session.GetOk("permissions"); hasV2 {
+	if sessionPermissionSet, sessionHasV2 := session.GetOk("permissions"); hasV2 {
+		hasV2 = sessionHasV2
 		// presume user perms to have been migrated already. don't merge
 		v2Perms := sessionPermissionSet.(*PastePermissionSet)
 		legacyEntries = v2Perms.Entries
 	}
 
 	// Attempt to get hold of the original list of pastes
-	if oldPasteList, hasV1 := session.GetOk("pastes"); hasV1 {
+	if oldPasteList, sessionHasV1 := session.GetOk("pastes"); hasV1 {
+		hasV1 = sessionHasV1
 		if legacyEntries == nil {
 			legacyEntries = make(map[PasteID]PastePermission)
 		}
