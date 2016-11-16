@@ -100,7 +100,7 @@ func MigrateLegacyPermissionsForRequest(w http.ResponseWriter, r *http.Request) 
 		session.Delete("pastes")
 	}
 
-	merged = mergeV3PermsToUser(v3Perms, GetUser(r))
+	merged = mergeV3PermsToUser(v3Perms, GetLoggedInUser(r))
 	if hasV3 && merged {
 		// Had a user, had v3 perms: delete them, they're on the user now.
 		session.Delete("v3permissions")

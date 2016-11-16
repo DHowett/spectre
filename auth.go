@@ -11,16 +11,11 @@ import (
 	"github.com/DHowett/ghostbin/lib/templatepack"
 	"github.com/DHowett/ghostbin/model"
 	"github.com/golang/glog"
-	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/scrypt"
 )
 
 const USER_CACHE_MAX_ENTRIES int = 1000
-
-type contextKey int
-
-const userContextKey contextKey = 0
 
 type authReply struct {
 	Status        string            `json:"status,omitempty"`
@@ -35,8 +30,6 @@ type authController struct {
 }
 
 func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Request) {
-	session := sessionBroker.Get(r)
-
 	reply := &authReply{
 		Status:    "invalid",
 		ExtraData: make(map[string]string),
@@ -169,15 +162,12 @@ func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	if user != nil {
-		context.Set(r, userContextKey, user)
+		SetLoggedInUser(r, user)
 
 		MigrateLegacyPermissionsForRequest(w, r)
 
 		reply.Status = "valid"
 		reply.ExtraData["username"] = user.GetName()
-
-		session.Set(SessionScopeClient, "acct_id", user.GetID())
-		session.Save()
 
 		if token := r.FormValue("requested_auth_token"); token != "" {
 			ephStore.Put("A|U|"+token, user, 30*time.Minute)
@@ -188,9 +178,7 @@ func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (ac *authController) logoutPostHandler(w http.ResponseWriter, r *http.Request) {
-	session := sessionBroker.Get(r)
-	session.Delete(SessionScopeClient, "acct_id")
-	session.Save()
+	SetLoggedInUser(r, nil)
 }
 
 func (ac *authController) tokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -208,7 +196,7 @@ func (ac *authController) tokenPageHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	user := GetUser(r)
+	user := GetLoggedInUser(r)
 	if user != nil {
 		ephStore.Put("A|U|"+token, user, 30*time.Minute)
 	}
@@ -253,22 +241,6 @@ func (a *AuthChallengeProvider) Challenge(message []byte, key []byte) []byte {
 	shaHmac.Write(message)
 	challenge := shaHmac.Sum(nil)
 	return challenge
-}
-
-func GetUser(r *http.Request) model.User {
-	user, present := context.Get(r, userContextKey).(model.User)
-	if user == nil || !present {
-		session := sessionBroker.Get(r)
-		uid, ok := session.Get(SessionScopeClient, "acct_id").(uint)
-		if ok {
-			var err error
-			user, err = userStore.GetUserByID(uid)
-			if user != nil && err == nil {
-				context.Set(r, userContextKey, user)
-			}
-		}
-	}
-	return user
 }
 
 type ManglingUserStore struct {
@@ -386,7 +358,7 @@ func init() {
 		Name:     "auth",
 		Do: func() error {
 			templatePack.AddFunction("user", func(r *templatepack.Context) model.User {
-				return GetUser(r.Request)
+				return GetLoggedInUser(r.Request)
 			})
 			return nil
 		},

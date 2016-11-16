@@ -49,7 +49,7 @@ func (g *globalPermissionScope) Revoke(p model.Permission) error {
 
 func GetPastePermissionScope(pID model.PasteID, r *http.Request) model.PermissionScope {
 	var userScope model.PermissionScope
-	user := GetUser(r)
+	user := GetLoggedInUser(r)
 	if user != nil {
 		userScope = user.Permissions(model.PermissionClassPaste, pID)
 	}
@@ -71,7 +71,7 @@ func GetPastePermissionScope(pID model.PasteID, r *http.Request) model.Permissio
 }
 
 func SavePastePermissionScope(w http.ResponseWriter, r *http.Request) {
-	user := GetUser(r)
+	user := GetLoggedInUser(r)
 	if user == nil {
 		session := sessionBroker.Get(r)
 		session.Save()

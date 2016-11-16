@@ -44,7 +44,7 @@ func requiresUserPermission(permission model.Permission, handler http.Handler) h
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer errorRecoveryHandler(w)
 
-		user := GetUser(r)
+		user := GetLoggedInUser(r)
 		if user != nil {
 			if user.Permissions(model.PermissionClassUser).Has(permission) {
 				handler.ServeHTTP(w, r)
@@ -83,7 +83,7 @@ func sessionHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Assumption: due to the migration handler wrapper, a logged-in session will
 	// never have v3 perms and user perms.
-	user := GetUser(r)
+	user := GetLoggedInUser(r)
 	if user != nil {
 		uPastes, err := user.GetPastes()
 		if err == nil {
@@ -505,7 +505,14 @@ func main() {
 
 	// Static file routes.
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("public")))
-	http.Handle("/", sessionBroker.Handler(four.WrapHandler(router, RenderPageHandler("404"))))
+
+	var rootHandler http.Handler = router
+	rootHandler = four.WrapHandler(rootHandler, RenderPageHandler("404"))
+	rootHandler = UserLookupHandler(userStore, rootHandler)
+	// User depends on Session, so install that handler last.
+	rootHandler = sessionBroker.Handler(rootHandler)
+
+	http.Handle("/", rootHandler)
 
 	var addr string = arguments.addr
 	server := &http.Server{
