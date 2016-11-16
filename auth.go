@@ -26,7 +26,8 @@ type authReply struct {
 }
 
 type authController struct {
-	App Application
+	App   Application
+	Model model.Broker
 }
 
 func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Request) {
@@ -211,6 +212,13 @@ func (ac *authController) InitRoutes(router *mux.Router) {
 		router.Methods("GET").Path("/token/{token}").HandlerFunc(ac.tokenPageHandler)
 
 	ac.App.RegisterRouteForURLType(URLTypeAuthToken, authTokenRoute)
+}
+
+func NewAuthController(app Application, modelBroker model.Broker) Controller {
+	return &authController{
+		App:   app,
+		Model: modelBroker,
+	}
 }
 
 type AuthChallengeProvider struct{}

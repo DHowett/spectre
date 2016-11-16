@@ -483,18 +483,26 @@ func main() {
 	initSessionStore()
 	initModelBroker()
 
+	routedControllers := []ControllerRoute{
+		{
+			PathPrefix: "/paste",
+			Controller: NewPasteController(ghostbin, pasteStore),
+		},
+		{
+			PathPrefix: "/auth",
+			Controller: NewAuthController(ghostbin, userStore /* for now, b/c CreateUser */),
+		},
+	}
+
 	router := mux.NewRouter()
-	pasteRouter := router.PathPrefix("/paste").Subrouter()
-	authRouter := router.PathPrefix("/auth").Subrouter()
-	pasteController := &PasteController{
-		App:        ghostbin,
-		PasteStore: pasteStore,
+	// Set Strict Slashes because subrouters/controller routes can register on Path("/").
+	router.StrictSlash(true)
+	for _, rc := range routedControllers {
+		r := router.PathPrefix(rc.PathPrefix).Subrouter()
+		rc.Controller.InitRoutes(r)
 	}
-	pasteController.InitRoutes(pasteRouter)
-	authController := &authController{
-		App: ghostbin,
-	}
-	authController.InitRoutes(authRouter)
+
+	// This catches all the controller-free routes.
 	initHandledRoutes(router)
 
 	// Permission handler for all routes that may require a user context.

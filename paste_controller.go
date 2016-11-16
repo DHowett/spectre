@@ -51,9 +51,8 @@ func (e PasteTooLargeError) StatusCode() int {
 }
 
 type PasteController struct {
-	App Application
-
-	PasteStore model.Broker
+	App   Application
+	Model model.Broker
 }
 
 func (pc *PasteController) getPasteFromRequest(r *http.Request) (model.Paste, error) {
@@ -575,5 +574,11 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 	pc.App.RegisterRouteForURLType(URLTypePasteDelete, pasteDeleteRoute)
 	pc.App.RegisterRouteForURLType(URLTypePasteReport, pasteReportRoute)
 	pc.App.RegisterRouteForURLType(URLTypePasteAuthenticate, pasteAuthenticateRoute)
+}
 
+func NewPasteController(app Application, modelBroker model.Broker) Controller {
+	return &PasteController{
+		App:   app,
+		Model: modelBroker,
+	}
 }
