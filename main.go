@@ -403,7 +403,7 @@ func main() {
 	initSessionStore()
 	modelBroker := establishModelConnection()
 
-	routedControllers := []ControllerRoute{
+	routedControllers := []RoutedController{
 		{
 			PathPrefix: "/paste",
 			Controller: NewPasteController(ghostbin, modelBroker),

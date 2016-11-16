@@ -6,7 +6,7 @@ type Controller interface {
 	InitRoutes(*mux.Router)
 }
 
-type ControllerRoute struct {
+type RoutedController struct {
 	PathPrefix string
 	Controller Controller
 }
