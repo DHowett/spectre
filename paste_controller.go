@@ -66,7 +66,7 @@ func (pc *PasteController) getPasteFromRequest(r *http.Request) (model.Paste, er
 		}
 	}
 
-	return pasteStore.GetPaste(id, passphrase)
+	return pc.Model.GetPaste(id, passphrase)
 }
 
 type pasteHandlerFunc func(p model.Paste, w http.ResponseWriter, r *http.Request)
@@ -168,7 +168,7 @@ func (pc *PasteController) getPasteRawHandler(p model.Paste, w http.ResponseWrit
 }
 
 func (pc *PasteController) pasteGrantHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
-	grant, _ := grantStore.CreateGrant(p)
+	grant, _ := pc.Model.CreateGrant(p)
 
 	acceptURL := pc.App.GenerateURL(URLTypePasteGrantAccept, "grantkey", string(grant.GetID()))
 
@@ -193,7 +193,7 @@ func (pc *PasteController) pasteUngrantHandler(p model.Paste, w http.ResponseWri
 func (pc *PasteController) grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
 	v := mux.Vars(r)
 	grantKey := model.GrantID(v["grantkey"])
-	grant, err := grantStore.GetGrant(grantKey)
+	grant, err := pc.Model.GetGrant(grantKey)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -315,7 +315,7 @@ func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		p, err = pasteStore.CreatePaste()
+		p, err = pc.Model.CreatePaste()
 		if err != nil {
 			panic(err)
 		}
@@ -323,7 +323,7 @@ func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 		ephStore.Put(hashToken, p, 5*time.Minute)
 		ephStore.Put("P|H|"+p.GetID().String(), hashToken, 5*time.Minute)
 	} else {
-		p, err = pasteStore.CreateEncryptedPaste(CURRENT_ENCRYPTION_METHOD, []byte(password))
+		p, err = pc.Model.CreateEncryptedPaste(CURRENT_ENCRYPTION_METHOD, []byte(password))
 		if err != nil {
 			panic(err)
 		}
