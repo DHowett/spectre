@@ -56,7 +56,7 @@ func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 		}
 
 		// errors here are non-fatal.
-		newuser, _ := userStore.GetUserNamed(username)
+		newuser, _ := ac.Model.GetUserNamed(username)
 		if newuser == nil {
 			if confirm == "" {
 				reply.Status = "moreinfo"
@@ -68,7 +68,7 @@ func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 				reply.InvalidFields = []string{"password", "confirm_password"}
 				return
 			}
-			newuser, err := userStore.CreateUser(username)
+			newuser, err := ac.Model.CreateUser(username)
 			if err != nil {
 				// TODO(DH): propagate.
 				glog.Error(err)
@@ -125,9 +125,9 @@ func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 
 		if verifyResponseJSON["status"].(string) == "okay" {
 			email := verifyResponseJSON["email"].(string)
-			user, _ = userStore.GetUserNamed(email)
+			user, _ = ac.Model.GetUserNamed(email)
 			if user == nil {
-				user, err = userStore.CreateUser(email)
+				user, err = ac.Model.CreateUser(email)
 				if err != nil {
 					glog.Error(err)
 				}
