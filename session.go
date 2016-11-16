@@ -117,7 +117,8 @@ func (s *Session) getGorillaSession(scope SessionScope, create bool) (*sessions.
 			if !ok {
 				return nil, fmt.Errorf("sessions: unknown scope %d", scope)
 			}
-			session, err := store.Get(s.request, scopeCookieName[scope])
+			var err error // Using := below will create a new `session' in scope.
+			session, err = store.Get(s.request, scopeCookieName[scope])
 			if err != nil {
 				glog.Error(err)
 				return nil, err
