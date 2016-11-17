@@ -93,7 +93,23 @@ func (p *dbPaste) Commit() error {
 }
 
 func (p *dbPaste) Erase() error {
-	return p.broker.Delete(p).Delete(&dbPasteBody{PasteID: p.ID}).Error
+	tx := p.broker.Begin()
+	if err := tx.Delete(p).Error; err != nil && err != gorm.ErrRecordNotFound {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Delete(&dbPasteBody{PasteID: p.ID}).Error; err != nil && err != gorm.ErrRecordNotFound {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Delete(&dbUserPastePermission{PasteID: p.ID}).Error; err != nil && err != gorm.ErrRecordNotFound {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
 }
 
 func (p *dbPaste) Reader() (io.ReadCloser, error) {
