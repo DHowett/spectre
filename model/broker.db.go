@@ -174,7 +174,58 @@ func (broker *dbBroker) GetGrant(id GrantID) (Grant, error) {
 	return &grant, nil
 }
 
+func (broker *dbBroker) ReportPaste(p Paste) error {
+	pID := p.GetID()
+	result, err := broker.CommonDB().Exec("UPDATE paste_reports SET count = count + 1 WHERE paste_id = ?", pID.String())
+	if nrows, _ := result.RowsAffected(); nrows == 0 {
+		_, err = broker.CommonDB().Exec("INSERT INTO paste_reports(paste_id, count) VALUES(?, 1)", pID.String())
+		return err
+	}
+
+	return err
+}
+
+func (broker *dbBroker) GetReport(pID PasteID) (Report, error) {
+	row := broker.CommonDB().QueryRow("SELECT count FROM paste_reports WHERE paste_id = ?", pID.String())
+
+	var count int
+	err := row.Scan(&count)
+	if err == sql.ErrNoRows {
+		return nil, ErrNotFound
+	} else if err != nil {
+		// TODO(DH) errors?
+		return nil, err
+	}
+
+	return &dbReport{
+		PasteID: pID.String(),
+		Count:   count,
+		broker:  broker,
+	}, nil
+}
+
+func (broker *dbBroker) GetReports() ([]Report, error) {
+	reports := make([]Report, 0, 16)
+
+	rows, err := broker.CommonDB().Query("SELECT paste_id, count FROM paste_reports")
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		r := &dbReport{broker: broker}
+		rows.Scan(&r.PasteID, &r.Count)
+		reports = append(reports, r)
+	}
+	return reports, rows.Err()
+}
+
 func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.ChallengeProvider) (Broker, error) {
+	if dialect == "sqlite" || dialect == "sqlite3" {
+		sqlDb.Exec("PRAGMA foreign_keys = ON")
+	}
+
 	db, err := gorm.Open(dialect, sqlDb)
 	if err != nil {
 		return nil, err
@@ -190,6 +241,19 @@ func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.C
 	}
 
 	if err := db.AutoMigrate(interfacesToMigrate...).Error; err != nil {
+		return nil, err
+	}
+
+	pasteScope := db.NewScope(&dbPaste{})
+	pasteModelStruct := pasteScope.GetModelStruct()
+	pasteTableName := pasteModelStruct.TableName(db)
+
+	_, err = sqlDb.Exec(
+		`CREATE TABLE IF NOT EXISTS paste_reports(
+    paste_id VARCHAR(256) PRIMARY KEY REFERENCES ` + pasteTableName + `(id) ON DELETE CASCADE,
+    count int DEFAULT 0
+)`)
+	if err != nil {
 		return nil, err
 	}
 

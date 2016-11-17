@@ -17,4 +17,9 @@ type Broker interface {
 	CreateGrant(Paste) (Grant, error)
 	GetGrant(GrantID) (Grant, error)
 	//DestroyGrant(GrantID)
+
+	// Reports
+	ReportPaste(p Paste) error
+	GetReport(PasteID) (Report, error)
+	GetReports() ([]Report, error)
 }
