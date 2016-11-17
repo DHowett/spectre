@@ -93,6 +93,7 @@ func (p *dbPaste) Commit() error {
 }
 
 func (p *dbPaste) Erase() error {
+	// TODO(DH): Convert these manual cascades into FK constraints.
 	tx := p.broker.Begin()
 	if err := tx.Delete(p).Error; err != nil && err != gorm.ErrRecordNotFound {
 		tx.Rollback()
@@ -104,7 +105,10 @@ func (p *dbPaste) Erase() error {
 		return err
 	}
 
-	if err := tx.Delete(&dbUserPastePermission{PasteID: p.ID}).Error; err != nil && err != gorm.ErrRecordNotFound {
+	userPastePermissionScope := p.broker.NewScope(&dbUserPastePermission{})
+	userPastePermissionModelStruct := userPastePermissionScope.GetModelStruct()
+	userPastePermissionTableName := userPastePermissionModelStruct.TableName(p.broker.DB)
+	if _, err := tx.CommonDB().Exec("DELETE FROM "+userPastePermissionTableName+" WHERE paste_id = ?", p.ID); err != nil && err != sql.ErrNoRows {
 		tx.Rollback()
 		return err
 	}
