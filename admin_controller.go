@@ -68,7 +68,32 @@ func (ac *AdminController) adminPromoteHandler(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusSeeOther)
 }
 
+func (ac *AdminController) reportsHandler(w http.ResponseWriter, r *http.Request) {
+	reports, err := ac.Model.GetReports()
+	if err != nil {
+		RenderError(err, http.StatusInternalServerError, w)
+		return
+	}
+	templatePack.ExecutePage(w, r, "admin_reports", reports)
+}
+
 func (ac *AdminController) reportClearHandler(w http.ResponseWriter, r *http.Request) {
+	pID := model.PasteIDFromString(mux.Vars(r)["id"])
+	report, err := ac.Model.GetReport(pID)
+	if err == nil {
+		err = report.Destroy()
+	}
+
+	if err == model.ErrNotFound {
+		SetFlash(w, "error", fmt.Sprintf("Report for %v didn't exist.", pID))
+	} else if err != nil {
+		SetFlash(w, "error", fmt.Sprintf("Report for %v couldn't be deleted: %v", pID, err))
+	} else {
+		SetFlash(w, "success", fmt.Sprintf("Report for %v cleared.", pID))
+	}
+
+	w.Header().Set("Location", "/admin/reports")
+	w.WriteHeader(http.StatusFound)
 
 }
 
@@ -78,9 +103,9 @@ func (ac *AdminController) InitRoutes(router *mux.Router) {
 	adminRouter.Path("/").Handler(RenderPageHandler("admin_home"))
 
 	adminReportsRoute :=
-		adminRouter.Path("/reports").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			templatePack.ExecutePage(w, r, "admin_reports", reportStore.Reports)
-		}))
+		adminRouter.
+			Path("/reports").
+			HandlerFunc(ac.reportsHandler)
 
 	adminRouter.
 		Methods("POST").

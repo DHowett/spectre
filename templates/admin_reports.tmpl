@@ -7,7 +7,8 @@
 	</span>
 </div>
 <ul class="report-list">
-{{range $pasteID, $reportData := .Obj}}<li>
+{{range $report := .Obj}}<li>
+	{{- $pasteID := $report.GetPasteID -}}
 	<div class="report-buttons">
 		<a title="View Paste" href="/paste/{{$pasteID}}" target="_blank" class="btn btn-link"><i class="icon-file-text"></i></a>
 
@@ -26,12 +27,8 @@
 
 	<div class="report-contents">
 		<span class="paste-title">
-		<strong>{{$pasteID}}</strong>
-		<span class="paste-subtitle">
-		{{range $reportType, $count := $reportData}}
-			{{$reportType}} x{{$count}}
-		{{end}}
-		</span>
+			<strong>{{$pasteID}}</strong>
+			<span class="paste-subtitle">reports x{{$report.GetCount}}</span>
 		</span>
 		<div class="well paste-miniature">
 			<div class="code">with pasteFromID $pasteID || truncatedPasteBody . 5 || end</div>

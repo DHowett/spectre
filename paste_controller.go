@@ -392,6 +392,23 @@ func (pc *PasteController) authenticatePastePOSTHandler(w http.ResponseWriter, r
 	w.WriteHeader(http.StatusSeeOther)
 }
 
+func (pc *PasteController) pasteReportHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
+	if throttleAuthForRequest(r) {
+		RenderError(fmt.Errorf("Cool it."), 420, w)
+		return
+	}
+
+	err := pc.Model.ReportPaste(p)
+	if err != nil {
+		SetFlash(w, "error", fmt.Sprintf("Paste %v could not be reported.", p.GetID()))
+	} else {
+		SetFlash(w, "success", fmt.Sprintf("Paste %v reported.", p.GetID()))
+	}
+
+	w.Header().Set("Location", pc.App.GenerateURL(URLTypePasteShow, "id", p.GetID().String()).String())
+	w.WriteHeader(http.StatusFound)
+}
+
 // TODO(DH) MOVE
 func throttleAuthForRequest(r *http.Request) bool {
 	ip := SourceIPForRequest(r)
@@ -545,7 +562,7 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 	pasteReportRoute :=
 		router.Methods("POST").
 			Path("/{id}/report").
-			Handler(pc.wrapPasteHandler(reportPaste))
+			Handler(pc.wrapPasteHandler(pc.pasteReportHandler))
 
 	pasteAuthenticateRoute :=
 		router.Methods("GET").
