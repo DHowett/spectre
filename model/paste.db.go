@@ -17,6 +17,11 @@ type dbPasteBody struct {
 	Data    []byte
 }
 
+// gorm
+func (dbPasteBody) TableName() string {
+	return "paste_bodies"
+}
+
 type dbPaste struct {
 	ID        string `gorm:"type:varchar(256);unique"`
 	CreatedAt time.Time
@@ -33,6 +38,11 @@ type dbPaste struct {
 
 	encryptionKey []byte `gorm:"-"`
 	broker        *dbBroker
+}
+
+// gorm
+func (dbPaste) TableName() string {
+	return "pastes"
 }
 
 // gorm

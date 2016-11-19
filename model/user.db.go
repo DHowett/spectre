@@ -11,6 +11,11 @@ type dbUserPastePermission struct {
 	Permissions Permission
 }
 
+// gorm
+func (dbUserPastePermission) TableName() string {
+	return "user_paste_permissions"
+}
+
 type dbUser struct {
 	ID        uint `gorm:"primary_key"`
 	UpdatedAt time.Time
@@ -25,6 +30,11 @@ type dbUser struct {
 	PastePermissions []*dbUserPastePermission
 
 	broker *dbBroker
+}
+
+// gorm
+func (dbUser) TableName() string {
+	return "users"
 }
 
 func (u *dbUser) GetID() uint {

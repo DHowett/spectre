@@ -9,6 +9,11 @@ type dbGrant struct {
 	broker *dbBroker
 }
 
+// gorm
+func (dbGrant) TableName() string {
+	return "grants"
+}
+
 func (g *dbGrant) /* gorm */ BeforeCreate(scope *gorm.Scope) error {
 	id, err := generateRandomBase32String(20, 32)
 	if err != nil {
