@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/base32"
 	"fmt"
@@ -66,17 +65,6 @@ func YAMLUnmarshalFile(filename string, i interface{}) error {
 	}
 
 	return nil
-}
-
-func SlurpFile(path string) (out []byte, err error) {
-	var file *os.File
-	if file, err = os.Open(path); err == nil {
-		buf := &bytes.Buffer{}
-		io.Copy(buf, file)
-		out = buf.Bytes()
-		file.Close()
-	}
-	return
 }
 
 func BaseURLForRequest(r *http.Request) *url.URL {

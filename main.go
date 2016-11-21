@@ -177,7 +177,7 @@ func initTemplateFunctions() {
 }
 
 func loadOrGenerateSessionKey(path string, keyLength int) (data []byte, err error) {
-	data, err = SlurpFile(path)
+	data, err = ioutil.ReadFile(path)
 	if err != nil {
 		data = securecookie.GenerateRandomKey(keyLength)
 		err = ioutil.WriteFile(path, data, 0600)
