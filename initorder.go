@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/golang/glog"
+	log "github.com/Sirupsen/logrus"
 )
 
 type InitHandler struct {
@@ -46,7 +46,7 @@ func (i *Initializer) Do() error {
 			continue
 		}
 		if v.Do != nil {
-			glog.Infof("[INIT] %d:%s", v.Priority, v.Name)
+			log.Infof("[INIT] %d:%s", v.Priority, v.Name)
 			err := v.Do()
 			if err != nil {
 				return fmt.Errorf("init: error executing %d:%s: %v", v.Priority, v.Name, err)
@@ -64,7 +64,7 @@ func (i *Initializer) Redo() error {
 			continue
 		}
 		if v.Redo != nil {
-			glog.Infof("[RELOAD] %d:%s", v.Priority, v.Name)
+			log.Infof("[RELOAD] %d:%s", v.Priority, v.Name)
 			err := v.Redo()
 			if err != nil {
 				return fmt.Errorf("init: error executing %d:%s: %v", v.Priority, v.Name, err)

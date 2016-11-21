@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/DHowett/ghostbin/model"
+	log "github.com/Sirupsen/logrus"
 )
 
 type globalPermissionScope struct {
@@ -57,6 +58,7 @@ func GetPastePermissionScope(pID model.PasteID, r *http.Request) model.Permissio
 	session := sessionBroker.Get(r).Scope(SessionScopeServer)
 	v3EntriesI := session.Get("v3permissions")
 	v3Entries, ok := v3EntriesI.(map[model.PasteID]model.Permission)
+	log.Info(v3Entries)
 	if !ok || v3Entries == nil {
 		v3Entries = make(map[model.PasteID]model.Permission)
 		session.Set("v3permissions", v3Entries)

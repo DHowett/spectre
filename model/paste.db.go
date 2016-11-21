@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/DHowett/ghostbin/lib/sql/querybuilder"
-	"github.com/golang/glog"
+	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 )
 
@@ -129,7 +129,7 @@ func (p *dbPaste) Erase() error {
 func (p *dbPaste) Reader() (io.ReadCloser, error) {
 	var b dbPasteBody
 	if err := p.broker.Model(p).Related(&b, "PasteID").Error; err != nil {
-		glog.Errorln(err)
+		log.Errorln(err)
 		return devZero, nil
 	}
 	r := ioutil.NopCloser(bytes.NewReader(b.Data))

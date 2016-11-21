@@ -10,7 +10,7 @@ import (
 
 	"github.com/DHowett/ghostbin/lib/templatepack"
 	"github.com/DHowett/ghostbin/model"
-	"github.com/golang/glog"
+	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/scrypt"
 )
@@ -71,7 +71,7 @@ func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 			newuser, err := ac.Model.CreateUser(username)
 			if err != nil {
 				// TODO(DH): propagate.
-				glog.Error(err)
+				log.Error(err)
 				return
 			}
 			newuser.UpdateChallenge(password)
@@ -105,7 +105,7 @@ func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 		})
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			glog.Error("Persona Verify Request Failed: ", err)
+			log.Error("Persona Verify Request Failed: ", err)
 			reply.Reason = "persona verification failed"
 			reply.ExtraData["error"] = err.Error()
 			return
@@ -117,7 +117,7 @@ func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 		err = dec.Decode(&verifyResponseJSON)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			glog.Error("Persona Verify JSON Decode Failed: ", err)
+			log.Error("Persona Verify JSON Decode Failed: ", err)
 			reply.Reason = "persona verification failed"
 			reply.ExtraData["error"] = err.Error()
 			return
@@ -129,7 +129,7 @@ func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 			if user == nil {
 				user, err = ac.Model.CreateUser(email)
 				if err != nil {
-					glog.Error(err)
+					log.Error(err)
 				}
 			}
 			user.SetSource(model.UserSourceMozillaPersona)

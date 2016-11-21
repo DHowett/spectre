@@ -15,7 +15,7 @@ import (
 	"github.com/DHowett/ghostbin/lib/formatting"
 	"github.com/DHowett/ghostbin/model"
 
-	"github.com/golang/glog"
+	log "github.com/Sirupsen/logrus"
 	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/mux"
 )
@@ -469,7 +469,7 @@ func renderPaste(p model.Paste) template.HTML {
 		out, err := FormatPaste(p)
 
 		if err != nil {
-			glog.Errorf("Render for %s failed: (%s) output: %s", p.GetID(), err.Error(), out)
+			log.Errorf("Render for %s failed: (%s) output: %s", p.GetID(), err.Error(), out)
 			return template.HTML("There was an error rendering this paste.")
 		}
 
@@ -479,12 +479,12 @@ func renderPaste(p model.Paste) template.HTML {
 				renderCache.c = &lru.Cache{
 					MaxEntries: PASTE_CACHE_MAX_ENTRIES,
 					OnEvicted: func(key lru.Key, value interface{}) {
-						glog.Info("RENDER CACHE: Evicted ", key)
+						log.Info("RENDER CACHE: Evicted ", key)
 					},
 				}
 			}
 			renderCache.c.Add(p.GetID(), &renderedPaste{body: rendered, renderTime: time.Now()})
-			glog.Info("RENDER CACHE: Cached ", p.GetID())
+			log.Info("RENDER CACHE: Cached ", p.GetID())
 		}
 
 		return rendered

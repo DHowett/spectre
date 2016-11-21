@@ -25,7 +25,7 @@ import (
 	"github.com/DHowett/ghostbin/model"
 
 	"github.com/DHowett/gotimeout"
-	"github.com/golang/glog"
+	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
@@ -96,7 +96,7 @@ func pasteDestroyCallback(p model.Paste) {
 		return
 	}
 
-	glog.Info("RENDER CACHE: Removing ", p.GetID(), " due to destruction.")
+	log.Info("RENDER CACHE: Removing ", p.GetID(), " due to destruction.")
 	// Clear the cached render when a paste is destroyed
 	renderCache.c.Remove(p.GetID())
 }
@@ -189,7 +189,7 @@ func initSessionStore() {
 	sessionKeyFile := filepath.Join(arguments.root, "session.key")
 	sessionKey, err := loadOrGenerateSessionKey(sessionKeyFile, 32)
 	if err != nil {
-		glog.Fatal("session.key not found, and an attempt to create one failed: ", err)
+		log.Fatal("session.key not found, and an attempt to create one failed: ", err)
 	}
 
 	sesdir := filepath.Join(arguments.root, "sessions")
@@ -201,7 +201,7 @@ func initSessionStore() {
 	clientKeyFile := filepath.Join(arguments.root, "client_session_enc.key")
 	clientOnlySessionEncryptionKey, err := loadOrGenerateSessionKey(clientKeyFile, 32)
 	if err != nil {
-		glog.Fatal("client_session_enc.key not found, and an attempt to create one failed: ", err)
+		log.Fatal("client_session_enc.key not found, and an attempt to create one failed: ", err)
 	}
 	sensitiveSessionStore := sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
 	if Env() != EnvironmentDevelopment {
@@ -249,7 +249,7 @@ func establishModelConnection() model.Broker {
 		for {
 			select {
 			case err := <-pasteExpirator.ErrorChannel:
-				glog.Error("Expirator Error: ", err.Error())
+				log.Error("Expirator Error: ", err.Error())
 			}
 		}
 	}()
@@ -323,7 +323,7 @@ func (a *ghostbinApplication) GenerateURL(ut URLType, params ...string) *url.URL
 	}
 
 	if err != nil {
-		glog.Error("unable to generate url type <%s> (params %v): %v", ut, params, err)
+		log.Error("unable to generate url type <%s> (params %v): %v", ut, params, err)
 
 		return &url.URL{
 			Path: "/",
@@ -353,7 +353,7 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGHUP)
 	go func() {
 		for _ = range sigChan {
-			glog.Info("Received SIGHUP")
+			log.Info("Received SIGHUP")
 			globalInit.Redo()
 		}
 	}()
@@ -385,6 +385,7 @@ func main() {
 	router.StrictSlash(true)
 	for _, rc := range routedControllers {
 		r := router.PathPrefix(rc.PathPrefix).Subrouter()
+		log.Infof("Registering routes for %T on <%s>", rc.Controller, rc.PathPrefix)
 		rc.Controller.InitRoutes(r)
 	}
 
