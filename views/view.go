@@ -5,6 +5,8 @@ import (
 	"html/template"
 	"net/http"
 	"sync"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // viewContext represents the template context passed to each render.
@@ -64,10 +66,19 @@ type View struct {
 
 func (v *View) subtemplate(vctx *viewContext, name string) template.HTML {
 	buf := &bytes.Buffer{}
-	err := v.tmpl.ExecuteTemplate(buf, vctx.page+"_"+name, vctx)
-	if err != nil {
+	st := v.tmpl.Lookup(vctx.page + "_" + name)
+	if st == nil {
 		// We return an empty snippet here, as a subtemplate failing to exist is non-fatal.
 		return template.HTML("")
+	}
+
+	err := st.Execute(buf, vctx)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"page":        vctx.page,
+			"subtemplate": name,
+			"error":       err,
+		}).Error("failed to service subtemplate request")
 	}
 	return template.HTML(buf.String())
 }
