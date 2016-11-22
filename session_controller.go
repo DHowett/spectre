@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -12,6 +13,8 @@ import (
 type SessionController struct {
 	App   Application
 	Model model.Broker
+
+	sessionView *views.View
 }
 
 func (sc *SessionController) getPasteIDs(r *http.Request) []model.PasteID {
@@ -42,13 +45,22 @@ func (sc *SessionController) getPasteIDs(r *http.Request) []model.PasteID {
 	return ids
 }
 
-func (sc *SessionController) sessionHandler(w http.ResponseWriter, r *http.Request) {
-	ids := sc.getPasteIDs(r)
-	sessionPastes, err := sc.Model.GetPastes(ids)
-	if err != nil {
-		panic(err)
-	}
-	templatePack.ExecutePage(w, r, "session", sessionPastes)
+type sessionPastesContextKeyType int
+
+const sessionPastesContextKey sessionPastesContextKeyType = 0
+
+func (sc *SessionController) sessionHandlerWrapper(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ids := sc.getPasteIDs(r)
+		sessionPastes, err := sc.Model.GetPastes(ids)
+		if err != nil {
+			// TODO(DH) no panic
+			panic(err)
+		}
+
+		r = r.WithContext(context.WithValue(r.Context(), sessionPastesContextKey, sessionPastes))
+		handler.ServeHTTP(w, r)
+	})
 }
 
 func (sc *SessionController) sessionRawHandler(w http.ResponseWriter, r *http.Request) {
@@ -61,13 +73,26 @@ func (sc *SessionController) sessionRawHandler(w http.ResponseWriter, r *http.Re
 	w.Write([]byte(strings.Join(stringIDs, " ")))
 }
 
+func (sc *SessionController) ViewValue(r *http.Request, name string) interface{} {
+	if r == nil {
+		return nil
+	}
+
+	if name == "pastes" {
+		return r.Context().Value(sessionPastesContextKey)
+	}
+	return nil
+}
+
 func (sc *SessionController) InitRoutes(router *mux.Router) {
-	router.Path("/").HandlerFunc(sc.sessionHandler)
+	router.Path("/").Handler(sc.sessionHandlerWrapper(sc.sessionView))
 	router.Path("/raw").HandlerFunc(sc.sessionRawHandler)
 }
 
 func (sc *SessionController) BindViews(viewModel *views.Model) error {
-	return nil
+	var err error
+	sc.sessionView, err = viewModel.Bind(views.PageID("session"), sc)
+	return err
 }
 
 func NewSessionController(app Application, modelBroker model.Broker) Controller {
