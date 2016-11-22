@@ -1,14 +1,16 @@
-{{define "partial_login_logout"}}
+{{define "partial_login_logout" -}}
+{{- $user := global . "user" -}}
 <div class="blocker hide"><div class="spinner"><i class="icon icon-spinner icon-effect-spin"> </i></div></div>
-{{if user .}}
-<p>You are logged in.</p>
-<button type="button" id="logout" class="btn"><i class="icon icon-logout"> </i>Log Out</button>
-<script type="text/javascript">
-$("button#logout").on("click", function() {
-	Ghostbin.logout();
-});
-</script>
-{{else}}
+
+{{- if $user -}}
+	<p>You are logged in.</p>
+	<button type="button" id="logout" class="btn"><i class="icon icon-logout"> </i>Log Out</button>
+	<script type="text/javascript">
+	$("button#logout").on("click", function() {
+		Ghostbin.logout();
+	});
+	</script>
+{{- else -}}
 <p><small>Ghostbin user accounts exist solely for keeping track of your own pastes.<br>No personally-identifying information is
 retained as part of your user account&mdash;even when you use <span class="nowrap"><i class="icon icon-persona"> </i>Email</span>. Promise.</small></p>
 <div class="well well-small">
@@ -60,6 +62,6 @@ $("button#login_persona").on("click", function() {
 	</span>
 </div>
 <div class="well">
-{{partial . "login_logout"}}
+{{template "partial_login_logout" .}}
 </div>
 {{end}}
