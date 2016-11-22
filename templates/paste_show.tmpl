@@ -1,56 +1,78 @@
-{{define "paste_show_title"}}{{.Obj.GetID}}{{end}}
-{{define "paste_show_body"}}{{$language := (languageNamed .Obj.GetLanguageName)}}
+{{define "paste_show_title" -}}
+{{- with (local . "paste") -}}
+	{{.GetID}}
+{{- end -}}
+{{- end}}
+
+{{define "paste_show_body" -}}
+{{- $paste := (local . "paste") -}}
+{{- $language := (getLanguageNamed $paste.GetLanguageName) -}}
 <div class="paste-toolbox unselectable">
 	{{template "home-button"}}
 	<span class="paste-title">
-		<strong>{{with .Obj.GetTitle}}{{.}}{{else}}Paste {{.Obj.GetID}}{{end}}</strong>
+		<strong>
+			{{- with $paste.GetTitle -}}
+				{{- . -}}
+			{{- else -}}
+				Paste {{$paste.GetID -}}
+			{{- end -}}
+		</strong>
 		<span class="paste-subtitle">{{$language.Name}}
-			{{if .Obj.IsEncrypted}}<i class="icon-lock" title="Encrypted"></i>{{end}}{{if pasteWillExpire .Obj}}<i class="icon-clock" data-reftime="{{now.UTC.Unix}}" data-value="{{.Obj.ExpirationTime.UTC.Unix}}" id="expirationIcon"></i>{{end}}
+			{{- if $paste.IsEncrypted -}}
+				<i class="icon-lock" title="Encrypted"></i>
+			{{- end -}}
+			{{- if $paste.GetExpiration -}}
+				<i class="icon-clock" data-reftime="{{now.UTC.Unix}}" data-value="{{$paste.ExpirationTime.UTC.Unix}}" id="expirationIcon"></i>
+			{{- end -}}
 		</span>
 	</span>
 	<div class="paste-toolbox-buttons pull-right" id="desktop-paste-control-container">
 		<div id="paste-controls">
 			<div class="btn-group">
-				<a title="View Raw" href="{{pasteURL "raw" .Obj}}" class="btn btn-inverse">
+				<a title="View Raw" href="{{generatePasteURL "raw" $paste}}" class="btn btn-inverse">
 					<i class="icon-file-text icon-large"></i>
 					<span class="button-title">View Raw</span>
 				</a>
-				<a title="Download" href="{{pasteURL "download" .Obj}}" class="btn btn-inverse">
+				<a title="Download" href="{{generatePasteURL "download" $paste}}" class="btn btn-inverse">
 					<i class="icon-download icon-large"></i>
 					<span class="button-title">Download</span>
 				</a>
 			</div>
-			{{if not .Obj.IsEncrypted}}
-			<button title="Report" type="button" data-target="#reportModal" data-toggle="modal" class="btn btn-inverse">
-				<i class="icon-flag icon-large"></i>
-				<span class="button-title">Report</span>
-			</button>
-			{{end}}
+			{{- if not $paste.IsEncrypted -}}
+				<button title="Report" type="button" data-target="#reportModal" data-toggle="modal" class="btn btn-inverse">
+					<i class="icon-flag icon-large"></i>
+					<span class="button-title">Report</span>
+				</button>
+			{{- end -}}
 		</div>
-		{{if editAllowed .}}
+		{{if (local . "canEdit")}}
 		<div class="btn-group">
 			<button title="Grant" type="button" data-target="#grantModal" data-toggle="modal" class="btn btn-inverse">
 				<i class="icon-lemon icon-large"></i>
 			</button>
 
-			<a title="Edit" href="{{pasteURL "edit" .Obj}}" class="btn btn-primary">
+			<a title="Edit" href="{{generatePasteURL "edit" $paste}}" class="btn btn-primary">
 				<i class="icon-edit icon-large"></i>
 			</a>
 		</div>
 		{{end}}
 	</div>
 </div>
-{{if not $language.SuppressLineNumbers}}<div class="code code-line-numbers unselectable" id="line-numbers" aria-hidden="true"></div>{{end}}
-<div class="code{{if $language.DisplayStyle}} code-{{$language.DisplayStyle}}{{end}}" id="code">{{render .Obj}}</div>
+{{if not $language.SuppressLineNumbers -}}
+	<div class="code code-line-numbers unselectable" id="line-numbers" aria-hidden="true"></div>
+{{- end}}
+<div class="code{{if $language.DisplayStyle}} code-{{$language.DisplayStyle}}{{end}}" id="code">
+	{{- $paste.GetRenderedBody -}}
+</div>
 <div class="well visible-phone unselectable" id="phone-paste-control-container"></div>
 <div id="reportModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
-        <form name="reportForm" action="{{pasteURL "report" .Obj}}" method="post">
+        <form name="reportForm" action="{{generatePasteURL "report" $paste}}" method="post">
         <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
                 <h3>Report Paste</h3>
         </div>
         <div class="modal-body">
-		<p>For what reason do you wish to report {{with .Obj.GetTitle}}<strong>{{.}}</strong>{{else}}paste <strong>{{.Obj.GetID}}</strong>{{end}}?</p>
+		<p>For what reason do you wish to report {{with $paste.GetTitle}}<strong>{{.}}</strong>{{else}}paste <strong>{{$paste.GetID}}</strong>{{end}}?</p>
 		<p><select name="reason">
 			<option value="personal">Personal Information</option>
 			<option value="spam">Spam</option>
@@ -63,13 +85,13 @@
 	</form>
 </div>
 <div id="grantModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
-	<form name="grantForm" action="{{pasteURL "grant" .Obj}}" method="get">
+	<form name="grantForm" action="{{generatePasteURL "grant" $paste}}" method="get">
 	<div class="modal-header">
 		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
 		<h3>Grant Edit Permission</h3>
 	</div>
 	<div class="modal-body">
-		<p>Are you sure you want to grant permission to another user to edit {{with .Obj.GetTitle}}<strong>{{.}}</strong>{{else}}paste <strong>{{.Obj.GetID}}</strong>{{end}}?</p>
+		<p>Are you sure you want to grant permission to another user to edit {{with $paste.GetTitle}}<strong>{{.}}</strong>{{else}}paste <strong>{{$paste.GetID}}</strong>{{end}}?</p>
 		<p>This is not reversible. Grant links will be valid for 48 hours.</p>
 		<div class="grant-tutorial">
 			<p>Send the following URLs (one per intended editor) to collaborators for redemption.</p>
@@ -91,7 +113,7 @@ $("#newGrantButton").on("click", function() {
 	$.ajax({
 		"method": "POST",
 		"data": null,
-		"url": "{{pasteURL "grant" .Obj}}",
+		"url": "{{generatePasteURL "grant" $paste}}",
 		"success": function(e) {
 			var template = $("#grant-item-template");
 			var newItem = template.clone();

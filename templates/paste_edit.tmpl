@@ -1,14 +1,20 @@
-{{define "paste_edit_title"}}{{.Obj.GetID}}{{end}}
+{{define "paste_edit_title" -}}
+{{- with local . "paste" -}}
+	{{.GetID}}
+{{- end -}}
+{{- end}}
+
 {{define "paste_edit_body"}}
+{{- $paste := local . "paste" -}}
 {{template "paste_edit_partial" .}}
 <div id="deleteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
-	<form name="deleteForm" action="{{pasteURL "delete" .Obj}}" method="post">
+	<form name="deleteForm" action="{{generatePasteURL "delete" $paste}}" method="post">
 	<div class="modal-header">
 		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
 		<h3>Confirm Deletion</h3>
 	</div>
 	<div class="modal-body">
-		<p>Are you sure you want to delete paste <strong>{{.Obj.GetID}}</strong>?</p>
+		<p>Are you sure you want to delete paste <strong>{{$paste.GetID}}</strong>?</p>
 	</div>
 	<div class="modal-footer">
 		<button type="submit" class="btn btn-danger">Destroy! Annihilate!</button>
@@ -16,37 +22,44 @@
 	</div>
 	</form>
 </div>
-{{end}}
+{{- end}}
 
-{{define "paste_edit_partial"}}
-<form id="pasteForm" action="{{if .Obj}}{{pasteURL "edit" .Obj}}{{else}}/paste/new{{end}}" method="post" data-context="{{if .Obj}}edit{{else}}new{{end}}">
+{{define "paste_edit_partial" -}}
+{{- $paste := local . "paste" -}}
+<form id="pasteForm" action="{{if $paste}}{{generatePasteURL "edit" $paste}}{{else}}/paste/new{{end}}" method="post" data-context="{{if $paste}}edit{{else}}new{{end}}">
 <div class="sizefix clearfix">
 <div class="paste-toolbox">
 	{{template "home-button"}}
-	<span class="paste-title"><strong id="editable-paste-title" data-placeholder="{{with .Obj}}Paste {{.GetID}}{{else}}New Paste{{end}}" contenteditable>{{with .Obj}}{{.GetTitle}}{{end}}</strong></span>
+	<span class="paste-title"><strong id="editable-paste-title" data-placeholder="{{with $paste}}Paste {{.GetID}}{{else}}New Paste{{end}}" contenteditable>{{with $paste}}{{.GetTitle}}{{end}}</strong></span>
 	<div class="paste-toolbox-buttons pull-right" id="desktop-paste-control-container">
 		<div id="paste-controls">
-			{{if not .Obj}}
+			{{if not $paste -}}
 			<button id="optionsButton" title="Options" type="button" class="btn btn-inverse">
 				<i class="icon-wrench icon-large"></i>
 				<span class="button-title">Options</span>
 			</button>
-			{{end}}
+			{{- end}}
 			<button id="expirationButton" title="Expiration" type="button" class="btn btn-inverse">
 				<i class="icon-clock icon-large"></i>
 				<span class="button-title">Expiration</span>
 				<span class="button-data-label"></span>
 			</button>
-			{{if not .Obj}}{{if encryptionAllowed .}}<button id="encryptionButton" title="Encryption" type="button" class="btn btn-inverse">
-				<i id="encryptionIcon" class="icon-lock-open-alt icon-large"></i>
-				<span class="button-title">Encryption</span>
-				<span class="button-data-label"></span>
-			</button>{{end}}{{end}}
-			{{template "s2langbox" .Obj}}
-			{{if .Obj}}<button title="Delete" type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
-				<i class="icon-trash icon-large"></i>
-				<span class="button-title">Delete</span>
-			</button>{{end}}
+			{{if not $paste -}}
+				{{- if global . "encryption" -}}
+				<button id="encryptionButton" title="Encryption" type="button" class="btn btn-inverse">
+					<i id="encryptionIcon" class="icon-lock-open-alt icon-large"></i>
+					<span class="button-title">Encryption</span>
+					<span class="button-data-label"></span>
+				</button>
+				{{- end -}}
+			{{- end}}
+			{{template "s2langbox" $paste}}
+			{{if $paste -}}
+				<button title="Delete" type="button" data-target="#deleteModal" data-toggle="modal" class="btn btn-danger">
+					<i class="icon-trash icon-large"></i>
+					<span class="button-title">Delete</span>
+				</button>
+			{{- end}}
 		</div>
 		<button title="Save" type="submit" class="btn btn-primary">
 			<i class="icon-save icon-large"></i>
@@ -55,11 +68,15 @@
 </div>
 <div class="code code-line-numbers unselectable" id="line-numbers" aria-hidden="true"></div>
 <div class="textarea-height-wrapper">
-<textarea id="code-editor" autofocus="autofocus" tabindex="1" class="code" name="text" rows="20" wrap="off">{{if .Obj}}{{pasteBody .Obj}}{{end}}</textarea>
+<textarea id="code-editor" autofocus="autofocus" tabindex="1" class="code" name="text" rows="20" wrap="off">
+	{{- if $paste -}}
+		NOT ACTUAL PASTE CONTENT - {{- html $paste.GetRenderedBody -}} -
+	{{- end -}}
+</textarea>
 </div>
 </div>
 <div class="well visible-phone" id="phone-paste-control-container"></div>
-<input type="hidden" name="expire" value="{{if .Obj}}{{.Obj.GetExpiration}}{{else}}-1{{end}}">
+<input type="hidden" name="expire" value="{{if $paste}}{{$paste.GetExpiration}}{{else}}-1{{end}}">
 <input type="hidden" name="password" value="">
 <input type="hidden" name="title" value="">
 <div id="expireModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
@@ -82,6 +99,11 @@
 	</div>
 </div>
 </form>
-{{end}}
+{{- end}}
 
-{{define "s2langbox"}}<input type="hidden" class="dropdown" id="langbox" name="lang"{{if .GetLanguageName}} data-selected="{{(languageNamed .GetLanguageName).ID}}"{{end}}>{{end}}
+{{define "s2langbox" -}}
+<input type="hidden" class="dropdown" id="langbox" name="lang"
+	{{- with .GetLanguageName -}}
+		data-selected="{{getLanguageNamed .}}"
+	{{- end -}}>
+{{- end}}

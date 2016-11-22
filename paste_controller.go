@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -51,31 +52,89 @@ func (e PasteTooLargeError) StatusCode() int {
 	return http.StatusBadRequest
 }
 
+// renderedPaste is stored in PasteController's renderCache.
+type renderedPaste struct {
+	body       template.HTML
+	renderTime time.Time
+}
+
 type PasteController struct {
 	App   Application
 	Model model.Broker
+
+	Config *Configuration
+
+	renderCacheMu sync.RWMutex
+	renderCache   *lru.Cache
+
+	// General purpose views.
+	pasteShowView         *views.View
+	pasteEditView         *views.View
+	pasteDeleteView       *views.View
+	pasteAuthenticateView *views.View
+
+	// Error views.
+	pasteAuthenticateDisallowedView *views.View
+	pasteNotFoundView               *views.View
 }
 
-func (pc *PasteController) getPasteFromRequest(r *http.Request) (model.Paste, error) {
-	id := model.PasteIDFromString(mux.Vars(r)["id"])
-	var passphrase []byte
+type pasteViewFacade struct {
+	model.Paste
+	c *PasteController
+}
 
-	session := sessionBroker.Get(r)
-	if pasteKeys, ok := session.Get(SessionScopeSensitive, "paste_passphrases").(map[model.PasteID][]byte); ok {
-		if _key, ok := pasteKeys[id]; ok {
-			passphrase = _key
+func (pv *pasteViewFacade) GetRenderedBody() template.HTML {
+	return pv.c.renderPaste(pv.Paste)
+}
+
+func (pv *pasteViewFacade) ExpirationTime() time.Time {
+	// TODO(DH) lol
+	return time.Now()
+}
+
+type pasteSessionKeyType int
+
+const pasteSessionKey pasteSessionKeyType = 0
+
+func (pc *PasteController) getPasteFromRequest(r *http.Request) (model.Paste, *http.Request, error) {
+	p, ok := r.Context().Value(pasteSessionKey).(model.Paste)
+	if !ok {
+		id := model.PasteIDFromString(mux.Vars(r)["id"])
+		var passphrase []byte
+
+		session := sessionBroker.Get(r)
+		if pasteKeys, ok := session.Get(SessionScopeSensitive, "paste_passphrases").(map[model.PasteID][]byte); ok {
+			if _key, ok := pasteKeys[id]; ok {
+				passphrase = _key
+			}
 		}
+
+		p, err := pc.Model.GetPaste(id, passphrase)
+		p = &pasteViewFacade{p, pc}
+		r = r.WithContext(context.WithValue(r.Context(), pasteSessionKey, p))
+		return p, r, err
+	}
+	return p, r, nil
+}
+
+func (pc *PasteController) ViewValue(r *http.Request, name string) interface{} {
+	if r == nil {
+		return nil
 	}
 
-	return pc.Model.GetPaste(id, passphrase)
+	switch name {
+	case "paste":
+		// explicitly ignoring request as it's immutable and err as we can't propagate it.
+		p, _, _ := pc.getPasteFromRequest(r)
+		return p
+	}
+	return nil
 }
 
-type pasteHandlerFunc func(p model.Paste, w http.ResponseWriter, r *http.Request)
-
-func (pc *PasteController) wrapPasteHandler(handler pasteHandlerFunc) http.Handler {
+func (pc *PasteController) pasteHandlerWrapper(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := model.PasteIDFromString(mux.Vars(r)["id"])
-		p, err := pc.getPasteFromRequest(r)
+		_, r, err := pc.getPasteFromRequest(r)
 
 		if err == model.ErrPasteEncrypted || err == model.ErrInvalidKey {
 			url := pc.App.GenerateURL(URLTypePasteAuthenticate, "id", id.String())
@@ -94,7 +153,7 @@ func (pc *PasteController) wrapPasteHandler(handler pasteHandlerFunc) http.Handl
 			if err != nil {
 				if err == model.ErrNotFound {
 					w.WriteHeader(http.StatusNotFound)
-					templatePack.ExecutePage(w, r, "paste_not_found", id)
+					pc.pasteNotFoundView.Exec(w, r)
 				} else {
 					w.WriteHeader(http.StatusInternalServerError)
 					templatePack.ExecutePage(w, r, "error", err)
@@ -102,22 +161,26 @@ func (pc *PasteController) wrapPasteHandler(handler pasteHandlerFunc) http.Handl
 				return
 			}
 
-			handler(p, w, r)
+			handler.ServeHTTP(w, r)
 		}
 	})
 }
 
-func (pc *PasteController) wrapPasteEditHandler(fn pasteHandlerFunc) pasteHandlerFunc {
-	return func(p model.Paste, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) pasteEditHandlerWrapper(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Ignoring err; it was handled above us.
+		p, r, _ := pc.getPasteFromRequest(r)
 		if !isEditAllowed(p, r) {
 			accerr := PasteAccessDeniedError{"modify", p.GetID()}
 			panic(accerr)
 		}
-		fn(p, w, r)
-	}
+		handler.ServeHTTP(w, r)
+	})
 }
 
-func (pc *PasteController) getPasteJSONHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) getPasteJSONHandler(w http.ResponseWriter, r *http.Request) {
+	p, _, _ := pc.getPasteFromRequest(r)
+
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	reader, _ := p.Reader()
@@ -137,7 +200,9 @@ func (pc *PasteController) getPasteJSONHandler(p model.Paste, w http.ResponseWri
 	w.Write(json)
 }
 
-func (pc *PasteController) getPasteRawHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) getPasteRawHandler(w http.ResponseWriter, r *http.Request) {
+	p, _, _ := pc.getPasteFromRequest(r)
+
 	w.Header().Set("Access-Control-Allow-Origin", "null")
 	w.Header().Set("Vary", "Origin")
 
@@ -168,7 +233,9 @@ func (pc *PasteController) getPasteRawHandler(p model.Paste, w http.ResponseWrit
 	io.Copy(w, reader)
 }
 
-func (pc *PasteController) pasteGrantHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) pasteGrantHandler(w http.ResponseWriter, r *http.Request) {
+	p, _, _ := pc.getPasteFromRequest(r)
+
 	grant, _ := pc.Model.CreateGrant(p)
 
 	acceptURL := pc.App.GenerateURL(URLTypePasteGrantAccept, "grantkey", string(grant.GetID()))
@@ -182,7 +249,9 @@ func (pc *PasteController) pasteGrantHandler(p model.Paste, w http.ResponseWrite
 	})
 }
 
-func (pc *PasteController) pasteUngrantHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) pasteUngrantHandler(w http.ResponseWriter, r *http.Request) {
+	p, _, _ := pc.getPasteFromRequest(r)
+
 	GetPastePermissionScope(p.GetID(), r).Revoke(model.PastePermissionAll)
 	SavePastePermissionScope(w, r)
 
@@ -213,7 +282,9 @@ func (pc *PasteController) grantAcceptHandler(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func (pc *PasteController) pasteUpdate(p model.Paste, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) pasteUpdate(w http.ResponseWriter, r *http.Request) {
+	p, _, _ := pc.getPasteFromRequest(r)
+
 	pc.pasteUpdateCore(p, w, r, false)
 }
 
@@ -347,7 +418,9 @@ func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 	pc.pasteUpdateCore(p, w, r, true)
 }
 
-func (pc *PasteController) pasteDelete(p model.Paste, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) pasteDelete(w http.ResponseWriter, r *http.Request) {
+	p, _, _ := pc.getPasteFromRequest(r)
+
 	oldId := p.GetID()
 	p.Erase()
 
@@ -393,11 +466,13 @@ func (pc *PasteController) authenticatePastePOSTHandler(w http.ResponseWriter, r
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func (pc *PasteController) pasteReportHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) pasteReportHandler(w http.ResponseWriter, r *http.Request) {
 	if throttleAuthForRequest(r) {
 		RenderError(fmt.Errorf("Cool it."), 420, w)
 		return
 	}
+
+	p, _, _ := pc.getPasteFromRequest(r)
 
 	err := pc.Model.ReportPaste(p)
 	if err != nil {
@@ -441,63 +516,56 @@ func throttleAuthForRequest(r *http.Request) bool {
 	return false
 }
 
-type renderedPaste struct {
-	body       template.HTML
-	renderTime time.Time
-}
-
-var renderCache struct {
-	mu sync.RWMutex
-	c  *lru.Cache
-}
-
 // TODO(DH) MOVE
-func renderPaste(p model.Paste) template.HTML {
-	renderCache.mu.RLock()
+func (pc *PasteController) renderPaste(p model.Paste) template.HTML {
+	logger := log.WithFields(log.Fields{
+		"ctx":   "cache",
+		"paste": p.GetID(),
+	})
+
+	pc.renderCacheMu.RLock()
+
 	var cached *renderedPaste
 	var cval interface{}
 	var ok bool
-	if renderCache.c != nil {
-		if cval, ok = renderCache.c.Get(p.GetID()); ok {
+	if pc.renderCache != nil {
+		if cval, ok = pc.renderCache.Get(p.GetID()); ok {
 			cached = cval.(*renderedPaste)
 		}
 	}
-	renderCache.mu.RUnlock()
+
+	pc.renderCacheMu.RUnlock()
 
 	if !ok || cached.renderTime.Before(p.GetModificationTime()) {
-		defer renderCache.mu.Unlock()
-		renderCache.mu.Lock()
+		defer pc.renderCacheMu.Unlock()
+		pc.renderCacheMu.Lock()
 		out, err := FormatPaste(p)
 
 		if err != nil {
-			log.Errorf("Render for %s failed: (%s) output: %s", p.GetID(), err.Error(), out)
+			logger.WithField("err", err).Errorf("render failed: %s", out)
 			return template.HTML("There was an error rendering this paste.")
 		}
 
 		rendered := template.HTML(out)
 		if !p.IsEncrypted() {
-			if renderCache.c == nil {
-				renderCache.c = &lru.Cache{
+			if pc.renderCache == nil {
+				pc.renderCache = &lru.Cache{
 					MaxEntries: PASTE_CACHE_MAX_ENTRIES,
 					OnEvicted: func(key lru.Key, value interface{}) {
-						log.Info("RENDER CACHE: Evicted ", key)
+						log.WithFields(log.Fields{
+							"ctx":   "cache",
+							"paste": key,
+						}).Info("evicted paste")
 					},
 				}
 			}
-			renderCache.c.Add(p.GetID(), &renderedPaste{body: rendered, renderTime: time.Now()})
-			log.Info("RENDER CACHE: Cached ", p.GetID())
+			pc.renderCache.Add(p.GetID(), &renderedPaste{body: rendered, renderTime: time.Now()})
+			logger.Info("cached")
 		}
 
 		return rendered
 	} else {
 		return cached.body
-	}
-}
-
-func (pc *PasteController) generateRenderPageHandler(page string) pasteHandlerFunc {
-	// We don't defer the error handler here because it happened a step up
-	return func(p model.Paste, w http.ResponseWriter, r *http.Request) {
-		templatePack.ExecutePage(w, r, page, p)
 	}
 }
 
@@ -508,77 +576,78 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 
 	router.Methods("POST").
 		Path("/new").
-		Handler(http.HandlerFunc(pc.pasteCreate))
+		HandlerFunc(pc.pasteCreate)
 
 	router.Methods("GET").
 		Path("/{id}.json").
-		Handler(pc.wrapPasteHandler(pc.getPasteJSONHandler))
+		Handler(pc.pasteHandlerWrapper(http.HandlerFunc(pc.getPasteJSONHandler)))
 
 	pasteShowRoute :=
 		router.Methods("GET").
 			Path("/{id}").
-			Handler(pc.wrapPasteHandler(pc.generateRenderPageHandler("paste_show")))
+			Handler(pc.pasteHandlerWrapper(pc.pasteShowView))
 
 	pasteGrantRoute :=
 		router.Methods("POST").
 			Path("/{id}/grant/new").
-			Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.pasteGrantHandler)))
+			Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(http.HandlerFunc(pc.pasteGrantHandler))))
 
 	pasteGrantAcceptRoute :=
 		router.Methods("GET").
 			Path("/grant/{grantkey}/accept").
-			Handler(http.HandlerFunc(pc.grantAcceptHandler))
+			HandlerFunc(pc.grantAcceptHandler)
 
 	router.Methods("GET").
 		Path("/{id}/disavow").
-		Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.pasteUngrantHandler)))
+		Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(http.HandlerFunc(pc.pasteUngrantHandler))))
 
 	pasteRawRoute :=
 		router.Methods("GET").
 			Path("/{id}/raw").
-			Handler(pc.wrapPasteHandler(pc.getPasteRawHandler))
+			Handler(pc.pasteHandlerWrapper(http.HandlerFunc(pc.getPasteRawHandler)))
 
 	pasteDownloadRoute :=
 		router.Methods("GET").
 			Path("/{id}/download").
-			Handler(pc.wrapPasteHandler(pc.getPasteRawHandler))
+			Handler(pc.pasteHandlerWrapper(http.HandlerFunc(pc.getPasteRawHandler)))
 
 	pasteEditRoute :=
 		router.Methods("GET").
 			Path("/{id}/edit").
-			Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.generateRenderPageHandler("paste_edit"))))
+			Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(pc.pasteEditView)))
 	router.Methods("POST").
 		Path("/{id}/edit").
-		Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.pasteUpdate)))
+		Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(http.HandlerFunc(pc.pasteUpdate))))
 
 	pasteDeleteRoute :=
 		router.Methods("GET").
 			Path("/{id}/delete").
-			Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.generateRenderPageHandler("paste_delete_confirm"))))
+			Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(pc.pasteDeleteView)))
 
 	router.Methods("POST").
 		Path("/{id}/delete").
-		Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pc.pasteDelete)))
+		Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(http.HandlerFunc(pc.pasteDelete))))
 
 	pasteReportRoute :=
 		router.Methods("POST").
 			Path("/{id}/report").
-			Handler(pc.wrapPasteHandler(pc.pasteReportHandler))
+			Handler(pc.pasteHandlerWrapper(http.HandlerFunc(pc.pasteReportHandler)))
 
 	pasteAuthenticateRoute :=
 		router.Methods("GET").
 			MatcherFunc(HTTPSMuxMatcher).
 			Path("/{id}/authenticate").
-			Handler(RenderPageHandler("paste_authenticate"))
+			Handler(pc.pasteAuthenticateView)
+
 	router.Methods("POST").
 		MatcherFunc(HTTPSMuxMatcher).
 		Path("/{id}/authenticate").
-		Handler(http.HandlerFunc(pc.authenticatePastePOSTHandler))
+		HandlerFunc(pc.authenticatePastePOSTHandler)
 
 	router.Methods("GET").
 		MatcherFunc(NonHTTPSMuxMatcher).
 		Path("/{id}/authenticate").
-		Handler(RenderPageHandler("paste_authenticate_disallowed"))
+		Handler(pc.pasteAuthenticateDisallowedView)
 
 	// catch-all rule that redirects paste/ to /
 	router.Methods("GET").Path("/").Handler(RedirectHandler("/"))
@@ -595,7 +664,38 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 }
 
 func (pc *PasteController) BindViews(viewModel *views.Model) error {
-	return nil
+	var err error
+	pc.pasteShowView, err = viewModel.Bind(views.PageID("paste_show"), pc)
+	if err != nil {
+		return err
+	}
+
+	pc.pasteEditView, err = viewModel.Bind(views.PageID("paste_edit"), pc)
+	if err != nil {
+		return err
+	}
+
+	pc.pasteDeleteView, err = viewModel.Bind(views.PageID("paste_delete_confirm"), pc)
+	if err != nil {
+		return err
+	}
+
+	pc.pasteAuthenticateView, err = viewModel.Bind(views.PageID("paste_authenticate"), pc)
+	if err != nil {
+		return err
+	}
+
+	pc.pasteAuthenticateDisallowedView, err = viewModel.Bind(views.PageID("paste_authenticate_disallowed"), pc)
+	if err != nil {
+		return err
+	}
+
+	pc.pasteNotFoundView, err = viewModel.Bind(views.PageID("paste_not_found"), pc)
+	if err != nil {
+		return err
+	}
+
+	return err
 }
 
 func NewPasteController(app Application, modelBroker model.Broker) Controller {
