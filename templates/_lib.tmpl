@@ -82,7 +82,7 @@
 <div class="content">
 <p>
 <strong>AIEEEEEE!</strong><br>
-It looks like you've stumbled upon a page (<strong>{{.Page}}</strong>) that should exist, but doesn't have a template?
+It looks like you've stumbled upon a page that should exist, but doesn't have a template?
 </p>
 </div>
 {{end}}
@@ -102,7 +102,7 @@ It looks like you've stumbled upon a page (<strong>{{.Page}}</strong>) that shou
 			<input name="saveExpiration" type="checkbox" data-gb-key="saveExpiration"> Remember my last-used expiration
 		</label>
 		<h4><i class="icon icon-user"> </i>Account</h4>
-		{{partial . "login_logout"}}
+		{{template "partial_login_logout" .}}
 		<h4><i class="icon icon-wrench"> </i>Miscellanea</h4>
 		<p><a target="_blank" href="/about">About Ghostbin</a> <small>(in a new window)</small>
 		<br><a href="/session">My Pastes</a></p>
