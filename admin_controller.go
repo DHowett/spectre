@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/DHowett/ghostbin/model"
+	"github.com/DHowett/ghostbin/views"
 	"github.com/gorilla/mux"
 )
 
@@ -129,6 +130,10 @@ func (ac *AdminController) InitRoutes(router *mux.Router) {
 	ac.App.RegisterRouteForURLType(URLTypeAdminReportList, adminReportsRoute)
 	ac.App.RegisterRouteForURLType(URLTypeAdminPasteDelete, adminDeleteRoute)
 	ac.App.RegisterRouteForURLType(URLTypeReportClear, reportClearRoute)
+}
+
+func (ac *AdminController) BindViews(viewModel *views.Model) error {
+	return nil
 }
 
 func NewAdminController(app Application, modelBroker model.Broker) Controller {

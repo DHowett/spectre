@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/DHowett/ghostbin/model"
+	"github.com/DHowett/ghostbin/views"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/scrypt"
@@ -211,6 +212,10 @@ func (ac *authController) InitRoutes(router *mux.Router) {
 		router.Methods("GET").Path("/token/{token}").HandlerFunc(ac.tokenPageHandler)
 
 	ac.App.RegisterRouteForURLType(URLTypeAuthToken, authTokenRoute)
+}
+
+func (ac *authController) BindViews(viewModel *views.Model) error {
+	return nil
 }
 
 func NewAuthController(app Application, modelBroker model.Broker) Controller {

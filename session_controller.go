@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/DHowett/ghostbin/model"
+	"github.com/DHowett/ghostbin/views"
 	"github.com/gorilla/mux"
 )
 
@@ -63,6 +64,10 @@ func (sc *SessionController) sessionRawHandler(w http.ResponseWriter, r *http.Re
 func (sc *SessionController) InitRoutes(router *mux.Router) {
 	router.Path("/").HandlerFunc(sc.sessionHandler)
 	router.Path("/raw").HandlerFunc(sc.sessionRawHandler)
+}
+
+func (sc *SessionController) BindViews(viewModel *views.Model) error {
+	return nil
 }
 
 func NewSessionController(app Application, modelBroker model.Broker) Controller {

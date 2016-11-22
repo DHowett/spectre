@@ -14,6 +14,7 @@ import (
 
 	"github.com/DHowett/ghostbin/lib/formatting"
 	"github.com/DHowett/ghostbin/model"
+	"github.com/DHowett/ghostbin/views"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/golang/groupcache/lru"
@@ -591,6 +592,10 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 	pc.App.RegisterRouteForURLType(URLTypePasteDelete, pasteDeleteRoute)
 	pc.App.RegisterRouteForURLType(URLTypePasteReport, pasteReportRoute)
 	pc.App.RegisterRouteForURLType(URLTypePasteAuthenticate, pasteAuthenticateRoute)
+}
+
+func (pc *PasteController) BindViews(viewModel *views.Model) error {
+	return nil
 }
 
 func NewPasteController(app Application, modelBroker model.Broker) Controller {

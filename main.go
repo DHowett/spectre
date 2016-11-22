@@ -391,8 +391,17 @@ func main() {
 	// Set Strict Slashes because subrouters/controller routes can register on Path("/").
 	router.StrictSlash(true)
 	for _, rc := range routedControllers {
+		l := log.WithFields(log.Fields{
+			"controller": rc.Controller,
+			"path":       rc.PathPrefix,
+		})
+		err := rc.Controller.BindViews(viewModel)
+		if err != nil {
+			l.Fatal("unable to bind views:", err)
+		}
+
 		r := router.PathPrefix(rc.PathPrefix).Subrouter()
-		log.Infof("Registering routes for %T on <%s>", rc.Controller, rc.PathPrefix)
+		l.Infof("registering routes")
 		rc.Controller.InitRoutes(r)
 	}
 
