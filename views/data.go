@@ -22,6 +22,15 @@ func varFromDataProvider(dp DataProvider) func(vctx viewContext, name string) in
 
 	// otherwise, capture dp and use it for view value generation.
 	return func(vctx viewContext, name string) interface{} {
-		return dp.ViewValue(vctx.r, name)
+		if vctx.varCache != nil {
+			if val, ok := vctx.varCache[name]; ok {
+				return val
+			}
+		} else {
+			vctx.varCache = make(map[string]interface{})
+		}
+		val := dp.ViewValue(vctx.Request, name)
+		vctx.varCache[name] = val
+		return val
 	}
 }

@@ -13,11 +13,17 @@ import (
 type viewContext struct {
 	page string
 	r    *http.Request
+
+	// unguarded vis-a-vis concurrency: a single viewContext is not used in
+	// a multithreaded context.
+	varCache map[string]interface{}
 }
 
-// viewID is the internal interface that allows us to differentiate page-based IDs from string-based IDs
+// viewID is the internal interface that allows us to differentiate page-based
+// IDs from string-based IDs
 type viewID interface {
-	// template returns the name of the template used to render the view with this ID
+	// template returns the name of the template used to render the view
+	// with this ID
 	template() string
 
 	// baseContext creates a new viewContext with pre-seeded values.
