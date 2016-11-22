@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/gob"
 	"errors"
@@ -23,6 +22,7 @@ import (
 	"github.com/DHowett/ghostbin/lib/four"
 	"github.com/DHowett/ghostbin/lib/templatepack"
 	"github.com/DHowett/ghostbin/model"
+	"github.com/DHowett/ghostbin/views"
 
 	"github.com/DHowett/gotimeout"
 	log "github.com/Sirupsen/logrus"
@@ -142,35 +142,12 @@ func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	arguments.register()
-
-	globalInit.Add(&InitHandler{
-		Priority: 1,
-		Name:     "args",
-		Do:       arguments.parse,
-	})
 }
 
 func initTemplateFunctions() {
-	templatePack.AddFunction("encryptionAllowed", func(ri *templatepack.Context) bool {
-		return Env() == EnvironmentDevelopment || RequestIsHTTPS(ri.Request)
-	})
-	templatePack.AddFunction("editAllowed", func(ri *templatepack.Context) bool { return isEditAllowed(ri.Obj.(model.Paste), ri.Request) })
-	// TODO(DH) MOVE
-	templatePack.AddFunction("render", renderPaste)
 	templatePack.AddFunction("pasteURL", func(e string, p model.Paste) string {
 		return pasteURL(e, p.GetID())
 	})
-	templatePack.AddFunction("pasteWillExpire", func(p model.Paste) bool {
-		return p.GetExpiration() != "" && p.GetExpiration() != "-1"
-	})
-	templatePack.AddFunction("pasteBody", func(p model.Paste) string {
-		reader, _ := p.Reader()
-		defer reader.Close()
-		b := &bytes.Buffer{}
-		io.Copy(b, reader)
-		return b.String()
-	})
-	templatePack.AddFunction("requestVariable", requestVariable)
 	templatePack.AddFunction("languageNamed", func(name string) *formatting.Language {
 		return formatting.LanguageNamed(name)
 	})
@@ -293,7 +270,8 @@ func initHandledRoutes(router *mux.Router) {
 		Path("/partial/{id}").
 		Handler(http.HandlerFunc(partialGetHandler))
 
-	router.Path("/").Handler(RenderPageHandler("index"))
+	indexView, _ := viewModel.Bind(views.PageID("index"), nil)
+	router.Path("/").Handler(indexView)
 }
 
 type ghostbinApplication struct {
@@ -332,21 +310,50 @@ func (a *ghostbinApplication) GenerateURL(ut URLType, params ...string) *url.URL
 	return ret
 }
 
+// From views.DataProvider
+func (a *ghostbinApplication) ViewValue(r *http.Request, name string) interface{} {
+	if r == nil {
+		return nil
+	}
+
+	switch name {
+	case "request":
+		return r
+	case "app":
+		return a
+	case "user":
+		return GetLoggedInUser(r)
+	}
+	return nil
+}
+
+func (a *ghostbinApplication) GetViewFunctions() views.FuncMap {
+	return views.FuncMap{
+		"generatePasteURL": func(kind string, p model.Paste) *url.URL {
+			return a.GenerateURL(URLType("paste."+kind), "id", p.GetID().String())
+		},
+		"getLanguageNamed": func(name string) *formatting.Language {
+			return formatting.LanguageNamed(name)
+		},
+	}
+}
+
 // TODO(DH) DO NOT LEAVE GLOBAL
 var ghostbin = &ghostbinApplication{}
+var viewModel *views.Model
 
 func main() {
-	globalInit.Add(&InitHandler{
-		Priority: 80,
-		Name:     "main_template_funcs",
-		Do: func() error {
-			initTemplateFunctions()
-			return nil
-		},
-	})
+	arguments.parse()
+
 	if err := globalInit.Do(); err != nil {
 		panic(err)
 	}
+
+	vmo, err := views.New("templates/*.tmpl", views.GlobalDataProviderOption(ghostbin), views.GlobalFunctionsOption(ghostbin))
+	if err != nil {
+		log.Fatal(err)
+	}
+	viewModel = vmo
 
 	// Establish a signal handler to trigger the reinitializer.
 	sigChan := make(chan os.Signal, 1)
@@ -402,7 +409,9 @@ func main() {
 	router.PathPrefix("/").Handler(http.FileServer(http.Dir("public")))
 
 	var rootHandler http.Handler = router
-	rootHandler = four.WrapHandler(rootHandler, RenderPageHandler("404"))
+
+	fourOhFourTemplate, _ := viewModel.Bind(views.PageID("404"), nil)
+	rootHandler = four.WrapHandler(rootHandler, fourOhFourTemplate)
 	rootHandler = UserLookupHandler(userStore, rootHandler)
 	// User depends on Session, so install that handler last.
 	rootHandler = sessionBroker.Handler(rootHandler)

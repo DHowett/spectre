@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/DHowett/ghostbin/lib/templatepack"
 	"github.com/DHowett/ghostbin/model"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
@@ -341,17 +340,4 @@ func (c *PromoteFirstUserToAdminStore) CreateUser(name string) (model.User, erro
 		}
 	}
 	return u, nil
-}
-
-func init() {
-	globalInit.Add(&InitHandler{
-		Priority: 10,
-		Name:     "auth",
-		Do: func() error {
-			templatePack.AddFunction("user", func(r *templatepack.Context) model.User {
-				return GetLoggedInUser(r.Request)
-			})
-			return nil
-		},
-	})
 }

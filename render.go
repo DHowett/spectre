@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"runtime/debug"
 )
@@ -88,6 +87,8 @@ func _loadGhosts() error {
 	return nil
 }
 
+/*
+TODO(DH) remove
 func init() {
 	globalInit.Add(&InitHandler{
 		Priority: 20,
@@ -104,3 +105,4 @@ func init() {
 		Redo: _loadGhosts,
 	})
 }
+*/
