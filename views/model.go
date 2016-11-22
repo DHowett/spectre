@@ -6,7 +6,19 @@ import (
 	"html/template"
 	"sync"
 	"time"
+
+	"github.com/Sirupsen/logrus"
 )
+
+// FuncMap is the type of the map providing template functions to all of
+// a model's derived views.
+type FuncMap template.FuncMap
+
+// FunctionProvider is the interface that allows Model consumers to
+// provide their own template functions.
+type FunctionProvider interface {
+	GetViewFunctions() FuncMap
+}
 
 // Model represents a view model loaded from a set of files. Its
 // behavior is documented in the package-level documentation above.
@@ -16,6 +28,7 @@ type Model struct {
 	baseTemplate *template.Template
 	tmpl         *template.Template
 	bound        []*View
+	logger       logrus.FieldLogger
 }
 
 // Bind combines a view model, a view ID, and a data provider into a
@@ -37,6 +50,7 @@ func (m *Model) Bind(id interface{}, dp DataProvider) (*View, error) {
 	}
 
 	view := &View{
+		m:  m,
 		id: vid,
 		dp: dp,
 	}
@@ -81,7 +95,7 @@ func (m *Model) Reload() error {
 
 // New returns a new Model bound to the supplied data provider. The data
 // provider will be used for all `global` variable lookups.
-func New(glob string, globalDataProvider DataProvider) (*Model, error) {
+func New(glob string, options ...ModelOption) (*Model, error) {
 	m := &Model{
 		glob: glob,
 	}
@@ -89,8 +103,7 @@ func New(glob string, globalDataProvider DataProvider) (*Model, error) {
 	tmpl := template.New(".base").Funcs(template.FuncMap{
 		// all provided functions must be defined here,
 		// otherwise the global parse will fail.
-		"global": varFromDataProvider(globalDataProvider),
-		"now":    time.Now,
+		"now": time.Now,
 
 		// rebind in subviews.
 		"subtemplate": func(args ...interface{}) interface{} {
@@ -101,7 +114,14 @@ func New(glob string, globalDataProvider DataProvider) (*Model, error) {
 			panic(errors.New("unbound use of local"))
 		},
 	})
+
 	m.baseTemplate = tmpl
+
+	for _, opt := range options {
+		if err := opt(m); err != nil {
+			return nil, err
+		}
+	}
 
 	return m, m.Reload()
 }

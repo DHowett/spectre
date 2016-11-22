@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 )
 
 // viewContext represents the template context passed to each render.
@@ -54,6 +54,7 @@ func (s stringViewID) baseContext() *viewContext {
 // View represents an ID bound to a data provider and Model. Its behavior
 // is documented in the package-level documentation above.
 type View struct {
+	m  *Model
 	mu sync.RWMutex
 
 	// immutable
@@ -74,11 +75,13 @@ func (v *View) subtemplate(vctx *viewContext, name string) template.HTML {
 
 	err := st.Execute(buf, vctx)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"page":        vctx.page,
-			"subtemplate": name,
-			"error":       err,
-		}).Error("failed to service subtemplate request")
+		if v.m.logger != nil {
+			v.m.logger.WithFields(logrus.Fields{
+				"page":        vctx.page,
+				"subtemplate": name,
+				"error":       err,
+			}).Error("failed to service subtemplate request")
+		}
 	}
 	return template.HTML(buf.String())
 }

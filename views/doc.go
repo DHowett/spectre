@@ -2,11 +2,13 @@
 Package views provides Ghostbin's view model. Views are templates loaded
 from a set of globbed files.
 
-The view model provides four predefined template functions, and disallows
-the creation of additional bound functions.
+The view model provides four predefined template functions, and allows the
+binding of additional template functions by way of the
+GlobalFunctionProviderOption.
 
 	global . <var>
 		Fetches a variable from the global view data provider.
+		NOTE: Only available if the Model was provided the GlobalDataProviderOption.
 	local . <var>
 		Fetches a variable from the local view data provider.
 	now
