@@ -144,15 +144,6 @@ func init() {
 	arguments.register()
 }
 
-func initTemplateFunctions() {
-	templatePack.AddFunction("pasteURL", func(e string, p model.Paste) string {
-		return pasteURL(e, p.GetID())
-	})
-	templatePack.AddFunction("languageNamed", func(name string) *formatting.Language {
-		return formatting.LanguageNamed(name)
-	})
-}
-
 func loadOrGenerateSessionKey(path string, keyLength int) (data []byte, err error) {
 	data, err = ioutil.ReadFile(path)
 	if err != nil {
@@ -239,44 +230,11 @@ func establishModelConnection() model.Broker {
 	return userStore
 }
 
-func initHandledRoutes(router *mux.Router) {
-	router.Path("/about").Handler(RenderPageHandler("about"))
-	router.Methods("GET", "HEAD").Path("/languages.json").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		modtime, reader := formatting.GetLanguagesJSON()
-		http.ServeContent(w, r, "languages.json", modtime, reader)
-	}))
-
-	launchTime := time.Now()
-	router.Methods("GET").Path("/stats").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		stats := make(map[string]string)
-		ms := &runtime.MemStats{}
-		runtime.ReadMemStats(ms)
-		stats["mem_alloc"] = fmt.Sprintf("%v", ByteSize(ms.Alloc))
-		if renderCache.c == nil {
-			stats["cached"] = "(no cache)"
-		} else {
-			stats["cached"] = fmt.Sprintf("%d", renderCache.c.Len())
-		}
-		dur := time.Now().Sub(launchTime)
-		dur = dur - (dur % time.Second)
-		stats["uptime"] = fmt.Sprintf("%v", dur)
-		stats["expiring"] = fmt.Sprintf("%d", pasteExpirator.Len())
-		templatePack.ExecutePage(w, r, "stats", stats)
-	}))
-
-	/* PARTIAL */
-	router.Methods("GET").
-		Path("/partial/{id}").
-		Handler(http.HandlerFunc(partialGetHandler))
-
-	indexView, _ := viewModel.Bind(views.PageID("index"), nil)
-	router.Path("/").Handler(indexView)
-}
-
 type ghostbinApplication struct {
 	mutex     sync.RWMutex
 	urlRoutes map[URLType]*mux.Route
+
+	indexView *views.View
 }
 
 func (a *ghostbinApplication) RegisterRouteForURLType(ut URLType, route *mux.Route) {
@@ -338,6 +296,29 @@ func (a *ghostbinApplication) GetViewFunctions() views.FuncMap {
 	}
 }
 
+func (a *ghostbinApplication) InitRoutes(router *mux.Router) {
+	router.Path("/about").Handler(RenderPageHandler("about"))
+
+	router.Methods("GET", "HEAD").Path("/languages.json").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		modtime, reader := formatting.GetLanguagesJSON()
+		http.ServeContent(w, r, "languages.json", modtime, reader)
+	}))
+
+	/* PARTIAL */
+	router.Methods("GET").
+		Path("/partial/{id}").
+		Handler(http.HandlerFunc(partialGetHandler))
+
+	router.Path("/").Handler(a.indexView)
+}
+
+func (a *ghostbinApplication) BindViews(viewModel *views.Model) error {
+	var err error
+	a.indexView, err = viewModel.Bind(views.PageID("index"), nil)
+	return err
+}
+
 // TODO(DH) DO NOT LEAVE GLOBAL
 var ghostbin = &ghostbinApplication{}
 var viewModel *views.Model
@@ -385,6 +366,10 @@ func main() {
 			PathPrefix: "/admin",
 			Controller: NewAdminController(ghostbin, modelBroker),
 		},
+		{
+			// Application!
+			Controller: ghostbin,
+		},
 	}
 
 	router := mux.NewRouter()
@@ -392,7 +377,7 @@ func main() {
 	router.StrictSlash(true)
 	for _, rc := range routedControllers {
 		l := log.WithFields(log.Fields{
-			"controller": rc.Controller,
+			"controller": fmt.Sprintf("%+T", rc.Controller),
 			"path":       rc.PathPrefix,
 		})
 		err := rc.Controller.BindViews(viewModel)
@@ -400,13 +385,13 @@ func main() {
 			l.Fatal("unable to bind views:", err)
 		}
 
-		r := router.PathPrefix(rc.PathPrefix).Subrouter()
+		r := router
+		if rc.PathPrefix != "" {
+			r = router.PathPrefix(rc.PathPrefix).Subrouter()
+		}
 		l.Infof("registering routes")
 		rc.Controller.InitRoutes(r)
 	}
-
-	// This catches all the controller-free routes.
-	initHandledRoutes(router)
 
 	// Permission handler for all routes that may require a user context.
 	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
