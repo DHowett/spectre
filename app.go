@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"net/url"
 
 	"github.com/gorilla/mux"
@@ -29,4 +30,6 @@ const (
 type Application interface {
 	RegisterRouteForURLType(ut URLType, route *mux.Route)
 	GenerateURL(ut URLType, params ...string) *url.URL
+
+	RespondWithError(w http.ResponseWriter, webErr WebError)
 }

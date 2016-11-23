@@ -235,6 +235,7 @@ type ghostbinApplication struct {
 	urlRoutes map[URLType]*mux.Route
 
 	indexView *views.View
+	errorView *views.View
 }
 
 func (a *ghostbinApplication) RegisterRouteForURLType(ut URLType, route *mux.Route) {
@@ -314,9 +315,18 @@ func (a *ghostbinApplication) InitRoutes(router *mux.Router) {
 }
 
 func (a *ghostbinApplication) BindViews(viewModel *views.Model) error {
-	var err error
-	a.indexView, err = viewModel.Bind(views.PageID("index"), nil)
-	return err
+	return bindViews(viewModel, nil, map[interface{}]**views.View{
+		views.PageID("index"): &a.indexView,
+		views.PageID("error"): &a.errorView,
+	})
+}
+
+func (a *ghostbinApplication) RespondWithError(w http.ResponseWriter, webErr WebError) {
+	w.WriteHeader(webErr.StatusCode())
+	err2 := a.errorView.Exec(w, nil, webErr)
+	if err2 != nil {
+		log.Error("failed to render error response:", err2)
+	}
 }
 
 // TODO(DH) DO NOT LEAVE GLOBAL
