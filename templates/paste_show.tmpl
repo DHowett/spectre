@@ -45,7 +45,7 @@
 				</button>
 			{{- end -}}
 		</div>
-		{{if (local . "canEdit")}}
+		{{- if $paste.Editable -}}
 		<div class="btn-group">
 			<button title="Grant" type="button" data-target="#grantModal" data-toggle="modal" class="btn btn-inverse">
 				<i class="icon-lemon icon-large"></i>
@@ -55,7 +55,7 @@
 				<i class="icon-edit icon-large"></i>
 			</a>
 		</div>
-		{{end}}
+		{{- end -}}
 	</div>
 </div>
 {{if not $language.SuppressLineNumbers -}}
@@ -84,6 +84,8 @@
 	</div>
 	</form>
 </div>
+
+{{- if $paste.Editable -}}
 <div id="grantModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
 	<form name="grantForm" action="{{generatePasteURL "grant" $paste}}" method="get">
 	<div class="modal-header">
@@ -131,4 +133,5 @@ $("#newGrantButton").on("click", function() {
 	});
 });
 </script>
+{{- end -}}
 {{end}}

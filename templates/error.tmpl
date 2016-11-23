@@ -27,8 +27,8 @@
 {{define "paste_not_found_body"}}
 {{template "partial_warning_title" "Ghost got your paste?"}}
 <div class="well well-error">
-	{{.Obj.Error}}
-	<code class="code ghost">{{randomGhost}}</code>
+	Paste {{.Obj}} was not found.
+	<code class="code ghost">{{local . "randomGhost"}}</code>
 	<a href="/">Go to the homepage and try again.</a>
 </div>
 {{end}}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/md5"
 	"encoding/json"
@@ -34,12 +33,11 @@ type PasteAccessDeniedError struct {
 }
 
 func (e PasteAccessDeniedError) Error() string {
-	return "You're not allowed to " + e.action + " paste " + e.ID.String()
+	return "You're not allowed to " + e.action + " paste " + e.ID.String() + "."
 }
 
-// Make the various errors we can throw conform to HTTPError (here vs. the generic type file)
-func (e PasteAccessDeniedError) StatusCode() int {
-	return http.StatusForbidden
+func (PasteAccessDeniedError) StatusCode() int {
+	return http.StatusUnauthorized
 }
 
 type PasteTooLargeError ByteSize
@@ -48,8 +46,8 @@ func (e PasteTooLargeError) Error() string {
 	return fmt.Sprintf("Your input (%v) exceeds the maximum paste length, which is %v.", ByteSize(e), PASTE_MAXIMUM_LENGTH)
 }
 
-func (e PasteTooLargeError) StatusCode() int {
-	return http.StatusBadRequest
+func (PasteTooLargeError) StatusCode() int {
+	return http.StatusRequestEntityTooLarge
 }
 
 // renderedPaste is stored in PasteController's renderCache.
@@ -80,7 +78,8 @@ type PasteController struct {
 
 type pasteViewFacade struct {
 	model.Paste
-	c *PasteController
+	c        *PasteController
+	editable bool
 }
 
 func (pv *pasteViewFacade) GetRenderedBody() template.HTML {
@@ -90,6 +89,10 @@ func (pv *pasteViewFacade) GetRenderedBody() template.HTML {
 func (pv *pasteViewFacade) ExpirationTime() time.Time {
 	// TODO(DH) lol
 	return time.Now()
+}
+
+func (pv *pasteViewFacade) Editable() bool {
+	return pv.editable
 }
 
 type pasteSessionKeyType int
@@ -110,7 +113,13 @@ func (pc *PasteController) getPasteFromRequest(r *http.Request) (model.Paste, *h
 		}
 
 		p, err := pc.Model.GetPaste(id, passphrase)
-		p = &pasteViewFacade{p, pc}
+		if p != nil {
+			p = &pasteViewFacade{
+				Paste:    p,
+				c:        pc,
+				editable: isEditAllowed(p, r),
+			}
+		}
 		r = r.WithContext(context.WithValue(r.Context(), pasteSessionKey, p))
 		return p, r, err
 	}
@@ -170,34 +179,17 @@ func (pc *PasteController) pasteEditHandlerWrapper(handler http.Handler) http.Ha
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Ignoring err; it was handled above us.
 		p, r, _ := pc.getPasteFromRequest(r)
-		if !isEditAllowed(p, r) {
+		editable := false
+		if pfacade, ok := p.(*pasteViewFacade); ok {
+			editable = pfacade.editable
+		}
+		if !editable {
 			accerr := PasteAccessDeniedError{"modify", p.GetID()}
-			panic(accerr)
+			pc.App.RespondWithError(w, accerr)
+			return
 		}
 		handler.ServeHTTP(w, r)
 	})
-}
-
-func (pc *PasteController) getPasteJSONHandler(w http.ResponseWriter, r *http.Request) {
-	p, _, _ := pc.getPasteFromRequest(r)
-
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
-	reader, _ := p.Reader()
-	defer reader.Close()
-	buf := &bytes.Buffer{}
-	io.Copy(buf, reader)
-
-	pasteMap := map[string]interface{}{
-		"id":         p.GetID(),
-		"language":   p.GetLanguageName(),
-		"encrypted":  p.IsEncrypted(),
-		"expiration": p.GetExpiration(),
-		"body":       string(buf.Bytes()),
-	}
-
-	json, _ := json.Marshal(pasteMap)
-	w.Write(json)
 }
 
 func (pc *PasteController) getPasteRawHandler(w http.ResponseWriter, r *http.Request) {
@@ -256,7 +248,7 @@ func (pc *PasteController) pasteUngrantHandler(w http.ResponseWriter, r *http.Re
 	SavePastePermissionScope(w, r)
 
 	SetFlash(w, "success", fmt.Sprintf("Paste %v disavowed.", p.GetID()))
-	w.Header().Set("Location", pasteURL("show", p.GetID()))
+	w.Header().Set("Location", pc.App.GenerateURL(URLTypePasteShow, "id", p.GetID().String()).String())
 	w.WriteHeader(http.StatusSeeOther)
 }
 
@@ -282,44 +274,10 @@ func (pc *PasteController) grantAcceptHandler(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func (pc *PasteController) pasteUpdate(w http.ResponseWriter, r *http.Request) {
-	p, _, _ := pc.getPasteFromRequest(r)
-
-	pc.pasteUpdateCore(p, w, r, false)
-}
-
-func (pc *PasteController) pasteUpdateCore(p model.Paste, w http.ResponseWriter, r *http.Request, newPaste bool) {
-	body := r.FormValue("text")
-	if len(strings.TrimSpace(body)) == 0 {
-		w.Header().Set("Location", pasteURL("delete", p.GetID()))
-		w.WriteHeader(http.StatusFound)
-		return
-	}
-
-	pasteLen := ByteSize(len(body))
-	if pasteLen > PASTE_MAXIMUM_LENGTH {
-		panic(PasteTooLargeError(pasteLen))
-	}
-
-	if !newPaste {
-		// If this is an update (instead of a new paste), blow away the hash.
-		tok := "P|H|" + p.GetID().String()
-		v, _ := ephStore.Get(tok)
-		if hash, ok := v.(string); ok {
-			ephStore.Delete(hash)
-			ephStore.Delete(tok)
-		}
-	}
-
+func (pc *PasteController) updateOrCreatePaste(p model.Paste, w http.ResponseWriter, r *http.Request, body string) {
 	lang := formatting.LanguageNamed(p.GetLanguageName())
-	pw, _ := p.Writer()
-	pw.Write([]byte(body))
 	if r.FormValue("lang") != "" {
 		lang = formatting.LanguageNamed(r.FormValue("lang"))
-	}
-
-	if lang != nil {
-		p.SetLanguageName(lang.ID)
 	}
 
 	expireIn := r.FormValue("expire")
@@ -336,30 +294,60 @@ func (pc *PasteController) pasteUpdateCore(p model.Paste, w http.ResponseWriter,
 		}
 	}
 
-	p.SetExpiration(expireIn)
+	if lang != nil {
+		p.SetLanguageName(lang.ID)
+	}
 
+	p.SetExpiration(expireIn)
 	p.SetTitle(r.FormValue("title"))
 
+	pw, _ := p.Writer()
+	pw.Write([]byte(body))
 	pw.Close() // Saves p
 
-	w.Header().Set("Location", pasteURL("show", p.GetID()))
+	w.Header().Set("Location", pc.App.GenerateURL(URLTypePasteShow, "id", p.GetID().String()).String())
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
-	session := sessionBroker.Get(r)
+func (pc *PasteController) pasteUpdateHandler(w http.ResponseWriter, r *http.Request) {
+	p, _, _ := pc.getPasteFromRequest(r)
 
 	body := r.FormValue("text")
 	if len(strings.TrimSpace(body)) == 0 {
-		// 400 here, 200 above (one is displayed to the user, one could be an API response.)
-		RenderError(fmt.Errorf("Hey, put some text in that paste."), 400, w)
+		w.Header().Set("Location", pc.App.GenerateURL(URLTypePasteDelete, "id", p.GetID().String()).String())
+		w.WriteHeader(http.StatusFound)
 		return
 	}
 
 	pasteLen := ByteSize(len(body))
 	if pasteLen > PASTE_MAXIMUM_LENGTH {
-		err := PasteTooLargeError(pasteLen)
-		RenderError(err, err.StatusCode(), w)
+		pc.App.RespondWithError(w, PasteTooLargeError(pasteLen))
+		return
+	}
+
+	pc.updateOrCreatePaste(p, w, r, body)
+
+	// Blow away the hashcache.
+	tok := "P|H|" + p.GetID().String()
+	v, _ := ephStore.Get(tok)
+	if hash, ok := v.(string); ok {
+		ephStore.Delete(hash)
+		ephStore.Delete(tok)
+	}
+}
+
+func (pc *PasteController) pasteCreateHandler(w http.ResponseWriter, r *http.Request) {
+	session := sessionBroker.Get(r)
+
+	body := r.FormValue("text")
+	if len(strings.TrimSpace(body)) == 0 {
+		pc.App.RespondWithError(w, webErrEmptyPaste)
+		return
+	}
+
+	pasteLen := ByteSize(len(body))
+	if pasteLen > PASTE_MAXIMUM_LENGTH {
+		pc.App.RespondWithError(w, PasteTooLargeError(pasteLen))
 		return
 	}
 
@@ -367,7 +355,7 @@ func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 	encrypted := password != ""
 
 	if encrypted && (Env() != EnvironmentDevelopment && !RequestIsHTTPS(r)) {
-		RenderError(fmt.Errorf("I refuse to accept passwords over HTTP."), 400, w)
+		pc.App.RespondWithError(w, webErrInsecurePassword)
 		return
 	}
 
@@ -382,14 +370,13 @@ func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 
 		v, _ := ephStore.Get(hashToken)
 		if hashedPaste, ok := v.(model.Paste); ok {
-			pc.pasteUpdateCore(hashedPaste, w, r, true)
-			// TODO(DH) EARLY RETURN
-			return
-		}
-
-		p, err = pc.Model.CreatePaste()
-		if err != nil {
-			panic(err)
+			// update it later (and harmlessly renew permissions)
+			p = hashedPaste
+		} else {
+			p, err = pc.Model.CreatePaste()
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		ephStore.Put(hashToken, p, 5*time.Minute)
@@ -415,7 +402,7 @@ func (pc *PasteController) pasteCreate(w http.ResponseWriter, r *http.Request) {
 
 	session.Save()
 
-	pc.pasteUpdateCore(p, w, r, true)
+	pc.updateOrCreatePaste(p, w, r, body)
 }
 
 func (pc *PasteController) pasteDelete(w http.ResponseWriter, r *http.Request) {
@@ -429,19 +416,13 @@ func (pc *PasteController) pasteDelete(w http.ResponseWriter, r *http.Request) {
 
 	SetFlash(w, "success", fmt.Sprintf("Paste %v deleted.", oldId))
 
-	redir := r.FormValue("redir")
-	if redir == "reports" {
-		w.Header().Set("Location", "/admin/reports")
-	} else {
-		w.Header().Set("Location", "/")
-	}
-
+	w.Header().Set("Location", "/")
 	w.WriteHeader(http.StatusFound)
 }
 
 func (pc *PasteController) authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
 	if throttleAuthForRequest(r) {
-		RenderError(fmt.Errorf("Cool it."), 420, w)
+		pc.App.RespondWithError(w, webErrThrottled)
 		return
 	}
 
@@ -468,7 +449,7 @@ func (pc *PasteController) authenticatePastePOSTHandler(w http.ResponseWriter, r
 
 func (pc *PasteController) pasteReportHandler(w http.ResponseWriter, r *http.Request) {
 	if throttleAuthForRequest(r) {
-		RenderError(fmt.Errorf("Cool it."), 420, w)
+		pc.App.RespondWithError(w, webErrThrottled)
 		return
 	}
 
@@ -576,11 +557,7 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 
 	router.Methods("POST").
 		Path("/new").
-		HandlerFunc(pc.pasteCreate)
-
-	router.Methods("GET").
-		Path("/{id}.json").
-		Handler(pc.pasteHandlerWrapper(http.HandlerFunc(pc.getPasteJSONHandler)))
+		HandlerFunc(pc.pasteCreateHandler)
 
 	pasteShowRoute :=
 		router.Methods("GET").
@@ -617,7 +594,7 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 			Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(pc.pasteEditView)))
 	router.Methods("POST").
 		Path("/{id}/edit").
-		Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(http.HandlerFunc(pc.pasteUpdate))))
+		Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(http.HandlerFunc(pc.pasteUpdateHandler))))
 
 	pasteDeleteRoute :=
 		router.Methods("GET").
@@ -664,38 +641,14 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 }
 
 func (pc *PasteController) BindViews(viewModel *views.Model) error {
-	var err error
-	pc.pasteShowView, err = viewModel.Bind(views.PageID("paste_show"), pc)
-	if err != nil {
-		return err
-	}
-
-	pc.pasteEditView, err = viewModel.Bind(views.PageID("paste_edit"), pc)
-	if err != nil {
-		return err
-	}
-
-	pc.pasteDeleteView, err = viewModel.Bind(views.PageID("paste_delete_confirm"), pc)
-	if err != nil {
-		return err
-	}
-
-	pc.pasteAuthenticateView, err = viewModel.Bind(views.PageID("paste_authenticate"), pc)
-	if err != nil {
-		return err
-	}
-
-	pc.pasteAuthenticateDisallowedView, err = viewModel.Bind(views.PageID("paste_authenticate_disallowed"), pc)
-	if err != nil {
-		return err
-	}
-
-	pc.pasteNotFoundView, err = viewModel.Bind(views.PageID("paste_not_found"), pc)
-	if err != nil {
-		return err
-	}
-
-	return err
+	return bindViews(viewModel, pc, map[interface{}]**views.View{
+		views.PageID("paste_show"):                    &pc.pasteShowView,
+		views.PageID("paste_edit"):                    &pc.pasteEditView,
+		views.PageID("paste_delete_confirm"):          &pc.pasteDeleteView,
+		views.PageID("paste_authenticate"):            &pc.pasteAuthenticateView,
+		views.PageID("paste_authenticate_disallowed"): &pc.pasteAuthenticateDisallowedView,
+		views.PageID("paste_not_found"):               &pc.pasteNotFoundView,
+	})
 }
 
 func NewPasteController(app Application, modelBroker model.Broker) Controller {
