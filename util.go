@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/DHowett/ghostbin/views"
 	"github.com/gorilla/mux"
 	"gopkg.in/yaml.v2"
 )
@@ -138,6 +139,17 @@ func (b ByteSize) String() string {
 		return fmt.Sprintf("%.2fKB", b/KB)
 	}
 	return fmt.Sprintf("%.2fB", b)
+}
+
+func bindViews(viewModel *views.Model, dataProvider views.DataProvider, bmap map[interface{}]**views.View) error {
+	var err error
+	for id, vp := range bmap {
+		*vp, err = viewModel.Bind(id, dataProvider)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 var environment string = EnvironmentDevelopment
