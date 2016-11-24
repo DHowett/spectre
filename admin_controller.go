@@ -12,6 +12,8 @@ import (
 type AdminController struct {
 	App   Application
 	Model model.Broker
+
+	adminHomeView *views.View
 }
 
 func (ac *AdminController) loggedInUserMatcher(r *http.Request, matcher *mux.RouteMatch) bool {
@@ -72,8 +74,7 @@ func (ac *AdminController) adminPromoteHandler(w http.ResponseWriter, r *http.Re
 func (ac *AdminController) reportsHandler(w http.ResponseWriter, r *http.Request) {
 	reports, err := ac.Model.GetReports()
 	if err != nil {
-		RenderError(err, http.StatusInternalServerError, w)
-		return
+		panic(err)
 	}
 	templatePack.ExecutePage(w, r, "admin_reports", reports)
 }
@@ -101,7 +102,7 @@ func (ac *AdminController) reportClearHandler(w http.ResponseWriter, r *http.Req
 func (ac *AdminController) InitRoutes(router *mux.Router) {
 	adminRouter := router.MatcherFunc(ac.loggedInUserMatcher).Subrouter()
 
-	adminRouter.Path("/").Handler(RenderPageHandler("admin_home"))
+	adminRouter.Path("/").Handler(ac.adminHomeView)
 
 	adminReportsRoute :=
 		adminRouter.
@@ -133,7 +134,9 @@ func (ac *AdminController) InitRoutes(router *mux.Router) {
 }
 
 func (ac *AdminController) BindViews(viewModel *views.Model) error {
-	return nil
+	return bindViews(viewModel, nil, map[interface{}]**views.View{
+		views.PageID("admin_home"): &ac.adminHomeView,
+	})
 }
 
 func NewAdminController(app Application, modelBroker model.Broker) Controller {

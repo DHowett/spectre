@@ -235,6 +235,7 @@ type ghostbinApplication struct {
 	urlRoutes map[URLType]*mux.Route
 
 	indexView *views.View
+	aboutView *views.View
 	errorView *views.View
 }
 
@@ -298,8 +299,6 @@ func (a *ghostbinApplication) GetViewFunctions() views.FuncMap {
 }
 
 func (a *ghostbinApplication) InitRoutes(router *mux.Router) {
-	router.Path("/about").Handler(RenderPageHandler("about"))
-
 	router.Methods("GET", "HEAD").Path("/languages.json").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		modtime, reader := formatting.GetLanguagesJSON()
@@ -311,12 +310,14 @@ func (a *ghostbinApplication) InitRoutes(router *mux.Router) {
 		Path("/partial/{id}").
 		Handler(http.HandlerFunc(partialGetHandler))
 
+	router.Path("/about").Handler(a.aboutView)
 	router.Path("/").Handler(a.indexView)
 }
 
 func (a *ghostbinApplication) BindViews(viewModel *views.Model) error {
 	return bindViews(viewModel, nil, map[interface{}]**views.View{
 		views.PageID("index"): &a.indexView,
+		views.PageID("about"): &a.aboutView,
 		views.PageID("error"): &a.errorView,
 	})
 }
@@ -340,11 +341,11 @@ func main() {
 		panic(err)
 	}
 
-	vmo, err := views.New("templates/*.tmpl", views.GlobalDataProviderOption(ghostbin), views.GlobalFunctionsOption(ghostbin))
+
+	viewModel, err := views.New("templates/*.tmpl", views.FieldLoggingOption(log.WithField("ctx", "viewmodel")), views.GlobalDataProviderOption(ghostbin), views.GlobalFunctionsOption(ghostbin))
 	if err != nil {
 		log.Fatal(err)
 	}
-	viewModel = vmo
 
 	// Establish a signal handler to trigger the reinitializer.
 	sigChan := make(chan os.Signal, 1)

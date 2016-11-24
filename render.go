@@ -8,42 +8,17 @@ import (
 	"runtime/debug"
 )
 
-type Model interface{}
-
-type CustomTemplateError interface {
-	ErrorTemplateName() string
-}
-
-type HTTPError interface {
-	StatusCode() int
-}
-
-func RenderError(e error, statusCode int, w http.ResponseWriter) {
-	w.WriteHeader(statusCode)
-	page := "error"
-	if cte, ok := e.(CustomTemplateError); ok {
-		page = cte.ErrorTemplateName()
-	}
-	templatePack.ExecutePage(w, nil, page, e)
-}
-
 func errorRecoveryHandler(w http.ResponseWriter) {
 	if err := recover(); err != nil {
-		status := http.StatusInternalServerError
-		if weberr, ok := err.(HTTPError); ok {
-			status = weberr.StatusCode()
-		}
+		//status := http.StatusInternalServerError
+		//if weberr, ok := err.(WebError); ok {
+		//status = weberr.StatusCode()
+		//}
 
-		RenderError(err.(error), status, w)
+		//TODO(DH) Render errors.
+		//RenderError(err.(error), status, w)
 		fmt.Println(string(debug.Stack()))
 	}
-}
-
-func RenderPageHandler(page string) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer errorRecoveryHandler(w)
-		templatePack.ExecutePage(w, r, page, nil)
-	})
 }
 
 func RenderPartialHandler(page string) http.HandlerFunc {
