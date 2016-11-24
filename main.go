@@ -68,13 +68,6 @@ func requestVariable(rc *templatepack.Context, variable string) string {
 	return v
 }
 
-type RedirectHandler string
-
-func (h RedirectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Location", string(h))
-	w.WriteHeader(http.StatusFound)
-}
-
 func partialGetHandler(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["id"]
 	templatePack.ExecutePartial(w, r, name, nil)
