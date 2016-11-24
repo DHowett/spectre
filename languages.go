@@ -10,16 +10,3 @@ func FormatPaste(p model.Paste) (string, error) {
 	defer reader.Close()
 	return formatting.FormatStream(reader, formatting.LanguageNamed(p.GetLanguageName()))
 }
-
-func _initLanguages() error {
-	return formatting.LoadLanguageConfig("languages.yml")
-}
-
-func init() {
-	globalInit.Add(&InitHandler{
-		Priority: 15,
-		Name:     "languages",
-		Do:       _initLanguages,
-		Redo:     _initLanguages,
-	})
-}

@@ -101,8 +101,6 @@ var sessionBroker *SessionBroker
 var pasteExpirator *gotimeout.Expirator
 var ephStore *gotimeout.Map
 
-var globalInit Initializer
-
 type args struct {
 	root, addr string
 	rebuild    bool
@@ -318,6 +316,17 @@ func (a *ghostbinApplication) RespondWithError(w http.ResponseWriter, webErr Web
 // TODO(DH) DO NOT LEAVE GLOBAL
 var ghostbin = &ghostbinApplication{}
 
+/////////////////////////////////////
+// Temporarily keep env stuff here //
+/////////////////////////////////////
+var environment string = EnvironmentDevelopment
+
+func Env() string {
+	return environment
+}
+
+/////////////////////////////////////
+
 func init() {
 	// N.B. this should not be necessary.
 	gob.Register(map[model.PasteID][]byte(nil))
@@ -325,14 +334,26 @@ func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	arguments.register()
+
+	/////////////////////////////////////
+	// Temporarily keep env stuff here //
+	/////////////////////////////////////
+	environment = os.Getenv("GHOSTBIN_ENV")
+	if environment != EnvironmentProduction {
+		environment = EnvironmentDevelopment
+	}
+	/////////////////////////////////////
+
 }
 
 func main() {
 	arguments.parse()
 
-	if err := globalInit.Do(); err != nil {
-		panic(err)
-	}
+	//////////////////////////////////////
+	// Temporarily keep lang stuff here //
+	//////////////////////////////////////
+	formatting.LoadLanguageConfig("languages.yml")
+	//////////////////////////////////////
 
 	logger := log.New()
 
@@ -349,7 +370,9 @@ func main() {
 	go func() {
 		for _ = range sigChan {
 			log.Info("Received SIGHUP")
-			globalInit.Redo()
+			viewModel.Reload()
+			// TODO(DH) DUPED
+			formatting.LoadLanguageConfig("languages.yml")
 		}
 	}()
 

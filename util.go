@@ -151,23 +151,3 @@ func bindViews(viewModel *views.Model, dataProvider views.DataProvider, bmap map
 	}
 	return nil
 }
-
-var environment string = EnvironmentDevelopment
-
-func Env() string {
-	return environment
-}
-
-func init() {
-	globalInit.Add(&InitHandler{
-		Priority: 2,
-		Name:     "environment",
-		Do: func() error {
-			environment = os.Getenv("GHOSTBIN_ENV")
-			if environment != EnvironmentProduction {
-				environment = EnvironmentDevelopment
-			}
-			return nil
-		},
-	})
-}
