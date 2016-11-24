@@ -12,6 +12,7 @@ import (
 type AdminController struct {
 	App    Application    `inject:""`
 	Model  model.Broker   `inject:""`
+	Config *Configuration `inject:""`
 
 	adminHomeView *views.View
 }

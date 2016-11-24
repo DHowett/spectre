@@ -337,8 +337,11 @@ func main() {
 		panic(err)
 	}
 
+	logger := log.New()
 
-	viewModel, err := views.New("templates/*.tmpl", views.FieldLoggingOption(log.WithField("ctx", "viewmodel")), views.GlobalDataProviderOption(ghostbin), views.GlobalFunctionsOption(ghostbin))
+	var config Configuration
+
+	viewModel, err := views.New("templates/*.tmpl", views.FieldLoggingOption(logger.WithField("ctx", "viewmodel")), views.GlobalDataProviderOption(ghostbin), views.GlobalFunctionsOption(ghostbin))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -361,15 +364,15 @@ func main() {
 	authController := &AuthController{}
 
 	var graph inject.Graph
-	logger := log.New()
-	logger.Level = log.DebugLevel
-	graph.Logger = logger.WithFields(log.Fields{
-		"ctx": "inject",
-	})
+	graph.Logger = logger.WithField("ctx", "inject")
 	err = graph.Provide(
 		&inject.Object{
 			Complete: true,
 			Value:    modelBroker,
+		},
+		&inject.Object{
+			Complete: true,
+			Value:    &config,
 		},
 		&inject.Object{
 			Complete: true,
