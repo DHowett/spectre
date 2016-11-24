@@ -6,7 +6,6 @@ import (
 
 	"github.com/DHowett/ghostbin/lib/crypto"
 	"github.com/DHowett/ghostbin/lib/sql/querybuilder"
-	"github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 )
 
