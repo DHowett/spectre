@@ -9,8 +9,3 @@ type Controller interface {
 	InitRoutes(*mux.Router)
 	BindViews(*views.Model) error
 }
-
-type RoutedController struct {
-	PathPrefix string
-	Controller Controller
-}

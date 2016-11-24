@@ -403,48 +403,34 @@ func main() {
 		log.Fatal(err)
 	}
 
-	routedControllers := []RoutedController{
-		{
-			PathPrefix: "/paste",
-			Controller: pasteController,
-		},
-		{
-			PathPrefix: "/auth",
-			Controller: authController,
-		},
-		{
-			PathPrefix: "/session",
-			Controller: sessionController,
-		},
-		{
-			PathPrefix: "/admin",
-			Controller: adminController,
-		},
-		{
-			// Application!
-			Controller: ghostbin,
-		},
+	controllerRoutes := map[string]Controller{
+		"/paste":   pasteController,
+		"/auth":    authController,
+		"/session": sessionController,
+		"/admin":   adminController,
+		"":         ghostbin, // Application
 	}
 
 	router := mux.NewRouter()
 	// Set Strict Slashes because subrouters/controller routes can register on Path("/").
 	router.StrictSlash(true)
-	for _, rc := range routedControllers {
+	for pathPrefix, controller := range controllerRoutes {
 		l := log.WithFields(log.Fields{
-			"controller": fmt.Sprintf("%+T", rc.Controller),
-			"path":       rc.PathPrefix,
+			"controller": fmt.Sprintf("%+T", controller),
+			"path":       pathPrefix,
 		})
-		err := rc.Controller.BindViews(viewModel)
+
+		err := controller.BindViews(viewModel)
 		if err != nil {
 			l.Fatal("unable to bind views:", err)
 		}
 
 		r := router
-		if rc.PathPrefix != "" {
-			r = router.PathPrefix(rc.PathPrefix).Subrouter()
+		if pathPrefix != "" {
+			r = router.PathPrefix(pathPrefix).Subrouter()
 		}
 		l.Infof("registering routes")
-		rc.Controller.InitRoutes(r)
+		controller.InitRoutes(r)
 	}
 
 	// Permission handler for all routes that may require a user context.
