@@ -357,6 +357,8 @@ func main() {
 	modelBroker := establishModelConnection()
 	pasteController := &PasteController{}
 	adminController := &AdminController{}
+	sessionController := &SessionController{}
+	authController := &AuthController{}
 
 	var graph inject.Graph
 	logger := log.New()
@@ -382,6 +384,12 @@ func main() {
 		&inject.Object{
 			Value: adminController,
 		},
+		&inject.Object{
+			Value: sessionController,
+		},
+		&inject.Object{
+			Value: authController,
+		},
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -399,11 +407,11 @@ func main() {
 		},
 		{
 			PathPrefix: "/auth",
-			Controller: NewAuthController(ghostbin, userStore /* for now, b/c CreateUser */),
+			Controller: authController,
 		},
 		{
 			PathPrefix: "/session",
-			Controller: NewSessionController(ghostbin, modelBroker),
+			Controller: sessionController,
 		},
 		{
 			PathPrefix: "/admin",

@@ -25,12 +25,12 @@ type authReply struct {
 	InvalidFields []string          `json:"invalid_fields,omitempty"`
 }
 
-type authController struct {
-	App   Application
-	Model model.Broker
+type AuthController struct {
+	App   Application  `inject:""`
+	Model model.Broker `inject:""`
 }
 
-func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Request) {
+func (ac *AuthController) loginPostHandler(w http.ResponseWriter, r *http.Request) {
 	reply := &authReply{
 		Status:    "invalid",
 		ExtraData: make(map[string]string),
@@ -178,11 +178,11 @@ func (ac *authController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 	// reply serialized in defer above. just for fun.
 }
 
-func (ac *authController) logoutPostHandler(w http.ResponseWriter, r *http.Request) {
+func (ac *AuthController) logoutPostHandler(w http.ResponseWriter, r *http.Request) {
 	SetLoggedInUser(r, nil)
 }
 
-func (ac *authController) tokenHandler(w http.ResponseWriter, r *http.Request) {
+func (ac *AuthController) tokenHandler(w http.ResponseWriter, r *http.Request) {
 	authToken, _ := generateRandomBase32String(20, 32)
 	ephStore.Put("A|"+authToken, true, 30*time.Minute)
 	url := ac.App.GenerateURL(URLTypeAuthToken, "token", authToken)
@@ -190,7 +190,7 @@ func (ac *authController) tokenHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func (ac *authController) tokenPageHandler(w http.ResponseWriter, r *http.Request) {
+func (ac *AuthController) tokenPageHandler(w http.ResponseWriter, r *http.Request) {
 	token := mux.Vars(r)["token"]
 	_, ok := ephStore.Get("A|" + token)
 	if !ok {
@@ -204,7 +204,7 @@ func (ac *authController) tokenPageHandler(w http.ResponseWriter, r *http.Reques
 	templatePack.ExecutePage(w, r, "authtoken", map[string]string{"token": token})
 }
 
-func (ac *authController) InitRoutes(router *mux.Router) {
+func (ac *AuthController) InitRoutes(router *mux.Router) {
 	router.Methods("POST").Path("/login").HandlerFunc(ac.loginPostHandler)
 	router.Methods("POST").Path("/logout").HandlerFunc(ac.logoutPostHandler)
 	router.Methods("GET").Path("/token").HandlerFunc(ac.tokenHandler)
@@ -214,15 +214,8 @@ func (ac *authController) InitRoutes(router *mux.Router) {
 	ac.App.RegisterRouteForURLType(URLTypeAuthToken, authTokenRoute)
 }
 
-func (ac *authController) BindViews(viewModel *views.Model) error {
+func (ac *AuthController) BindViews(viewModel *views.Model) error {
 	return nil
-}
-
-func NewAuthController(app Application, modelBroker model.Broker) Controller {
-	return &authController{
-		App:   app,
-		Model: modelBroker,
-	}
 }
 
 type AuthChallengeProvider struct{}

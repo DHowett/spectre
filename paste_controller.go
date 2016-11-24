@@ -648,10 +648,3 @@ func (pc *PasteController) BindViews(viewModel *views.Model) error {
 		views.PageID("paste_not_found"):               &pc.pasteNotFoundView,
 	})
 }
-
-func NewPasteController(app Application, modelBroker model.Broker) Controller {
-	return &PasteController{
-		App:   app,
-		Model: modelBroker,
-	}
-}

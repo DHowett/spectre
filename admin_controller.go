@@ -138,10 +138,3 @@ func (ac *AdminController) BindViews(viewModel *views.Model) error {
 		views.PageID("admin_home"): &ac.adminHomeView,
 	})
 }
-
-func NewAdminController(app Application, modelBroker model.Broker) Controller {
-	return &AdminController{
-		App:   app,
-		Model: modelBroker,
-	}
-}

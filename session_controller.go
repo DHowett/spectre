@@ -11,8 +11,8 @@ import (
 )
 
 type SessionController struct {
-	App   Application
-	Model model.Broker
+	App   Application  `inject:""`
+	Model model.Broker `inject:""`
 
 	sessionView *views.View
 }
@@ -93,11 +93,4 @@ func (sc *SessionController) BindViews(viewModel *views.Model) error {
 	var err error
 	sc.sessionView, err = viewModel.Bind(views.PageID("session"), sc)
 	return err
-}
-
-func NewSessionController(app Application, modelBroker model.Broker) Controller {
-	return &SessionController{
-		App:   app,
-		Model: modelBroker,
-	}
 }
