@@ -32,6 +32,8 @@ import (
 
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+
+	"github.com/facebookgo/inject"
 )
 
 func isEditAllowed(p model.Paste, r *http.Request) bool {
@@ -128,15 +130,6 @@ func (a *args) parse() error {
 
 var arguments = &args{}
 
-func init() {
-	// N.B. this should not be necessary.
-	gob.Register(map[model.PasteID][]byte(nil))
-	gob.Register(map[model.PasteID]model.Permission{})
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
-	arguments.register()
-}
-
 func loadOrGenerateSessionKey(path string, keyLength int) (data []byte, err error) {
 	data, err = ioutil.ReadFile(path)
 	if err != nil {
@@ -230,6 +223,8 @@ type ghostbinApplication struct {
 	indexView *views.View
 	aboutView *views.View
 	errorView *views.View
+
+	Logger log.FieldLogger `inject:""`
 }
 
 func (a *ghostbinApplication) RegisterRouteForURLType(ut URLType, route *mux.Route) {
@@ -325,7 +320,15 @@ func (a *ghostbinApplication) RespondWithError(w http.ResponseWriter, webErr Web
 
 // TODO(DH) DO NOT LEAVE GLOBAL
 var ghostbin = &ghostbinApplication{}
-var viewModel *views.Model
+
+func init() {
+	// N.B. this should not be necessary.
+	gob.Register(map[model.PasteID][]byte(nil))
+	gob.Register(map[model.PasteID]model.Permission{})
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	arguments.register()
+}
 
 func main() {
 	arguments.parse()
@@ -352,11 +355,47 @@ func main() {
 
 	initSessionStore()
 	modelBroker := establishModelConnection()
+	pasteController := &PasteController{}
+	adminController := &AdminController{}
+
+	var graph inject.Graph
+	logger := log.New()
+	logger.Level = log.DebugLevel
+	graph.Logger = logger.WithFields(log.Fields{
+		"ctx": "inject",
+	})
+	err = graph.Provide(
+		&inject.Object{
+			Complete: true,
+			Value:    modelBroker,
+		},
+		&inject.Object{
+			Complete: true,
+			Value:    logger,
+		},
+		&inject.Object{
+			Value: ghostbin,
+		},
+		&inject.Object{
+			Value: pasteController,
+		},
+		&inject.Object{
+			Value: adminController,
+		},
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = graph.Populate()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	routedControllers := []RoutedController{
 		{
 			PathPrefix: "/paste",
-			Controller: NewPasteController(ghostbin, modelBroker),
+			Controller: pasteController,
 		},
 		{
 			PathPrefix: "/auth",
@@ -368,7 +407,7 @@ func main() {
 		},
 		{
 			PathPrefix: "/admin",
-			Controller: NewAdminController(ghostbin, modelBroker),
+			Controller: adminController,
 		},
 		{
 			// Application!

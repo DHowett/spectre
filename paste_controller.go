@@ -57,10 +57,8 @@ type renderedPaste struct {
 }
 
 type PasteController struct {
-	App   Application
-	Model model.Broker
-
-	Config *Configuration
+	App    Application    `inject:""`
+	Model  model.Broker   `inject:""`
 
 	renderCacheMu sync.RWMutex
 	renderCache   *lru.Cache

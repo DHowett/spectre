@@ -10,8 +10,8 @@ import (
 )
 
 type AdminController struct {
-	App   Application
-	Model model.Broker
+	App    Application    `inject:""`
+	Model  model.Broker   `inject:""`
 
 	adminHomeView *views.View
 }
