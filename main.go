@@ -96,8 +96,6 @@ func pasteDestroyCallback(p model.Paste) {
 	renderCache.c.Remove(p.GetID())
 }
 
-var userStore model.Broker
-
 var sessionBroker *SessionBroker
 
 var pasteExpirator *gotimeout.Expirator
@@ -139,7 +137,7 @@ func loadOrGenerateSessionKey(path string, keyLength int) (data []byte, err erro
 	return
 }
 
-func initSessionStore() {
+func initSessionStore() *SessionBroker {
 	sessionKeyFile := filepath.Join(arguments.root, "session.key")
 	sessionKey, err := loadOrGenerateSessionKey(sessionKeyFile, 32)
 	if err != nil {
@@ -171,7 +169,7 @@ func initSessionStore() {
 	clientSessionStore.Options.Path = "/"
 	clientSessionStore.Options.MaxAge = 86400 * 365
 
-	sessionBroker = NewSessionBroker(map[SessionScope]sessions.Store{
+	return NewSessionBroker(map[SessionScope]sessions.Store{
 		SessionScopeServer:    serverSessionStore,
 		SessionScopeClient:    clientSessionStore,
 		SessionScopeSensitive: sensitiveSessionStore,
@@ -208,12 +206,11 @@ func establishModelConnection() model.Broker {
 		}
 	}()
 
-	userStore = &PromoteFirstUserToAdminStore{
+	return &PromoteFirstUserToAdminStore{
 		&ManglingUserStore{
 			broker,
 		},
 	}
-	return userStore
 }
 
 type ghostbinApplication struct {
@@ -356,7 +353,9 @@ func main() {
 		}
 	}()
 
-	initSessionStore()
+	// global
+	sessionBroker = initSessionStore()
+
 	modelBroker := establishModelConnection()
 	pasteController := &PasteController{}
 	adminController := &AdminController{}
@@ -446,7 +445,7 @@ func main() {
 
 	fourOhFourTemplate, _ := viewModel.Bind(views.PageID("404"), nil)
 	rootHandler = four.WrapHandler(rootHandler, fourOhFourTemplate)
-	rootHandler = UserLookupHandler(userStore, rootHandler)
+	rootHandler = UserLookupHandler(modelBroker, rootHandler)
 	// User depends on Session, so install that handler last.
 	rootHandler = sessionBroker.Handler(rootHandler)
 
