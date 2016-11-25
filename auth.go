@@ -171,6 +171,12 @@ func (ac *AuthController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 					log.Error(err)
 				}
 			}
+
+			if user.GetSource() != model.UserSourceMozillaPersona {
+				reply.Reason = "this is not a Persona account."
+				return
+			}
+
 			user.SetSource(model.UserSourceMozillaPersona)
 			reply.ExtraData["persona"] = email
 
