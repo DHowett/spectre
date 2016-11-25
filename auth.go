@@ -166,10 +166,8 @@ func (ac *AuthController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 			email := verifyResponseJSON["email"].(string)
 			user, _ = ac.Model.GetUserNamed(email)
 			if user == nil {
-				user, err = ac.Model.CreateUser(email)
-				if err != nil {
-					log.Error(err)
-				}
+				reply.Reason = "new Persona accounts cannot be created."
+				return
 			}
 
 			if user.GetSource() != model.UserSourceMozillaPersona {
