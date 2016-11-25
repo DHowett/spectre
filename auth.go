@@ -121,6 +121,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 				delete(newuser.Values, "persona")
 				reply.ExtraData["promoted"] = "true"
 				user = newuser
+				ephStore.Delete("UPG|" + promoteToken)
 			} else {
 				if newuser.Check(password) {
 					user = newuser
