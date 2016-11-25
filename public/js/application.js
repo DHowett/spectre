@@ -3,6 +3,7 @@
 	window.Ghostbin = function() {
 		var _s2Languages;
 		var _languageMap;
+		var _promotedThisSession = false;
 		return {
 			formatDuration: function(seconds) {
 				seconds = seconds | 0;
@@ -100,6 +101,10 @@
 						if(reply.type === "persona") {
 							Ghostbin.setPreference("persona", reply.extra.persona);
 						}
+						if(reply.extra && reply.extra.promoted === "true") {
+							navigator.id.logout();
+							_promotedThisSession = true;
+						}
 						Ghostbin.updatePartial("login_logout");
 						Ghostbin.displayFlash({type: "success", body: "Successfully logged in."});
 						break;
@@ -111,6 +116,16 @@
 								field.parents(".control-group").eq(0).show(400);
 								field.focus();
 							});
+						}
+
+						if(reply.extra && reply.extra.promote_token) {
+							$("form#loginForm input[name=username]").val(reply.extra.persona);
+							$("form#loginForm input[name=username]").attr("disabled", "disabled")
+							$("form#loginForm input[name=promote_token]").val(reply.extra.promote_token);
+						}
+
+						if(typeof reply.reason !== "undefined") {
+							$("#login_moreinfo").text(reply.reason).show(400);
 						}
 						break;
 					case "invalid":
@@ -162,6 +177,11 @@
 						alert(wat);
 					}
 				});
+			},
+			logoutPersona: function() {
+				if(!_promotedThisSession) {
+					Ghostbin.logout();
+				}
 			},
 			displayFlash: function(flash) {
 				var container = $("#flash-container");
@@ -508,7 +528,7 @@ $(function() {
 			Ghostbin.login(data);
 		},
 		onlogout: function() {
-			Ghostbin.logout();
+			Ghostbin.logoutPersona();
 		}
 	});
 });

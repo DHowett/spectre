@@ -18,6 +18,7 @@ retained as part of your user account&mdash;even when you use <span class="nowra
 	<hr>
 	<form id="loginForm" action="">
 		<input type="hidden" name="type" value="username">
+		<input type="hidden" name="promote_token" value="">
 		{{if .Obj}}{{with .Obj.token}}<input type="hidden" name="requested_auth_token" value="{{.}}">{{end}}{{end}}
 		<div class="control-group">
 			<div class="input-prepend phone-expand">
@@ -39,6 +40,7 @@ retained as part of your user account&mdash;even when you use <span class="nowra
 		</div>
 		<button type="submit" class="btn phone-expand"><i class="icon icon-login"> </i>Log In or Create Account</button>
 		<div id="login_error" class="phone-expand error hide"></div>
+		<div id="login_moreinfo" class="phone-expand info hide"></div>
 	</form>
 </div>
 <script type="text/javascript">
