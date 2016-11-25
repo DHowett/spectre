@@ -237,7 +237,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 			reply.Status = "valid"
 			reply.ExtraData["username"] = user.Name
 		}
-		clientSession.Values["account"] = user.Name
+		clientSession.Values["account2"] = user.Name
 		err = sessions.Save(r, w)
 		if err != nil {
 			glog.Errorln(err)
@@ -253,7 +253,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 
 func authLogoutPostHandler(w http.ResponseWriter, r *http.Request) {
 	ses, _ := clientLongtermSessionStore.Get(r, "authentication")
-	delete(ses.Values, "account")
+	delete(ses.Values, "account2")
 	err := sessions.Save(r, w)
 	if err != nil {
 		glog.Errorln(err)
@@ -327,7 +327,7 @@ type userLookupWrapper struct {
 
 func (u userLookupWrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ses, _ := clientLongtermSessionStore.Get(r, "authentication")
-	account, ok := ses.Values["account"].(string)
+	account, ok := ses.Values["account2"].(string)
 	if ok {
 		user := userStore.Get(account)
 		context.Set(r, userContextKey, user)
