@@ -62,6 +62,23 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 		reply.Type = "username"
 
 		username, password, confirm := r.FormValue("username"), r.FormValue("password"), r.FormValue("confirm_password")
+
+		promoteToken := r.FormValue("promote_token")
+		promotion := false
+		if promoteToken != "" {
+			promotion = true
+		}
+		if promotion {
+			v, ok := ephStore.Get("UPG|" + promoteToken)
+			if !ok {
+				reply.Reason = "invalid promotion token (30-min expiry?)"
+				reply.InvalidFields = []string{"promote_token"}
+				return
+			}
+			// Stomp the username from the form.
+			username = v.(string)
+		}
+
 		if username == "" || password == "" {
 			reply.Reason = "invalid username or password"
 			reply.InvalidFields = []string{"username", "password"}
@@ -70,6 +87,11 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 
 		newuser := userStore.Get(username)
 		if newuser == nil {
+			if promotion {
+				// Don't allow new user creation; this should never happen.
+				return
+			}
+
 			if confirm == "" {
 				reply.Status = "moreinfo"
 				reply.InvalidFields = []string{"confirm_password"}
@@ -84,11 +106,28 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 			newuser.UpdateChallenge(password)
 			user = newuser
 		} else {
-			if newuser.Check(password) {
+			if promotion {
+				if confirm == "" {
+					reply.Status = "moreinfo"
+					reply.InvalidFields = []string{"confirm_password"}
+					return
+				}
+				if password != confirm {
+					reply.Reason = "passwords don't match"
+					reply.InvalidFields = []string{"password", "confirm_password"}
+					return
+				}
+				newuser.UpdateChallenge(password)
+				delete(newuser.Values, "persona")
+				reply.ExtraData["promoted"] = "true"
 				user = newuser
 			} else {
-				reply.Reason = "invalid username or password"
-				reply.InvalidFields = []string{"username", "password"}
+				if newuser.Check(password) {
+					user = newuser
+				} else {
+					reply.Reason = "invalid username or password"
+					reply.InvalidFields = []string{"username", "password"}
+				}
 			}
 		}
 	} else if loginType == "persona" {
@@ -138,6 +177,14 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			user.Values["persona"] = true
 			reply.ExtraData["persona"] = email
+
+			reply.Status = "moreinfo"
+			reply.Reason = "user must create a password to leave Persona"
+			reply.InvalidFields = []string{"confirm_password", "password"}
+			promoteToken, _ := generateRandomBase32String(20, 32)
+			ephStore.Put("UPG|"+promoteToken, user.Name, 30*time.Minute)
+			reply.ExtraData["promote_token"] = promoteToken
+			return
 		} else {
 			reply.Reason = verifyResponseJSON["reason"].(string)
 		}
