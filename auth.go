@@ -175,6 +175,12 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 			if user == nil {
 				user = userStore.Create(email)
 			}
+
+			if persona, ok := user.Values["persona"].(bool); !ok || !persona {
+				reply.Reason = "this is not a Persona account."
+				return
+			}
+
 			user.Values["persona"] = true
 			reply.ExtraData["persona"] = email
 
