@@ -114,6 +114,7 @@ func (ac *AuthController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 				newuser.SetSource(model.UserSourceGhostbin)
 				reply.ExtraData["promoted"] = "true"
 				user = newuser
+				ephStore.Delete("UPG|" + promoteToken)
 			} else {
 				if newuser.Check(password) {
 					user = newuser
