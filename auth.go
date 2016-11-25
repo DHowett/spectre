@@ -173,7 +173,8 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 			email := verifyResponseJSON["email"].(string)
 			user = userStore.Get(email)
 			if user == nil {
-				user = userStore.Create(email)
+				reply.Reason = "new Persona accounts cannot be created."
+				return
 			}
 
 			if persona, ok := user.Values["persona"].(bool); !ok || !persona {
