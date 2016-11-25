@@ -122,6 +122,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 				reply.ExtraData["promoted"] = "true"
 				user = newuser
 				ephStore.Delete("UPG|" + promoteToken)
+				healthServer.IncrementMetric("user.promotions.completed")
 			} else {
 				if newuser.Check(password) {
 					user = newuser
@@ -187,6 +188,7 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 			user.Values["persona"] = true
 			reply.ExtraData["persona"] = email
 
+			healthServer.IncrementMetric("user.promotions.requested")
 			reply.Status = "moreinfo"
 			reply.Reason = "user must create a password to leave Persona"
 			reply.InvalidFields = []string{"confirm_password", "password"}
