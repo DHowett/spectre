@@ -1,10 +1,10 @@
 package main
 
 import (
-	"code.google.com/p/go.crypto/scrypt"
 	"crypto/aes"
 	"crypto/cipher"
 	"github.com/DHowett/go-xattr"
+	"golang.org/x/crypto/scrypt"
 	"io"
 	"os"
 	"path/filepath"

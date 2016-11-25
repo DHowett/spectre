@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
-	"code.google.com/p/go.crypto/scrypt"
 	"github.com/DHowett/ghostbin/account"
 	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"golang.org/x/crypto/scrypt"
 )
 
 const USER_CACHE_MAX_ENTRIES int = 1000
