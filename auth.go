@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/DHowett/ghostbin/model"
@@ -49,23 +48,6 @@ func (ac *AuthController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 		reply.Type = "username"
 
 		username, password, confirm := r.FormValue("username"), r.FormValue("password"), r.FormValue("confirm_password")
-
-		promoteToken := r.FormValue("promote_token")
-		promotion := false
-		if promoteToken != "" {
-			promotion = true
-		}
-		if promotion {
-			v, ok := ephStore.Get("UPG|" + promoteToken)
-			if !ok {
-				reply.Reason = "invalid promotion token (30-min expiry?)"
-				reply.InvalidFields = []string{"promote_token"}
-				return
-			}
-			// Stomp the username from the form.
-			username = v.(string)
-		}
-
 		if username == "" || password == "" {
 			reply.Reason = "invalid username or password"
 			reply.InvalidFields = []string{"username", "password"}
@@ -75,11 +57,6 @@ func (ac *AuthController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 		// errors here are non-fatal.
 		newuser, _ := ac.Model.GetUserNamed(username)
 		if newuser == nil {
-			if promotion {
-				// Don't allow new user creation; this should never happen.
-				return
-			}
-
 			if confirm == "" {
 				reply.Status = "moreinfo"
 				reply.InvalidFields = []string{"confirm_password"}
@@ -99,95 +76,12 @@ func (ac *AuthController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 			newuser.UpdateChallenge(password)
 			user = newuser
 		} else {
-			if promotion {
-				if confirm == "" {
-					reply.Status = "moreinfo"
-					reply.InvalidFields = []string{"confirm_password"}
-					return
-				}
-				if password != confirm {
-					reply.Reason = "passwords don't match"
-					reply.InvalidFields = []string{"password", "confirm_password"}
-					return
-				}
-				newuser.UpdateChallenge(password)
-				newuser.SetSource(model.UserSourceGhostbin)
-				reply.ExtraData["promoted"] = "true"
+			if newuser.Check(password) {
 				user = newuser
-				ephStore.Delete("UPG|" + promoteToken)
 			} else {
-				if newuser.Check(password) {
-					user = newuser
-				} else {
-					reply.Reason = "invalid username or password"
-					reply.InvalidFields = []string{"username", "password"}
-				}
+				reply.Reason = "invalid username or password"
+				reply.InvalidFields = []string{"username", "password"}
 			}
-		}
-	} else if loginType == "persona" {
-		// BrowserID Assertion
-		reply.Type = "persona"
-
-		assertion := r.FormValue("assertion")
-		if assertion == "" {
-			reply.Reason = "persona login requested without an assertion"
-			reply.InvalidFields = []string{"assertion"}
-			return
-		}
-
-		audience := "https://ghostbin.com"
-		if !RequestIsHTTPS(r) {
-			audience = "http://localhost:8080"
-		}
-		verifyResponse, err := http.PostForm("https://verifier.login.persona.org/verify", url.Values{
-			"assertion": {assertion},
-			"audience":  {audience},
-		})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Error("Persona Verify Request Failed: ", err)
-			reply.Reason = "persona verification failed"
-			reply.ExtraData["error"] = err.Error()
-			return
-		}
-		defer verifyResponse.Body.Close()
-		dec := json.NewDecoder(verifyResponse.Body)
-
-		var verifyResponseJSON map[string]interface{}
-		err = dec.Decode(&verifyResponseJSON)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Error("Persona Verify JSON Decode Failed: ", err)
-			reply.Reason = "persona verification failed"
-			reply.ExtraData["error"] = err.Error()
-			return
-		}
-
-		if verifyResponseJSON["status"].(string) == "okay" {
-			email := verifyResponseJSON["email"].(string)
-			user, _ = ac.Model.GetUserNamed(email)
-			if user == nil {
-				reply.Reason = "new Persona accounts cannot be created."
-				return
-			}
-
-			if user.GetSource() != model.UserSourceMozillaPersona {
-				reply.Reason = "this is not a Persona account."
-				return
-			}
-
-			user.SetSource(model.UserSourceMozillaPersona)
-			reply.ExtraData["persona"] = email
-
-			reply.Status = "moreinfo"
-			reply.Reason = "user must create a password to leave Persona"
-			reply.InvalidFields = []string{"confirm_password", "password"}
-			promoteToken, _ := generateRandomBase32String(20, 32)
-			ephStore.Put("UPG|"+promoteToken, user.GetName(), 30*time.Minute)
-			reply.ExtraData["promote_token"] = promoteToken
-			return
-		} else {
-			reply.Reason = verifyResponseJSON["reason"].(string)
 		}
 	} else if loginType == "token" {
 		// Authentication Token
