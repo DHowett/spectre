@@ -192,7 +192,18 @@ func establishModelConnection() model.Broker {
 	// TODO(DH): destruction callbacks
 	//pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 
-	pasteExpirator = gotimeout.NewExpirator(filepath.Join(arguments.root, "expiry.gob"), &ExpiringPasteStore{broker})
+	pasteExpirator = gotimeout.NewExpiratorWithStorage(gotimeout.NoopAdapter{}, &ExpiringPasteStore{broker})
+	expiringPastes, err := broker.GetExpiringPastes()
+	if err != nil {
+		log.Error("Error loading expiring pastes: ", err)
+	}
+
+	now := time.Now()
+	for _, ep := range expiringPastes {
+		pid := ep.PasteID
+		t := ep.Time
+		pasteExpirator.ExpireObject(ExpiringPasteID(pid), t.Sub(now))
+	}
 	ephStore = gotimeout.NewMap()
 
 	go func() {

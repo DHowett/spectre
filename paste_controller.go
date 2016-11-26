@@ -286,10 +286,14 @@ func (pc *PasteController) updateOrCreatePaste(p model.Paste, w http.ResponseWri
 		if dur > MAX_EXPIRE_DURATION {
 			dur = MAX_EXPIRE_DURATION
 		}
+		expireAt := time.Now().Add(dur)
 		pasteExpirator.ExpireObject(ePid, dur)
+		p.SetExpirationTime(expireAt)
 	} else {
+		// Empty expireIn means "keep current expiration."
 		if expireIn == "-1" && pasteExpirator.ObjectHasExpiration(ePid) {
 			pasteExpirator.CancelObjectExpiration(ePid)
+			p.ClearExpirationTime()
 		}
 	}
 
@@ -297,7 +301,6 @@ func (pc *PasteController) updateOrCreatePaste(p model.Paste, w http.ResponseWri
 		p.SetLanguageName(lang.ID)
 	}
 
-	p.SetExpiration(expireIn)
 	p.SetTitle(r.FormValue("title"))
 
 	pw, _ := p.Writer()
