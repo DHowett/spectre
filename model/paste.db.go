@@ -27,10 +27,11 @@ type dbPaste struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
+	ExpireAt *time.Time `gorm:"null"`
+
 	Title sql.NullString `gorm:"type:text"`
 
 	LanguageName sql.NullString `gorm:"type:varchar(128);default:'text'"`
-	Expiration   sql.NullString `gorm:"type:varchar(64);null"`
 
 	HMAC             []byte `gorm:"null"`
 	EncryptionSalt   []byte `gorm:"null"`
@@ -76,15 +77,14 @@ func (p *dbPaste) SetLanguageName(language string) {
 func (p *dbPaste) IsEncrypted() bool {
 	return p.EncryptionMethod != PasteEncryptionMethodNone
 }
-func (p *dbPaste) GetExpiration() string {
-	if p.Expiration.Valid {
-		return p.Expiration.String
-	}
-	return ""
+func (p *dbPaste) GetExpirationTime() *time.Time {
+	return p.ExpireAt
 }
-func (p *dbPaste) SetExpiration(expiration string) {
-	p.Expiration.Valid = (expiration != "")
-	p.Expiration.String = expiration
+func (p *dbPaste) SetExpirationTime(time time.Time) {
+	p.ExpireAt = &time
+}
+func (p *dbPaste) ClearExpirationTime() {
+	p.ExpireAt = nil
 }
 
 func (p *dbPaste) GetTitle() string {
@@ -103,27 +103,7 @@ func (p *dbPaste) Commit() error {
 }
 
 func (p *dbPaste) Erase() error {
-	// TODO(DH): Convert these manual cascades into FK constraints.
-	tx := p.broker.Begin()
-	if err := tx.Delete(p).Error; err != nil && err != gorm.ErrRecordNotFound {
-		tx.Rollback()
-		return err
-	}
-
-	if err := tx.Delete(&dbPasteBody{PasteID: p.ID}).Error; err != nil && err != gorm.ErrRecordNotFound {
-		tx.Rollback()
-		return err
-	}
-
-	userPastePermissionScope := p.broker.NewScope(&dbUserPastePermission{})
-	userPastePermissionModelStruct := userPastePermissionScope.GetModelStruct()
-	userPastePermissionTableName := userPastePermissionModelStruct.TableName(p.broker.DB)
-	if _, err := tx.CommonDB().Exec("DELETE FROM "+userPastePermissionTableName+" WHERE paste_id = ?", p.ID); err != nil && err != sql.ErrNoRows {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit().Error
+	return p.broker.DestroyPaste(PasteID(p.ID))
 }
 
 func (p *dbPaste) Reader() (io.ReadCloser, error) {

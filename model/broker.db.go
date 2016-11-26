@@ -154,6 +154,46 @@ func (broker *dbBroker) GetPastes(ids []PasteID) ([]Paste, error) {
 	return iPastes, nil
 }
 
+func (broker *dbBroker) GetExpiringPastes() ([]ExpiringPaste, error) {
+	var ps []*dbPaste
+	if err := broker.Not("expire_at", "NULL").Select("id, expire_at").Find(&ps).Error; err != nil {
+		return nil, err
+	}
+
+	eps := make([]ExpiringPaste, len(ps))
+	for i, p := range ps {
+		eps[i] = ExpiringPaste{
+			PasteID: PasteID(p.ID),
+			Time:    *p.ExpireAt,
+		}
+	}
+	return eps, nil
+}
+
+func (broker *dbBroker) DestroyPaste(id PasteID) error {
+	// TODO(DH): Convert these manual cascades into FK constraints.
+	tx := broker.Begin()
+	if err := tx.Delete(&dbPaste{ID: id.String()}).Error; err != nil && err != gorm.ErrRecordNotFound {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Delete(&dbPasteBody{PasteID: id.String()}).Error; err != nil && err != gorm.ErrRecordNotFound {
+		tx.Rollback()
+		return err
+	}
+
+	userPastePermissionScope := broker.NewScope(&dbUserPastePermission{})
+	userPastePermissionModelStruct := userPastePermissionScope.GetModelStruct()
+	userPastePermissionTableName := userPastePermissionModelStruct.TableName(broker.DB)
+	if _, err := tx.CommonDB().Exec("DELETE FROM "+userPastePermissionTableName+" WHERE paste_id = ?", id.String()); err != nil && err != sql.ErrNoRows {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
 func (broker *dbBroker) CreateGrant(paste Paste) (Grant, error) {
 	grant := dbGrant{PasteID: paste.GetID().String(), broker: broker}
 	for {

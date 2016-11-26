@@ -12,6 +12,8 @@ type Broker interface {
 	CreateEncryptedPaste(PasteEncryptionMethod, []byte) (Paste, error)
 	GetPaste(PasteID, []byte) (Paste, error)
 	GetPastes([]PasteID) ([]Paste, error)
+	GetExpiringPastes() ([]ExpiringPaste, error)
+	DestroyPaste(PasteID) error
 
 	// Grants
 	CreateGrant(Paste) (Grant, error)

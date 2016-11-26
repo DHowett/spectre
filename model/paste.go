@@ -23,8 +23,13 @@ type Paste interface {
 
 	IsEncrypted() bool
 
-	GetExpiration() string
-	SetExpiration(string)
+	// GetExpirationTime returns the time at which this paste will
+	// expire or nil if the paste does not expire.
+	GetExpirationTime() *time.Time
+
+	// SetExpirationTime will set the paste to expire at the provided time.
+	SetExpirationTime(time.Time)
+	ClearExpirationTime()
 
 	GetTitle() string
 	SetTitle(string)
@@ -36,6 +41,11 @@ type Paste interface {
 
 	Commit() error
 	Erase() error
+}
+
+type ExpiringPaste struct {
+	PasteID
+	time.Time
 }
 
 type encryptedPastePlaceholder struct {
@@ -56,11 +66,12 @@ func (e *encryptedPastePlaceholder) IsEncrypted() bool {
 	return true
 }
 
-func (e *encryptedPastePlaceholder) GetExpiration() string {
-	return ""
+func (e *encryptedPastePlaceholder) GetExpirationTime() *time.Time {
+	return nil
 }
 
-func (e *encryptedPastePlaceholder) SetExpiration(string) {}
+func (e *encryptedPastePlaceholder) SetExpirationTime(time time.Time) {}
+func (e *encryptedPastePlaceholder) ClearExpirationTime()             {}
 
 func (e *encryptedPastePlaceholder) GetTitle() string {
 	return ""
