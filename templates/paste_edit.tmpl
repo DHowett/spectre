@@ -107,6 +107,6 @@
 {{define "s2langbox" -}}
 <input type="hidden" class="dropdown" id="langbox" name="lang"
 	{{- with .GetLanguageName -}}
-		data-selected="{{getLanguageNamed .}}"
+		data-selected="{{.}}"
 	{{- end -}}>
 {{- end}}
