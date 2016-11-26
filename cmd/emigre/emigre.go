@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,123 +28,179 @@ type options struct {
 // POSTGRESQL
 //  TO_TIMESTAMP(%d)
 
-func optionalString(s *string) string {
-	if s == nil {
-		return "NULL"
+func execBatchQuery(db *sql.DB, base, repeat string, per int, values ...interface{}) (sql.Result, error) {
+	placeholders := make([]string, len(values)/per)
+	for i, _ := range placeholders {
+		placeholders[i] = repeat
 	}
-	sv := strings.Replace(*s, `"`, `\"`, -1)
-	return fmt.Sprintf(`"%s"`, sv)
+
+	query := base + strings.Join(placeholders, ", ")
+	return db.Exec(query, values...)
 }
 
-func optionalHex(b []byte) string {
-	if b == nil {
-		return "NULL"
-	}
-	return fmt.Sprintf(`X'%02x'`, b)
+type migrator struct {
+	Logger logrus.FieldLogger
+
+	opts options
+
+	// source
+	pasteStore *FilesystemPasteStore
+	userStore  *FilesystemUserStore
+
+	// destination
+	dialect string
+	db      *sql.DB
+
+	pasteHits map[model.PasteID]struct{}
+	userHits  map[string]struct{}
 }
 
-func optionalUnixTime(t *time.Time) string {
-	if t == nil {
-		return "NULL"
+func newMigrator(opts options) (*migrator, error) {
+	m := &migrator{
+		opts:      opts,
+		dialect:   opts.Dialect,
+		pasteHits: make(map[model.PasteID]struct{}),
+		userHits:  make(map[string]struct{}),
 	}
-	return fmt.Sprintf(`DATETIME(%d, "unixepoch")`, t.Unix())
-}
+	m.pasteStore = NewFilesystemPasteStore(opts.Pastes)
+	m.userStore = NewFilesystemUserStore(opts.Accounts)
 
-func main() {
-	var opts options
-	_, err := flags.Parse(&opts)
+	db, err := sql.Open(m.dialect, opts.Database)
 	if err != nil {
-		logrus.Fatal(err)
+		return nil, err
 	}
+	m.db = db
+	return m, nil
+}
 
-	pasteStore := NewFilesystemPasteStore(opts.Pastes)
-	userStore := NewFilesystemUserStore(opts.Accounts)
+func (m *migrator) InitSchema() error {
+	_, err := model.NewDatabaseBroker(m.dialect, m.db, nil)
+	return err
+}
 
-	sqlDb, err := sql.Open(opts.Dialect, opts.Database)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
-	// Populate Schema(!)
-	model.NewDatabaseBroker(opts.Dialect, sqlDb, nil)
-
+func (m *migrator) MigratePastes() (int, error) {
 	insertPasteQueryBase := `INSERT INTO
 		pastes(id, created_at, updated_at, expire_at, title, language_name, hmac, encryption_salt, encryption_method)
 		VALUES`
 	insertPasteQueryRepeat := `(?, ?, ?, ?, ?, ?, ?, ?, ?)`
-
-	insertUserQuery, err := sqlDb.Prepare(`INSERT INTO
-		users(updated_at, name, salt, challenge, source, permissions)
-		VALUES(?, ?, ?, ?, ?, ?)`)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
-	insertUserPermissionQuery, err := sqlDb.Prepare(`INSERT INTO
-		user_paste_permissions(user_id, paste_id, permissions)
-		VALUES(?, ?, ?)`)
-	if err != nil {
-		logrus.Fatal(err)
-	}
+	valPerQuery := 9
 
 	nPastes := 0
-	batchSz := 100
-	pasteQ := make([]string, 0, batchSz)
-	pasteV := make([]interface{}, 0, batchSz*9)
-	filepath.Walk(opts.Pastes, func(path string, fi os.FileInfo, err error) error {
+
+	batchSz := 999 / valPerQuery
+	pasteV := make([]interface{}, 0, batchSz*valPerQuery)
+	filepath.Walk(m.opts.Pastes, func(path string, fi os.FileInfo, err error) error {
 		if fi.IsDir() {
 			return nil
 		}
-		fsp, err := pasteStore.Get(model.PasteIDFromString(fi.Name()), nil)
+		plog := m.Logger.WithField("paste", fi.Name())
+		fsp, err := m.pasteStore.Get(model.PasteIDFromString(fi.Name()), nil)
 		if err != nil {
-			logrus.WithField("paste", fi.Name()).Error(err)
+			plog.Error(err)
 			return nil
 		}
-		pasteQ = append(pasteQ, insertPasteQueryRepeat)
 		pasteV = append(pasteV, []interface{}{fsp.ID.String(), fsp.ModTime, fsp.ModTime, fsp.ExpirationTime, fsp.Title, fsp.Language, fsp.HMAC, fsp.EncryptionSalt, fsp.EncryptionMethod}...)
-		//if err != nil {
-		//logrus.WithField("paste", fi.Name()).Error(err)
-		//return nil
-		//}
+		m.pasteHits[fsp.ID] = struct{}{}
 		nPastes++
 		if nPastes%batchSz == 0 {
-			q := insertPasteQueryBase + strings.Join(pasteQ, ",")
-			_, err := sqlDb.Exec(q, pasteV...)
+			_, err := execBatchQuery(m.db, insertPasteQueryBase, insertPasteQueryRepeat, valPerQuery, pasteV...)
 			if err != nil {
-				logrus.Errorf("%d batch(%d) failed: %v", nPastes, batchSz, err)
+				m.Logger.Errorf("%d batch(%d) failed: %v", nPastes, batchSz, err)
 			}
-			logrus.Infof("%d...", nPastes)
-			pasteQ = pasteQ[0:0]
+			m.Logger.Infof("%d...", nPastes)
 			pasteV = pasteV[0:0]
 		}
 		return nil
 	})
 	if nPastes%batchSz != 0 {
 		n := nPastes % batchSz
-		q := insertPasteQueryBase + strings.Join(pasteQ[:n], ",")
-		_, err := sqlDb.Exec(q, pasteV[:9*n]...)
+		_, err := execBatchQuery(m.db, insertPasteQueryBase, insertPasteQueryRepeat, valPerQuery, pasteV[:valPerQuery*n]...)
 		if err != nil {
-			logrus.Errorf("%d batch(%d) failed: %v", nPastes, n, err)
+			m.Logger.Errorf("%d batch(%d) failed: %v", nPastes, n, err)
 		}
 	}
-	logrus.Infof("%d pastes.", nPastes)
+	return nPastes, nil
+}
 
-	userHits := map[string]bool{}
+func (m *migrator) migrateUserPermissions(u *User, uid int64) (int, error) {
+	insertUserPermissionQueryBase := `INSERT INTO
+		user_paste_permissions(user_id, paste_id, permissions)
+		VALUES`
+	insertUserPermissionQueryRepeat := `(?, ?, ?)`
+	valPerQuery := 3
+
+	nUserPerms := 0
+	batchSz := 999 / valPerQuery
+
+	if userPerms, ok := u.Values["permissions"].(*PastePermissionSet); ok {
+		permsV := make([]interface{}, 0, valPerQuery*batchSz)
+		nCurrentPerms := 0
+		for pid, pperm := range userPerms.Entries {
+			if _, ok := m.pasteHits[model.PasteID(pid)]; !ok {
+				continue
+			}
+			var newPerm model.Permission
+			if pperm["grant"] {
+				newPerm |= model.PastePermissionGrant
+			}
+			if pperm["edit"] {
+				newPerm |= model.PastePermissionEdit
+			}
+
+			// legacy grant + edit = all future permissions
+			if newPerm == model.PastePermissionGrant|model.PastePermissionEdit {
+				newPerm = model.PastePermissionAll
+			}
+
+			permsV = append(permsV, uid)
+			permsV = append(permsV, string(pid))
+			permsV = append(permsV, newPerm)
+			nCurrentPerms++
+			if nCurrentPerms%batchSz == 0 {
+				_, err := execBatchQuery(m.db, insertUserPermissionQueryBase, insertUserPermissionQueryRepeat, valPerQuery, permsV...)
+				if err != nil {
+					m.Logger.Errorf("%d batch(%d) failed: %v", nCurrentPerms, batchSz, err)
+				}
+				permsV = permsV[0:0]
+			}
+		}
+		if nCurrentPerms%batchSz != 0 {
+			n := nCurrentPerms % batchSz
+			_, err := execBatchQuery(m.db, insertUserPermissionQueryBase, insertUserPermissionQueryRepeat, valPerQuery, permsV[:valPerQuery*n]...)
+			if err != nil {
+				m.Logger.Errorf("%d batch(%d) failed: %v", nCurrentPerms, n, err)
+			}
+		}
+		nUserPerms += len(userPerms.Entries)
+	}
+	return nUserPerms, nil
+
+}
+
+func (m *migrator) MigrateUsers() (int, int, error) {
+	insertUserQuery, err := m.db.Prepare(`INSERT INTO
+		users(updated_at, name, salt, challenge, source, permissions)
+		VALUES(?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return 0, 0, err
+	}
+
 	nUsers := 0
 	nUserPerms := 0
-	filepath.Walk(opts.Accounts, func(path string, fi os.FileInfo, err error) error {
+	filepath.Walk(m.opts.Accounts, func(path string, fi os.FileInfo, err error) error {
 		if fi.IsDir() {
 			return nil
 		}
-		u := userStore.Get(fi.Name())
+		ulog := m.Logger.WithField("user", fi.Name())
+		u := m.userStore.Get(fi.Name())
 		if u == nil {
-			logrus.WithField("user", fi.Name()).Error("couldn't load?")
+			ulog.Error("couldn't load?")
 			return nil
 		}
-		if _, ok := userHits[u.Name]; !ok {
-			userHits[u.Name] = true
+		if _, ok := m.userHits[u.Name]; !ok {
+			m.userHits[u.Name] = struct{}{}
 		} else {
-			logrus.WithField("user", u.Name).Warning("skipped duplicate")
+			ulog.Warning("skipped duplicate")
 			return nil
 		}
 		source := model.UserSourceGhostbin
@@ -160,43 +215,55 @@ func main() {
 		}
 		res, err := insertUserQuery.Exec(time.Now(), u.Name, u.Salt, u.Challenge, source, perms)
 		if err != nil {
-			logrus.WithField("user", u.Name).Error(err)
+			ulog.Error(err)
 			return nil
 		}
 		sqlUid, err := res.LastInsertId()
 		if err != nil {
-			logrus.WithField("user", u.Name).Error(err)
+			ulog.Error(err)
 			return nil
 		}
 
-		if userPerms, ok := u.Values["permissions"].(*PastePermissionSet); ok {
-			for pid, pperm := range userPerms.Entries {
-				var newPerm model.Permission
-				if pperm["grant"] {
-					newPerm |= model.PastePermissionGrant
-				}
-				if pperm["edit"] {
-					newPerm |= model.PastePermissionEdit
-				}
-
-				// legacy grant + edit = all future permissions
-				if newPerm == model.PastePermissionGrant|model.PastePermissionEdit {
-					newPerm = model.PastePermissionAll
-				}
-				_, err := insertUserPermissionQuery.Exec(sqlUid, string(pid), newPerm)
-				if err != nil {
-					logrus.WithField("user", u.Name).WithField("paste", string(pid)).Error(err)
-				}
-			}
-			nUserPerms += len(userPerms.Entries)
-		}
-
+		nPermsMigrated, err := m.migrateUserPermissions(u, sqlUid)
+		nUserPerms += nPermsMigrated
 		nUsers++
 		if nUsers%50 == 0 {
-			logrus.Infof("%d...", nUsers)
+			m.Logger.Infof("%d...", nUsers)
 		}
 		return nil
 	})
-	logrus.Infof("%d users.", nUsers)
-	logrus.Infof("%d user permissions.", nUserPerms)
+	return nUsers, nUserPerms, nil
+}
+
+func main() {
+	logger := logrus.New()
+	var opts options
+	_, err := flags.Parse(&opts)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	m, err := newMigrator(opts)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	m.Logger = logger
+
+	err = m.InitSchema()
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	nPastes, err := m.MigratePastes()
+	if err != nil {
+		logger.Error(err)
+	}
+	logger.Infof("%d pastes.", nPastes)
+
+	nUsers, nUserPermissions, err := m.MigrateUsers()
+	if err != nil {
+		logger.Error(err)
+	}
+	logger.Infof("%d users.", nUsers)
+	logger.Infof("%d user permissions.", nUserPermissions)
 }
