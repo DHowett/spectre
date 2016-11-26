@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
@@ -83,6 +84,21 @@ type pasteViewFacade struct {
 
 func (pv *pasteViewFacade) GetRenderedBody() template.HTML {
 	return pv.c.renderPaste(pv.Paste)
+}
+
+func (pc *pasteViewFacade) GetEditBody() (template.HTML, error) {
+	// raw paste body for editing
+	reader, err := pc.Reader()
+	if err != nil {
+		return "", err
+	}
+
+	buf, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return "", err
+	}
+
+	return template.HTML(buf), nil
 }
 
 func (pv *pasteViewFacade) ExpirationTime() time.Time {
