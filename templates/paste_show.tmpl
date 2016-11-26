@@ -21,8 +21,8 @@
 			{{- if $paste.IsEncrypted -}}
 				<i class="icon-lock" title="Encrypted"></i>
 			{{- end -}}
-			{{- if $paste.GetExpiration -}}
-				<i class="icon-clock" data-reftime="{{now.UTC.Unix}}" data-value="{{$paste.ExpirationTime.UTC.Unix}}" id="expirationIcon"></i>
+			{{- with $paste.GetExpirationTime -}}
+				<i class="icon-clock" data-reftime="{{now.UTC.Unix}}" data-value="{{.UTC.Unix}}" id="expirationIcon"></i>
 			{{- end -}}
 		</span>
 	</span>
