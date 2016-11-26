@@ -285,7 +285,7 @@ func (pc *PasteController) grantAcceptHandler(w http.ResponseWriter, r *http.Req
 	grant.Destroy()
 
 	SetFlash(w, "success", fmt.Sprintf("You now have edit rights to Paste %v.", pID))
-	w.Header().Set("Location", pasteURL("show", pID))
+	w.Header().Set("Location", pc.App.GenerateURL(URLTypePasteShow, "id", pID.String()).String())
 	w.WriteHeader(http.StatusSeeOther)
 }
 
@@ -457,7 +457,7 @@ func (pc *PasteController) authenticatePastePOSTHandler(w http.ResponseWriter, r
 	session.Set("paste_passphrases", pasteKeys)
 	session.Save()
 
-	dest := pasteURL("show", id)
+	dest := pc.App.GenerateURL(URLTypePasteShow, "id", id.String()).String()
 	if destCookie, err := r.Cookie("destination"); err != nil {
 		dest = destCookie.Value
 	}

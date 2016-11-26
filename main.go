@@ -40,28 +40,6 @@ func isEditAllowed(p model.Paste, r *http.Request) bool {
 	return GetPastePermissionScope(p.GetID(), r).Has(model.PastePermissionEdit)
 }
 
-// DEPRECATED
-func pasteURL(routeType string, p model.PasteID) string {
-	var ut URLType
-	switch routeType {
-	case "show":
-		ut = URLTypePasteShow
-	case "edit":
-		ut = URLTypePasteEdit
-	case "delete":
-		ut = URLTypePasteDelete
-	case "raw":
-		ut = URLTypePasteRaw
-	case "download":
-		ut = URLTypePasteDownload
-	case "report":
-		ut = URLTypePasteReport
-	case "grant":
-		ut = URLTypePasteGrant
-	}
-	return ghostbin.GenerateURL(ut, "id", p.String()).String()
-}
-
 func requestVariable(rc *templatepack.Context, variable string) string {
 	v, _ := mux.Vars(rc.Request)[variable]
 	if v == "" {
