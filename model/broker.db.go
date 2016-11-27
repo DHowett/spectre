@@ -6,11 +6,13 @@ import (
 
 	"github.com/DHowett/ghostbin/lib/crypto"
 	"github.com/DHowett/ghostbin/lib/sql/querybuilder"
+	"github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 )
 
 type dbBroker struct {
 	*gorm.DB
+	Logger            logrus.FieldLogger
 	QB                querybuilder.QueryBuilder
 	ChallengeProvider crypto.ChallengeProvider
 }
@@ -261,7 +263,15 @@ func (broker *dbBroker) GetReports() ([]Report, error) {
 	return reports, rows.Err()
 }
 
-func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.ChallengeProvider) (Broker, error) {
+func (broker *dbBroker) setLoggerOption(log logrus.FieldLogger) {
+	broker.Logger = log
+}
+
+func (broker *dbBroker) setDebugOption(debug bool) {
+	// no-op
+}
+
+func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.ChallengeProvider, options ...Option) (Broker, error) {
 	if dialect == "sqlite" || dialect == "sqlite3" {
 		sqlDb.Exec("PRAGMA foreign_keys = ON")
 	}
@@ -270,7 +280,16 @@ func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.C
 	if err != nil {
 		return nil, err
 	}
-	db = db.Debug()
+
+	broker := &dbBroker{
+		DB:                db,
+		QB:                querybuilder.New(dialect),
+		ChallengeProvider: challengeProvider,
+	}
+
+	for _, opt := range options {
+		opt(broker)
+	}
 
 	interfacesToMigrate := []interface{}{
 		&dbPaste{},
@@ -297,9 +316,5 @@ func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.C
 		return nil, err
 	}
 
-	return &dbBroker{
-		DB:                db,
-		QB:                querybuilder.New(dialect),
-		ChallengeProvider: challengeProvider,
-	}, nil
+	return broker, nil
 }
