@@ -316,5 +316,18 @@ func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.C
 		return nil, err
 	}
 
+	res, err := sqlDb.Exec(
+		`DELETE FROM pastes WHERE expire_at < CURRENT_TIMESTAMP`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if broker.Logger != nil {
+		nrows, _ := res.RowsAffected()
+		if nrows > 0 {
+			broker.Logger.Infof("removed %d lingering expirees", nrows)
+		}
+	}
+
 	return broker, nil
 }
