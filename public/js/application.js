@@ -3,7 +3,6 @@
 	window.Ghostbin = function() {
 		var _s2Languages;
 		var _languageMap;
-		var _promotedThisSession = false;
 		return {
 			formatDuration: function(seconds) {
 				seconds = seconds | 0;
@@ -98,13 +97,6 @@
 				switch(reply.status) {
 					case "valid":
 						$("#login_error").text("").hide(400);
-						if(reply.type === "persona") {
-							Ghostbin.setPreference("persona", reply.extra.persona);
-						}
-						if(reply.extra && reply.extra.promoted === "true") {
-							navigator.id.logout();
-							_promotedThisSession = true;
-						}
 						Ghostbin.updatePartial("login_logout");
 						Ghostbin.displayFlash({type: "success", body: "Successfully logged in."});
 						break;
@@ -116,12 +108,6 @@
 								field.parents(".control-group").eq(0).show(400);
 								field.focus();
 							});
-						}
-
-						if(reply.extra && reply.extra.promote_token) {
-							$("form#loginForm input[name=username]").val(reply.extra.persona);
-							$("form#loginForm input[name=username]").attr("disabled", "disabled")
-							$("form#loginForm input[name=promote_token]").val(reply.extra.promote_token);
 						}
 
 						if(typeof reply.reason !== "undefined") {
@@ -152,8 +138,6 @@
 					success: Ghostbin._loginReplyHandler,
 					error: function() {
 						$("#partial_container_login_logout .blocker").fadeOut("fast");
-						// In case we were attempting a persona login.
-						navigator.id.logout();
 					},
 				});
 			},
@@ -165,10 +149,6 @@
 					async: true,
 					success: function() {
 						$("#partial_container_login_logout .blocker").fadeOut("fast");
-						if(Ghostbin.getPreference("persona", null)) {
-							navigator.id.logout();
-							Ghostbin.clearPreference("persona");
-						}
 						Ghostbin.updatePartial("login_logout");
 						Ghostbin.displayFlash({type: "success", body: "Successfully logged out."});
 					},
@@ -177,11 +157,6 @@
 						alert(wat);
 					}
 				});
-			},
-			logoutPersona: function() {
-				if(!_promotedThisSession) {
-					Ghostbin.logout();
-				}
 			},
 			displayFlash: function(flash) {
 				var container = $("#flash-container");
@@ -518,18 +493,6 @@ $(function() {
 			show: 250,
 			hide: 50,
 		},
-	});
-	navigator.id.watch({
-		loggedInUser: Ghostbin.getPreference("persona", null),
-		onlogin: function(assertion) {
-			var data = $("#loginForm").serializeObject();
-			data["type"] = "persona";
-			data["assertion"] = assertion;
-			Ghostbin.login(data);
-		},
-		onlogout: function() {
-			Ghostbin.logoutPersona();
-		}
 	});
 });
 

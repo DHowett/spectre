@@ -10,13 +10,10 @@ $("button#logout").on("click", function() {
 </script>
 {{else}}
 <p><small>Ghostbin user accounts exist solely for keeping track of your own pastes.<br>No personally-identifying information is
-retained as part of your user account&mdash;even when you use <span class="nowrap"><i class="icon icon-persona"> </i>Email</span>. Promise.</small></p>
+retained as part of your user account. Promise.</small></p>
 <div class="well well-small">
-	<button type="button" id="login_persona" class="btn phone-expand"><i class="icon icon-persona"> </i>Email</button>
-	<hr>
 	<form id="loginForm" action="">
 		<input type="hidden" name="type" value="username">
-		<input type="hidden" name="promote_token" value="">
 		{{if .Obj}}{{with .Obj.token}}<input type="hidden" name="requested_auth_token" value="{{.}}">{{end}}{{end}}
 		<div class="control-group">
 			<div class="input-prepend phone-expand">
@@ -46,9 +43,6 @@ $("form#loginForm").on('submit', function(event) {
 	Ghostbin.login($(this).serializeObject());
 	event.preventDefault();
 	event.stopPropagation();
-});
-$("button#login_persona").on("click", function() {
-	navigator.id.request();
 });
 </script>
 {{end}}
