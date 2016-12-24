@@ -3,10 +3,12 @@ package model
 import (
 	"database/sql"
 	"flag"
+	"fmt"
 	"os"
 	"testing"
 
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/Sirupsen/logrus"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
 type noopChallengeProvider struct{}
@@ -27,8 +29,24 @@ var broker Broker
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-	sqlDb, _ := sql.Open("sqlite3", ":memory:")
-	broker, _ = NewDatabaseBroker("sqlite3", sqlDb, &noopChallengeProvider{})
+	sqlDb, err := sql.Open("postgres", "postgresql://ghostbin:password@localhost/ghostbintest?sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = sqlDb.Exec(`
+	DROP SCHEMA public CASCADE;
+	CREATE SCHEMA public;
+	GRANT ALL ON SCHEMA public TO postgres;
+	GRANT ALL ON SCHEMA public TO ghostbin;
+	GRANT ALL ON SCHEMA public TO public;
+	`)
+	fmt.Println(err)
+
+	broker, err = NewDatabaseBroker("postgres", sqlDb, &noopChallengeProvider{}, FieldLoggingOption(logrus.New()))
+	if err != nil {
+		panic(err)
+	}
 	e := m.Run()
 	os.Exit(e)
 }

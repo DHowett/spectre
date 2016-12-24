@@ -1,7 +1,5 @@
 package model
 
-import "github.com/DHowett/ghostbin/lib/sql/querybuilder"
-
 type userPastePermissionScope struct {
 	pPerm *dbUserPastePermission
 	err   error
@@ -27,28 +25,29 @@ func (s *userPastePermissionScope) Grant(p Permission) error {
 		return s.err
 	}
 
-	newPerms := s.pPerm.Permissions | p
-
 	db := s.broker.DB
-	scope := db.NewScope(s.pPerm)
-	modelStruct := scope.GetModelStruct()
-	table := modelStruct.TableName(db)
+	row := db.CommonDB().QueryRow(`
+	INSERT INTO user_paste_permissions(user_id, paste_id, permissions)
+	VALUES($1, $2, $3)
+	ON CONFLICT(user_id, paste_id)
+	DO
+		UPDATE SET permissions = user_paste_permissions.permissions | EXCLUDED.permissions
+	RETURNING permissions
+	`, s.pPerm.UserID, s.pPerm.PasteID, uint32(p))
 
-	query, err := s.broker.QB.Build(&querybuilder.UpsertQuery{
-		Table:        table,
-		ConflictKeys: []string{"user_id", "paste_id"},
-		Fields:       []string{"user_id", "paste_id", "permissions"},
-	})
-
-	if err != nil {
+	var newPerms uint32
+	if err := row.Scan(&newPerms); err == nil {
+		if s.broker.Logger != nil {
+			s.broker.Logger.Infof("New permission set %x", newPerms)
+		}
+		s.pPerm.Permissions = Permission(newPerms)
+	} else {
+		if s.broker.Logger != nil {
+			s.broker.Logger.Error(err)
+		}
 		s.err = err
-		return err
 	}
 
-	_, s.err = db.CommonDB().Exec(query, s.pPerm.UserID, s.pPerm.PasteID, newPerms)
-	if s.err == nil {
-		s.pPerm.Permissions = newPerms
-	}
 	return s.err
 }
 

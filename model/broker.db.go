@@ -3,15 +3,21 @@ package model
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"os"
+	"strings"
 
 	"github.com/DHowett/ghostbin/lib/crypto"
 	"github.com/DHowett/ghostbin/lib/sql/querybuilder"
 	"github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
+
+	"github.com/GeertJohan/go.rice"
 )
 
 type dbBroker struct {
 	*gorm.DB
+	sqlDb             *sql.DB
 	Logger            logrus.FieldLogger
 	QB                querybuilder.QueryBuilder
 	ChallengeProvider crypto.ChallengeProvider
@@ -73,7 +79,7 @@ func (broker *dbBroker) CreatePaste() (Paste, error) {
 
 func (broker *dbBroker) CreateEncryptedPaste(method PasteEncryptionMethod, passphraseMaterial []byte) (Paste, error) {
 	if passphraseMaterial == nil {
-		return nil, errors.New("FilesystemPasteStore: unacceptable encryption material")
+		return nil, errors.New("model: unacceptable encryption material")
 	}
 	paste := dbPaste{broker: broker}
 	paste.EncryptionSalt, _ = generateRandomBytes(16)
@@ -158,7 +164,7 @@ func (broker *dbBroker) GetPastes(ids []PasteID) ([]Paste, error) {
 
 func (broker *dbBroker) GetExpiringPastes() ([]ExpiringPaste, error) {
 	var ps []*dbPaste
-	if err := broker.Not("expire_at", "NULL").Select("id, expire_at").Find(&ps).Error; err != nil {
+	if err := broker.Not("expire_at", nil).Select("id, expire_at").Find(&ps).Error; err != nil {
 		return nil, err
 	}
 
@@ -173,22 +179,8 @@ func (broker *dbBroker) GetExpiringPastes() ([]ExpiringPaste, error) {
 }
 
 func (broker *dbBroker) DestroyPaste(id PasteID) error {
-	// TODO(DH): Convert these manual cascades into FK constraints.
 	tx := broker.Begin()
 	if err := tx.Delete(&dbPaste{ID: id.String()}).Error; err != nil && err != gorm.ErrRecordNotFound {
-		tx.Rollback()
-		return err
-	}
-
-	if err := tx.Delete(&dbPasteBody{PasteID: id.String()}).Error; err != nil && err != gorm.ErrRecordNotFound {
-		tx.Rollback()
-		return err
-	}
-
-	userPastePermissionScope := broker.NewScope(&dbUserPastePermission{})
-	userPastePermissionModelStruct := userPastePermissionScope.GetModelStruct()
-	userPastePermissionTableName := userPastePermissionModelStruct.TableName(broker.DB)
-	if _, err := tx.CommonDB().Exec("DELETE FROM "+userPastePermissionTableName+" WHERE paste_id = ?", id.String()); err != nil && err != sql.ErrNoRows {
 		tx.Rollback()
 		return err
 	}
@@ -218,9 +210,9 @@ func (broker *dbBroker) GetGrant(id GrantID) (Grant, error) {
 
 func (broker *dbBroker) ReportPaste(p Paste) error {
 	pID := p.GetID()
-	result, err := broker.CommonDB().Exec("UPDATE paste_reports SET count = count + 1 WHERE paste_id = ?", pID.String())
+	result, err := broker.sqlDb.Exec("UPDATE paste_reports SET count = count + 1 WHERE paste_id = ?", pID.String())
 	if nrows, _ := result.RowsAffected(); nrows == 0 {
-		_, err = broker.CommonDB().Exec("INSERT INTO paste_reports(paste_id, count) VALUES(?, 1)", pID.String())
+		_, err = broker.sqlDb.Exec("INSERT INTO paste_reports(paste_id, count) VALUES(?, 1)", pID.String())
 		return err
 	}
 
@@ -228,7 +220,7 @@ func (broker *dbBroker) ReportPaste(p Paste) error {
 }
 
 func (broker *dbBroker) GetReport(pID PasteID) (Report, error) {
-	row := broker.CommonDB().QueryRow("SELECT count FROM paste_reports WHERE paste_id = ?", pID.String())
+	row := broker.sqlDb.QueryRow("SELECT count FROM paste_reports WHERE paste_id = ?", pID.String())
 
 	var count int
 	err := row.Scan(&count)
@@ -249,7 +241,7 @@ func (broker *dbBroker) GetReport(pID PasteID) (Report, error) {
 func (broker *dbBroker) GetReports() ([]Report, error) {
 	reports := make([]Report, 0, 16)
 
-	rows, err := broker.CommonDB().Query("SELECT paste_id, count FROM paste_reports")
+	rows, err := broker.sqlDb.Query("SELECT paste_id, count FROM paste_reports")
 	if err != nil {
 		return nil, err
 	}
@@ -271,6 +263,94 @@ func (broker *dbBroker) setDebugOption(debug bool) {
 	// no-op
 }
 
+const dbV0Schema string = `
+CREATE TABLE IF NOT EXISTS _schema (
+	version integer UNIQUE,
+	created_at timestamp with time zone DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uix__schema_version ON _schema USING btree (version);
+`
+
+func (broker *dbBroker) migrateDb() error {
+	rice.Debug = true
+	schemaBox, err := rice.FindBox("schema")
+	if err != nil {
+		return err
+	}
+
+	maxVersion := -1
+	schemas := make(map[int]string)
+	_ = schemas
+	_ = maxVersion
+	err = schemaBox.Walk("" /* empty path; box is rooted at schema/ */, func(path string, fi os.FileInfo, err error) error {
+		if fi.IsDir() || !strings.HasSuffix(path, ".sql") {
+			return nil
+		}
+		logrus.Info(fi.Name())
+
+		var ver int
+		var desc string
+		n, _ := fmt.Sscanf(path, "%d_%s", &ver, &desc)
+		if n != 2 {
+			return fmt.Errorf("model: invalid schema migration filename %s", path)
+		}
+		schemas[ver] = path
+		if ver > maxVersion {
+			maxVersion = ver
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	db := broker.sqlDb
+	_, err = db.Exec(dbV0Schema)
+	if err != nil {
+		return err
+	}
+
+	schemaVersion := 0
+	err = db.QueryRow("SELECT version FROM _schema ORDER BY version DESC LIMIT 1").Scan(&schemaVersion)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+
+	if schemaVersion > maxVersion {
+		return fmt.Errorf("model: database is newer than we can support! (%d > %d)", schemaVersion, maxVersion)
+	}
+
+	logrus.Info(schemas)
+	for ; schemaVersion < maxVersion; schemaVersion++ {
+		tx, err := db.Begin()
+		if err != nil {
+			// Failed to migrate!
+			return err
+		}
+
+		// we use Must, as the Walk earlier proved that these files exist.
+		sch := schemaBox.MustString(schemas[schemaVersion+1])
+		_, err = tx.Exec(sch)
+		if err != nil {
+			tx.Rollback()
+			// Failed to migrate!
+			return err
+		}
+
+		newVersion := schemaVersion + 1
+		tx.Exec("INSERT INTO _schema(version) VALUES($1)", newVersion)
+
+		if err := tx.Commit(); err != nil {
+			tx.Rollback()
+			// Failed to migrate!
+			return err
+		}
+	}
+
+	return nil
+}
+
 func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.ChallengeProvider, options ...Option) (Broker, error) {
 	if dialect == "sqlite" || dialect == "sqlite3" {
 		sqlDb.Exec("PRAGMA foreign_keys = ON")
@@ -282,6 +362,7 @@ func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.C
 	}
 
 	broker := &dbBroker{
+		sqlDb:             sqlDb,
 		DB:                db,
 		QB:                querybuilder.New(dialect),
 		ChallengeProvider: challengeProvider,
@@ -291,33 +372,13 @@ func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.C
 		opt(broker)
 	}
 
-	interfacesToMigrate := []interface{}{
-		&dbPaste{},
-		&dbPasteBody{},
-		&dbUser{},
-		&dbUserPastePermission{},
-		&dbGrant{},
-	}
-
-	if err := db.AutoMigrate(interfacesToMigrate...).Error; err != nil {
-		return nil, err
-	}
-
-	pasteScope := db.NewScope(&dbPaste{})
-	pasteModelStruct := pasteScope.GetModelStruct()
-	pasteTableName := pasteModelStruct.TableName(db)
-
-	_, err = sqlDb.Exec(
-		`CREATE TABLE IF NOT EXISTS paste_reports(
-    paste_id VARCHAR(256) PRIMARY KEY REFERENCES ` + pasteTableName + `(id) ON DELETE CASCADE,
-    count int DEFAULT 0
-)`)
+	err = broker.migrateDb()
 	if err != nil {
 		return nil, err
 	}
 
 	res, err := sqlDb.Exec(
-		`DELETE FROM pastes WHERE expire_at < CURRENT_TIMESTAMP`,
+		`DELETE FROM pastes WHERE expire_at < NOW()`,
 	)
 	if err != nil {
 		return nil, err

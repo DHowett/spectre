@@ -99,12 +99,18 @@ func TestUserUpdateChallenge(t *testing.T) {
 }
 
 func TestUserGrantPastePermissions(t *testing.T) {
+	// we must assume that the broker can create a paste safely.
+	paste, err := broker.CreatePaste()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	u, err := broker.GetUserNamed("DHowett")
 	if err != nil {
 		t.Error(err)
 	}
 
-	permScope := u.Permissions(PermissionClassPaste, "abcde")
+	permScope := u.Permissions(PermissionClassPaste, paste.GetID())
 
 	if permScope.Has(PastePermissionEdit) {
 		t.Error("user already has edit on scope for abcde?")
@@ -130,12 +136,18 @@ func TestUserGrantPastePermissions(t *testing.T) {
 }
 
 func TestUserRevokePastePermissions(t *testing.T) {
+	// we must assume that the broker can create a paste safely.
+	paste, err := broker.CreatePaste()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	u, err := broker.GetUserNamed("DHowett")
 	if err != nil {
 		t.Error(err)
 	}
 
-	permScope := u.Permissions(PermissionClassPaste, "abcde")
+	permScope := u.Permissions(PermissionClassPaste, paste.GetID())
 	err = permScope.Revoke(PastePermissionEdit)
 	if err != nil {
 		t.Error(err)
@@ -156,7 +168,7 @@ func TestUserRevokePastePermissions(t *testing.T) {
 		t.Error(err)
 	}
 
-	permScope = u.Permissions(PermissionClassPaste, "abcde")
+	permScope = u.Permissions(PermissionClassPaste, paste.GetID())
 
 	if permScope.Has(PastePermissionEdit) {
 		t.Error("user still has edit on scope for abcde?")
@@ -165,13 +177,18 @@ func TestUserRevokePastePermissions(t *testing.T) {
 }
 
 func TestUserGrantRevokeGrant(t *testing.T) {
+	// we must assume that the broker can create a paste safely.
+	paste, err := broker.CreatePaste()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	u, err := broker.GetUserNamed("DHowett")
 	if err != nil {
 		t.Error(err)
 	}
 
-	_ = "breakpoint"
-	permScope := u.Permissions(PermissionClassPaste, "grg")
+	permScope := u.Permissions(PermissionClassPaste, paste.GetID())
 
 	err = permScope.Grant(PastePermissionEdit)
 	if err != nil {
@@ -200,11 +217,22 @@ func TestUserGrantRevokeGrant(t *testing.T) {
 }
 
 func TestUserGetPastes(t *testing.T) {
+	// we must assume that the broker can create a paste safely.
+	paste1, err := broker.CreatePaste()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	paste2, err := broker.CreatePaste()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	u, err := broker.GetUserNamed("DHowett")
 	if err != nil {
 		t.Error(err)
 	}
-	u.Permissions(PermissionClassPaste, "12345").Grant(PastePermissionEdit)
-	u.Permissions(PermissionClassPaste, "defgh").Grant(PastePermissionEdit)
+	u.Permissions(PermissionClassPaste, paste1.GetID()).Grant(PastePermissionEdit)
+	u.Permissions(PermissionClassPaste, paste2.GetID()).Grant(PastePermissionEdit)
 	t.Log(u.GetPastes())
 }

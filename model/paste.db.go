@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/DHowett/ghostbin/lib/sql/querybuilder"
 	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 )
@@ -143,22 +142,14 @@ func (pw *pasteWriter) Close() error {
 	newData := pw.Buffer.Bytes()
 	tx := pw.broker.Begin()
 
-	scope := tx.NewScope(pw.b)
-	modelStruct := scope.GetModelStruct()
-	table := modelStruct.TableName(tx)
+	_, err := tx.CommonDB().Exec(`
+	INSERT INTO paste_bodies(paste_id, data)
+	VALUES($1, $2)
+	ON CONFLICT(paste_id)
+	DO
+		UPDATE SET data = EXCLUDED.data
+	`, pw.b.PasteID, newData)
 
-	query, err := pw.broker.QB.Build(&querybuilder.UpsertQuery{
-		Table:        table,
-		ConflictKeys: []string{"paste_id"},
-		Fields:       []string{"paste_id", "data"},
-	})
-
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	_, err = tx.CommonDB().Exec(query, pw.b.PasteID, newData)
 	if err != nil {
 		tx.Rollback()
 		return err
