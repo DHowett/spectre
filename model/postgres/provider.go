@@ -15,6 +15,8 @@ import (
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+
+	"github.com/DHowett/gormrus"
 )
 
 type provider struct {
@@ -364,7 +366,11 @@ func (pqDriver) Open(arguments ...interface{}) (model.Provider, error) {
 		return nil, err
 	}
 
-	//db = db.Debug()
+	if p.Logger != nil {
+		db.SetLogger(gormrus.NewWithNameAndLogger("pq", p.Logger))
+		db = db.Debug()
+	}
+
 	p.DB = db
 
 	err = p.migrateDb()
