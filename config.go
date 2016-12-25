@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"text/template"
 	"time"
 
@@ -57,6 +58,12 @@ func (c *Configuration) AppendFile(filename string) error {
 	if err != nil {
 		return err
 	}
+
+	tmpl.Funcs(template.FuncMap{
+		"env": func(key string) (string, error) {
+			return os.Getenv(key), nil
+		},
+	})
 
 	buf := &bytes.Buffer{}
 	err = tmpl.Execute(buf, c)
