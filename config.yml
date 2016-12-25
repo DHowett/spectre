@@ -1,0 +1,7 @@
+application:
+    # force_insecure_encryption controls whether passwords will be accepted over HTTP.
+    force_insecure_encryption: false
+    limits:
+        paste_size: 1048576
+        paste_cache: 1000
+        paste_max_expiration: 15d

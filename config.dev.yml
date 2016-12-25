@@ -1,0 +1,14 @@
+database:
+    dialect: postgres
+    connection: "postgresql://ghostbin:password@localhost/ghostbin?sslmode=disable"
+    # Example Connection with Secrets
+    # connection: "postgresql://user:{- env POSTGRES_PASSWORD -}@db.example.net/ghostbin?sslmode=disable"
+web:
+    - bind: 0.0.0.0:8080
+logging:
+    components:
+        db: true
+        web: true
+        auth: true
+application:
+    force_insecure_encryption: true
