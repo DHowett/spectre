@@ -163,22 +163,6 @@ func (p *provider) GetPastes(ids []model.PasteID) ([]model.Paste, error) {
 	return iPastes, nil
 }
 
-func (p *provider) GetExpiringPastes() ([]model.ExpiringPaste, error) {
-	var ps []*dbPaste
-	if err := p.Not("expire_at", nil).Select("id, expire_at").Find(&ps).Error; err != nil {
-		return nil, err
-	}
-
-	eps := make([]model.ExpiringPaste, len(ps))
-	for i, p := range ps {
-		eps[i] = model.ExpiringPaste{
-			PasteID: model.PasteID(p.ID),
-			Time:    *p.ExpireAt,
-		}
-	}
-	return eps, nil
-}
-
 func (p *provider) DestroyPaste(id model.PasteID) error {
 	tx := p.Begin()
 	if err := tx.Delete(&dbPaste{ID: id.String()}).Error; err != nil && err != gorm.ErrRecordNotFound {
@@ -287,7 +271,6 @@ func (p *provider) migrateDb() error {
 		if fi.IsDir() || !strings.HasSuffix(path, ".sql") {
 			return nil
 		}
-		logrus.Info(fi.Name())
 
 		var ver int
 		var desc string
@@ -321,7 +304,6 @@ func (p *provider) migrateDb() error {
 		return fmt.Errorf("model.postgres: database is newer than we can support! (%d > %d)", schemaVersion, maxVersion)
 	}
 
-	logrus.Info(schemas)
 	for ; schemaVersion < maxVersion; schemaVersion++ {
 		tx, err := db.Begin()
 		if err != nil {
