@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/DHowett/ghostbin/model"
-	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 )
 
@@ -109,8 +108,10 @@ func (p *dbPaste) Erase() error {
 func (p *dbPaste) Reader() (io.ReadCloser, error) {
 	var b pasteBody
 	if err := p.provider.Model(p).Related(&b, "PasteID").Error; err != nil {
-		log.Errorln(err)
-		return devZero, nil
+		if err == gorm.ErrRecordNotFound {
+			return devZero, nil
+		}
+		return nil, err
 	}
 	r := ioutil.NopCloser(bytes.NewReader(b.Data))
 	if p.IsEncrypted() {
