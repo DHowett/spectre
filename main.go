@@ -21,18 +21,16 @@ import (
 	"github.com/DHowett/ghostbin/lib/formatting"
 	"github.com/DHowett/ghostbin/lib/four"
 	"github.com/DHowett/ghostbin/lib/templatepack"
-	"github.com/DHowett/ghostbin/model"
-	"github.com/DHowett/ghostbin/model/postgres"
 	"github.com/DHowett/ghostbin/views"
+
+	"github.com/DHowett/ghostbin/model"
+	_ "github.com/DHowett/ghostbin/model/postgres"
 
 	"github.com/DHowett/gotimeout"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
-
-	_ "github.com/jinzhu/gorm/dialects/postgres"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
 
 	"github.com/facebookgo/inject"
 )
@@ -163,7 +161,7 @@ func establishModelConnection() model.Broker {
 		panic(err)
 	}
 
-	broker, err := postgres.NewDatabaseBroker(dbDialect, sqlDb, &AuthChallengeProvider{}, model.FieldLoggingOption(log.WithField("ctx", "model")))
+	broker, err := model.Open(dbDialect, sqlDb, &AuthChallengeProvider{}, model.FieldLoggingOption(log.WithField("ctx", "model")))
 	if err != nil {
 		panic(err)
 	}
