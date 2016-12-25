@@ -1,15 +1,17 @@
-package model
+package postgres
+
+import "github.com/DHowett/ghostbin/model"
 
 type dbUserPermissionScope struct {
 	u   *dbUser
 	err error
 }
 
-func (u *dbUserPermissionScope) Has(p Permission) bool {
+func (u *dbUserPermissionScope) Has(p model.Permission) bool {
 	return u.u.UserPermissions&p != 0
 }
 
-func (u *dbUserPermissionScope) Grant(p Permission) error {
+func (u *dbUserPermissionScope) Grant(p model.Permission) error {
 	if u.err != nil {
 		return u.err
 	}
@@ -19,7 +21,7 @@ func (u *dbUserPermissionScope) Grant(p Permission) error {
 	return nil
 }
 
-func (u *dbUserPermissionScope) Revoke(p Permission) error {
+func (u *dbUserPermissionScope) Revoke(p model.Permission) error {
 	if u.err != nil {
 		return u.err
 	}

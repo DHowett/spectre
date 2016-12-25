@@ -1,14 +1,16 @@
-package model
+package postgres
 
 import (
 	"crypto/subtle"
 	"time"
+
+	"github.com/DHowett/ghostbin/model"
 )
 
 type dbUserPastePermission struct {
 	UserID      uint   `gorm:"unique_index:uix_user_paste_perm"`
 	PasteID     string `gorm:"unique_index:uix_user_paste_perm;type:varchar(256)"`
-	Permissions Permission
+	Permissions model.Permission
 }
 
 // gorm
@@ -24,9 +26,9 @@ type dbUser struct {
 	Salt      []byte
 	Challenge []byte
 
-	Source UserSource
+	Source model.UserSource
 
-	UserPermissions  Permission `gorm:"column:permissions"`
+	UserPermissions  model.Permission `gorm:"column:permissions"`
 	PastePermissions []*dbUserPastePermission
 
 	broker *dbBroker
@@ -45,11 +47,11 @@ func (u *dbUser) GetName() string {
 	return u.Name
 }
 
-func (u *dbUser) GetSource() UserSource {
+func (u *dbUser) GetSource() model.UserSource {
 	return u.Source
 }
 
-func (u *dbUser) SetSource(source UserSource) {
+func (u *dbUser) SetSource(source model.UserSource) {
 	tx := u.broker.Begin().Model(u)
 	if err := tx.Updates(map[string]interface{}{"Source": source}).Error; err != nil {
 		tx.Rollback()
@@ -89,16 +91,16 @@ func (u *dbUser) Check(password string) bool {
 	return subtle.ConstantTimeCompare(newChallenge, u.Challenge) == 1
 }
 
-func (u *dbUser) Permissions(class PermissionClass, args ...interface{}) PermissionScope {
+func (u *dbUser) Permissions(class model.PermissionClass, args ...interface{}) model.PermissionScope {
 	switch class {
-	case PermissionClassUser:
+	case model.PermissionClassUser:
 		return &dbUserPermissionScope{u, nil}
-	case PermissionClassPaste:
-		var pid PasteID
+	case model.PermissionClassPaste:
+		var pid model.PasteID
 		switch idt := args[0].(type) {
 		case string:
-			pid = PasteIDFromString(idt)
-		case PasteID:
+			pid = model.PasteIDFromString(idt)
+		case model.PasteID:
 			pid = idt
 		default:
 			return nil
@@ -108,14 +110,14 @@ func (u *dbUser) Permissions(class PermissionClass, args ...interface{}) Permiss
 	return nil
 }
 
-func (u *dbUser) GetPastes() ([]PasteID, error) {
+func (u *dbUser) GetPastes() ([]model.PasteID, error) {
 	var ids []string
 	if err := u.broker.Model(&dbUserPastePermission{}).Where("user_id = ? AND permissions > 0", u.ID).Pluck("paste_id", &ids).Error; err != nil {
 		return nil, err
 	}
-	pids := make([]PasteID, len(ids))
+	pids := make([]model.PasteID, len(ids))
 	for i, v := range ids {
-		pids[i] = PasteIDFromString(v)
+		pids[i] = model.PasteIDFromString(v)
 	}
 	return pids, nil
 }

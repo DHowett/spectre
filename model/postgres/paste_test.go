@@ -1,14 +1,16 @@
-package model
+package postgres
 
 import (
 	"bytes"
 	"io/ioutil"
 	"testing"
+
+	"github.com/DHowett/ghostbin/model"
 )
 
 func TestPaste(t *testing.T) {
 	// used in each subtest to look up the paste anew.
-	var pID PasteID
+	var pID model.PasteID
 
 	t.Run("Create", func(t *testing.T) {
 		p, err := broker.CreatePaste()
@@ -161,7 +163,7 @@ func TestPasteReadAfterDestroy(t *testing.T) {
 }
 
 func TestPasteEncryption(t *testing.T) {
-	p, err := broker.CreateEncryptedPaste(PasteEncryptionMethodAES_CTR, []byte("passphrase"))
+	p, err := broker.CreateEncryptedPaste(model.PasteEncryptionMethodAES_CTR, []byte("passphrase"))
 	if err != nil {
 		t.Error(err)
 		return
@@ -191,7 +193,7 @@ func TestPasteEncryption(t *testing.T) {
 	}
 
 	pFacade, err := broker.GetPaste(p.GetID(), nil)
-	if err != ErrPasteEncrypted {
+	if err != model.ErrPasteEncrypted {
 		t.Error("didn't get an error reading an encrypted paste")
 	}
 

@@ -1,4 +1,4 @@
-package model
+package postgres
 
 import (
 	"database/sql"
@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/DHowett/ghostbin/model"
 	"github.com/Sirupsen/logrus"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
@@ -25,7 +26,7 @@ func (n *noopChallengeProvider) Challenge(message []byte, key []byte) []byte {
 	return append(message, key...)
 }
 
-var broker Broker
+var broker model.Broker
 
 func TestMain(m *testing.M) {
 	flag.Parse()
@@ -43,7 +44,7 @@ func TestMain(m *testing.M) {
 	`)
 	fmt.Println(err)
 
-	broker, err = NewDatabaseBroker("postgres", sqlDb, &noopChallengeProvider{}, FieldLoggingOption(logrus.New()))
+	broker, err = NewDatabaseBroker("postgres", sqlDb, &noopChallengeProvider{}, model.FieldLoggingOption(logrus.New()))
 	if err != nil {
 		panic(err)
 	}

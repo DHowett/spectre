@@ -1,6 +1,9 @@
-package model
+package postgres
 
-import "github.com/jinzhu/gorm"
+import (
+	"github.com/DHowett/ghostbin/model"
+	"github.com/jinzhu/gorm"
+)
 
 type dbGrant struct {
 	ID      string `gorm:"primary_key;type:varchar(256);unique"`
@@ -24,12 +27,12 @@ func (g *dbGrant) /* gorm */ BeforeCreate(scope *gorm.Scope) error {
 	return nil
 }
 
-func (g *dbGrant) GetID() GrantID {
-	return GrantID(g.ID)
+func (g *dbGrant) GetID() model.GrantID {
+	return model.GrantID(g.ID)
 }
 
-func (g *dbGrant) GetPasteID() PasteID {
-	return PasteIDFromString(g.PasteID)
+func (g *dbGrant) GetPasteID() model.PasteID {
+	return model.PasteIDFromString(g.PasteID)
 }
 
 func (g *dbGrant) Destroy() error {

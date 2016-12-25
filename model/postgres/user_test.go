@@ -1,7 +1,9 @@
-package model
+package postgres
 
 import (
 	"testing"
+
+	"github.com/DHowett/ghostbin/model"
 )
 
 func TestUserCreate(t *testing.T) {
@@ -10,7 +12,7 @@ func TestUserCreate(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	u.SetSource(UserSourceMozillaPersona)
+	u.SetSource(model.UserSourceMozillaPersona)
 
 	u, err = broker.CreateUser("Timward")
 	if err != nil {
@@ -45,13 +47,13 @@ func TestUserGrantUserPermission(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = u.Permissions(PermissionClassUser).Grant(UserPermissionAdmin)
+	err = u.Permissions(model.PermissionClassUser).Grant(model.UserPermissionAdmin)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	if !u.Permissions(PermissionClassUser).Has(UserPermissionAdmin) {
+	if !u.Permissions(model.PermissionClassUser).Has(model.UserPermissionAdmin) {
 		t.Fail()
 	}
 }
@@ -63,16 +65,16 @@ func TestUserRevokeUserPermission(t *testing.T) {
 		t.Error(err)
 	}
 
-	if !u.Permissions(PermissionClassUser).Has(UserPermissionAdmin) {
+	if !u.Permissions(model.PermissionClassUser).Has(model.UserPermissionAdmin) {
 		t.Error("user doesn't have admin permissions")
 	}
 
-	err = u.Permissions(PermissionClassUser).Revoke(UserPermissionAdmin)
+	err = u.Permissions(model.PermissionClassUser).Revoke(model.UserPermissionAdmin)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if u.Permissions(PermissionClassUser).Has(UserPermissionAdmin) {
+	if u.Permissions(model.PermissionClassUser).Has(model.UserPermissionAdmin) {
 		t.Error("user still has admin permissions")
 	}
 
@@ -81,7 +83,7 @@ func TestUserRevokeUserPermission(t *testing.T) {
 		t.Error(err)
 	}
 
-	if u.Permissions(PermissionClassUser).Has(UserPermissionAdmin) {
+	if u.Permissions(model.PermissionClassUser).Has(model.UserPermissionAdmin) {
 		t.Error("user still has admin permissions across reload")
 	}
 }
@@ -110,27 +112,27 @@ func TestUserGrantPastePermissions(t *testing.T) {
 		t.Error(err)
 	}
 
-	permScope := u.Permissions(PermissionClassPaste, paste.GetID())
+	permScope := u.Permissions(model.PermissionClassPaste, paste.GetID())
 
-	if permScope.Has(PastePermissionEdit) {
+	if permScope.Has(model.PastePermissionEdit) {
 		t.Error("user already has edit on scope for abcde?")
 	}
 
-	err = permScope.Grant(PastePermissionEdit)
+	err = permScope.Grant(model.PastePermissionEdit)
 	if err != nil {
 		t.Error(err)
 	}
 
-	err = permScope.Grant(PastePermissionGrant)
+	err = permScope.Grant(model.PastePermissionGrant)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if !permScope.Has(PastePermissionEdit) {
+	if !permScope.Has(model.PastePermissionEdit) {
 		t.Error("user can't edit abcde?")
 	}
 
-	if !permScope.Has(PastePermissionGrant) {
+	if !permScope.Has(model.PastePermissionGrant) {
 		t.Error("user can't grant abcde?")
 	}
 }
@@ -147,18 +149,18 @@ func TestUserRevokePastePermissions(t *testing.T) {
 		t.Error(err)
 	}
 
-	permScope := u.Permissions(PermissionClassPaste, paste.GetID())
-	err = permScope.Revoke(PastePermissionEdit)
+	permScope := u.Permissions(model.PermissionClassPaste, paste.GetID())
+	err = permScope.Revoke(model.PastePermissionEdit)
 	if err != nil {
 		t.Error(err)
 	}
 
-	err = permScope.Revoke(PastePermissionGrant)
+	err = permScope.Revoke(model.PastePermissionGrant)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if permScope.Has(PastePermissionEdit) {
+	if permScope.Has(model.PastePermissionEdit) {
 		t.Error("user still has edit on scope for abcde?")
 	}
 
@@ -168,9 +170,9 @@ func TestUserRevokePastePermissions(t *testing.T) {
 		t.Error(err)
 	}
 
-	permScope = u.Permissions(PermissionClassPaste, paste.GetID())
+	permScope = u.Permissions(model.PermissionClassPaste, paste.GetID())
 
-	if permScope.Has(PastePermissionEdit) {
+	if permScope.Has(model.PastePermissionEdit) {
 		t.Error("user still has edit on scope for abcde?")
 	}
 
@@ -188,30 +190,30 @@ func TestUserGrantRevokeGrant(t *testing.T) {
 		t.Error(err)
 	}
 
-	permScope := u.Permissions(PermissionClassPaste, paste.GetID())
+	permScope := u.Permissions(model.PermissionClassPaste, paste.GetID())
 
-	err = permScope.Grant(PastePermissionEdit)
+	err = permScope.Grant(model.PastePermissionEdit)
 	if err != nil {
 		t.Error(err)
 	}
 
-	err = permScope.Revoke(PastePermissionAll)
+	err = permScope.Revoke(model.PastePermissionAll)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if permScope.Has(PastePermissionEdit) {
+	if permScope.Has(model.PastePermissionEdit) {
 		t.Error("user still has edit on scope")
 	}
 
 	// this might trigger a reinsert/recreate in user_paste_permissions
 
-	err = permScope.Grant(PastePermissionEdit)
+	err = permScope.Grant(model.PastePermissionEdit)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if !permScope.Has(PastePermissionEdit) {
+	if !permScope.Has(model.PastePermissionEdit) {
 		t.Error("user doesn't have edit on scope")
 	}
 }
@@ -232,7 +234,7 @@ func TestUserGetPastes(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	u.Permissions(PermissionClassPaste, paste1.GetID()).Grant(PastePermissionEdit)
-	u.Permissions(PermissionClassPaste, paste2.GetID()).Grant(PastePermissionEdit)
+	u.Permissions(model.PermissionClassPaste, paste1.GetID()).Grant(model.PastePermissionEdit)
+	u.Permissions(model.PermissionClassPaste, paste2.GetID()).Grant(model.PastePermissionEdit)
 	t.Log(u.GetPastes())
 }

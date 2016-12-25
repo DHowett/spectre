@@ -1,4 +1,6 @@
-package model
+package postgres
+
+import "github.com/DHowett/ghostbin/model"
 
 type userPastePermissionScope struct {
 	pPerm *dbUserPastePermission
@@ -7,20 +9,20 @@ type userPastePermissionScope struct {
 	broker *dbBroker
 }
 
-func newUserPastePermissionScope(broker *dbBroker, u *dbUser, id PasteID) *userPastePermissionScope {
+func newUserPastePermissionScope(broker *dbBroker, u *dbUser, id model.PasteID) *userPastePermissionScope {
 	var pPerm dbUserPastePermission
 	err := u.broker.FirstOrInit(&pPerm, dbUserPastePermission{UserID: u.ID, PasteID: id.String()}).Error
 	return &userPastePermissionScope{broker: broker, pPerm: &pPerm, err: err}
 }
 
-func (s *userPastePermissionScope) Has(p Permission) bool {
+func (s *userPastePermissionScope) Has(p model.Permission) bool {
 	if s.err != nil || s.pPerm == nil {
 		return false
 	}
 	return s.pPerm.Permissions&p != 0
 }
 
-func (s *userPastePermissionScope) Grant(p Permission) error {
+func (s *userPastePermissionScope) Grant(p model.Permission) error {
 	if s.err != nil {
 		return s.err
 	}
@@ -40,7 +42,7 @@ func (s *userPastePermissionScope) Grant(p Permission) error {
 		if s.broker.Logger != nil {
 			s.broker.Logger.Infof("New permission set %x", newPerms)
 		}
-		s.pPerm.Permissions = Permission(newPerms)
+		s.pPerm.Permissions = model.Permission(newPerms)
 	} else {
 		if s.broker.Logger != nil {
 			s.broker.Logger.Error(err)
@@ -51,7 +53,7 @@ func (s *userPastePermissionScope) Grant(p Permission) error {
 	return s.err
 }
 
-func (s *userPastePermissionScope) Revoke(p Permission) error {
+func (s *userPastePermissionScope) Revoke(p model.Permission) error {
 	if s.err != nil {
 		return s.err
 	}

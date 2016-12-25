@@ -1,4 +1,4 @@
-package model
+package postgres
 
 import (
 	"database/sql"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/DHowett/ghostbin/lib/crypto"
 	"github.com/DHowett/ghostbin/lib/sql/querybuilder"
+	"github.com/DHowett/ghostbin/model"
 	"github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 
@@ -24,7 +25,7 @@ type dbBroker struct {
 }
 
 // User
-func (broker *dbBroker) getUserWithQuery(query string, args ...interface{}) (User, error) {
+func (broker *dbBroker) getUserWithQuery(query string, args ...interface{}) (model.User, error) {
 	var u dbUser
 	if err := broker.Where(query, args...).First(&u).Error; err != nil {
 		return nil, err
@@ -33,16 +34,16 @@ func (broker *dbBroker) getUserWithQuery(query string, args ...interface{}) (Use
 	return &u, nil
 }
 
-func (broker *dbBroker) GetUserNamed(name string) (User, error) {
+func (broker *dbBroker) GetUserNamed(name string) (model.User, error) {
 	u, err := broker.getUserWithQuery("name = ?", name)
 	return u, err
 }
 
-func (broker *dbBroker) GetUserByID(id uint) (User, error) {
+func (broker *dbBroker) GetUserByID(id uint) (model.User, error) {
 	return broker.getUserWithQuery("id = ?", id)
 }
 
-func (broker *dbBroker) CreateUser(name string) (User, error) {
+func (broker *dbBroker) CreateUser(name string) (model.User, error) {
 	u := &dbUser{
 		Name:   name,
 		broker: broker,
@@ -54,7 +55,7 @@ func (broker *dbBroker) CreateUser(name string) (User, error) {
 }
 
 // Paste
-func (broker *dbBroker) GenerateNewPasteID(encrypted bool) PasteID {
+func (broker *dbBroker) GenerateNewPasteID(encrypted bool) model.PasteID {
 	nbytes, idlen := 4, 5
 	if encrypted {
 		nbytes, idlen = 5, 8
@@ -62,11 +63,11 @@ func (broker *dbBroker) GenerateNewPasteID(encrypted bool) PasteID {
 
 	for {
 		s, _ := generateRandomBase32String(nbytes, idlen)
-		return PasteIDFromString(s)
+		return model.PasteIDFromString(s)
 	}
 }
 
-func (broker *dbBroker) CreatePaste() (Paste, error) {
+func (broker *dbBroker) CreatePaste() (model.Paste, error) {
 	paste := dbPaste{broker: broker}
 	for {
 		if err := broker.Create(&paste).Error; err != nil {
@@ -77,14 +78,14 @@ func (broker *dbBroker) CreatePaste() (Paste, error) {
 	}
 }
 
-func (broker *dbBroker) CreateEncryptedPaste(method PasteEncryptionMethod, passphraseMaterial []byte) (Paste, error) {
+func (broker *dbBroker) CreateEncryptedPaste(method model.PasteEncryptionMethod, passphraseMaterial []byte) (model.Paste, error) {
 	if passphraseMaterial == nil {
 		return nil, errors.New("model: unacceptable encryption material")
 	}
 	paste := dbPaste{broker: broker}
 	paste.EncryptionSalt, _ = generateRandomBytes(16)
-	paste.EncryptionMethod = PasteEncryptionMethodAES_CTR
-	key, err := getPasteEncryptionCodec(method).DeriveKey(passphraseMaterial, paste.EncryptionSalt)
+	paste.EncryptionMethod = model.PasteEncryptionMethodAES_CTR
+	key, err := model.GetPasteEncryptionCodec(method).DeriveKey(passphraseMaterial, paste.EncryptionSalt)
 	if err != nil {
 		return nil, err
 	}
@@ -99,11 +100,11 @@ func (broker *dbBroker) CreateEncryptedPaste(method PasteEncryptionMethod, passp
 	}
 }
 
-func (broker *dbBroker) GetPaste(id PasteID, passphraseMaterial []byte) (Paste, error) {
+func (broker *dbBroker) GetPaste(id model.PasteID, passphraseMaterial []byte) (model.Paste, error) {
 	var paste dbPaste
 	if err := broker.Find(&paste, "id = ?", id.String()).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, ErrNotFound
+			return nil, model.ErrNotFound
 		}
 
 		return nil, err
@@ -118,17 +119,17 @@ func (broker *dbBroker) GetPaste(id PasteID, passphraseMaterial []byte) (Paste, 
 		if passphraseMaterial == nil {
 			return &encryptedPastePlaceholder{
 				ID: id,
-			}, ErrPasteEncrypted
+			}, model.ErrPasteEncrypted
 		}
 
-		key, err := getPasteEncryptionCodec(paste.EncryptionMethod).DeriveKey(passphraseMaterial, paste.EncryptionSalt)
+		key, err := model.GetPasteEncryptionCodec(paste.EncryptionMethod).DeriveKey(passphraseMaterial, paste.EncryptionSalt)
 		if err != nil {
-			return nil, ErrPasteEncrypted
+			return nil, model.ErrPasteEncrypted
 		}
 
-		ok := getPasteEncryptionCodec(paste.EncryptionMethod).Authenticate(id, paste.EncryptionSalt, key, paste.HMAC)
+		ok := model.GetPasteEncryptionCodec(paste.EncryptionMethod).Authenticate(id, paste.EncryptionSalt, key, paste.HMAC)
 		if !ok {
-			return nil, ErrInvalidKey
+			return nil, model.ErrInvalidKey
 		}
 
 		paste.encryptionKey = key
@@ -137,7 +138,7 @@ func (broker *dbBroker) GetPaste(id PasteID, passphraseMaterial []byte) (Paste, 
 	return &paste, nil
 }
 
-func (broker *dbBroker) GetPastes(ids []PasteID) ([]Paste, error) {
+func (broker *dbBroker) GetPastes(ids []model.PasteID) ([]model.Paste, error) {
 	stringIDs := make([]string, len(ids))
 	for i, v := range ids {
 		stringIDs[i] = string(v)
@@ -148,7 +149,7 @@ func (broker *dbBroker) GetPastes(ids []PasteID) ([]Paste, error) {
 		return nil, err
 	}
 
-	iPastes := make([]Paste, len(ps))
+	iPastes := make([]model.Paste, len(ps))
 	for i, p := range ps {
 		p.broker = broker
 		if p.IsEncrypted() {
@@ -162,23 +163,23 @@ func (broker *dbBroker) GetPastes(ids []PasteID) ([]Paste, error) {
 	return iPastes, nil
 }
 
-func (broker *dbBroker) GetExpiringPastes() ([]ExpiringPaste, error) {
+func (broker *dbBroker) GetExpiringPastes() ([]model.ExpiringPaste, error) {
 	var ps []*dbPaste
 	if err := broker.Not("expire_at", nil).Select("id, expire_at").Find(&ps).Error; err != nil {
 		return nil, err
 	}
 
-	eps := make([]ExpiringPaste, len(ps))
+	eps := make([]model.ExpiringPaste, len(ps))
 	for i, p := range ps {
-		eps[i] = ExpiringPaste{
-			PasteID: PasteID(p.ID),
+		eps[i] = model.ExpiringPaste{
+			PasteID: model.PasteID(p.ID),
 			Time:    *p.ExpireAt,
 		}
 	}
 	return eps, nil
 }
 
-func (broker *dbBroker) DestroyPaste(id PasteID) error {
+func (broker *dbBroker) DestroyPaste(id model.PasteID) error {
 	tx := broker.Begin()
 	if err := tx.Delete(&dbPaste{ID: id.String()}).Error; err != nil && err != gorm.ErrRecordNotFound {
 		tx.Rollback()
@@ -188,7 +189,7 @@ func (broker *dbBroker) DestroyPaste(id PasteID) error {
 	return tx.Commit().Error
 }
 
-func (broker *dbBroker) CreateGrant(paste Paste) (Grant, error) {
+func (broker *dbBroker) CreateGrant(paste model.Paste) (model.Grant, error) {
 	grant := dbGrant{PasteID: paste.GetID().String(), broker: broker}
 	for {
 		if err := broker.Create(&grant).Error; err != nil {
@@ -199,7 +200,7 @@ func (broker *dbBroker) CreateGrant(paste Paste) (Grant, error) {
 	}
 }
 
-func (broker *dbBroker) GetGrant(id GrantID) (Grant, error) {
+func (broker *dbBroker) GetGrant(id model.GrantID) (model.Grant, error) {
 	var grant dbGrant
 	if err := broker.Find(&grant, "id = ?", string(id)).Error; err != nil {
 		return nil, err
@@ -208,7 +209,7 @@ func (broker *dbBroker) GetGrant(id GrantID) (Grant, error) {
 	return &grant, nil
 }
 
-func (broker *dbBroker) ReportPaste(p Paste) error {
+func (broker *dbBroker) ReportPaste(p model.Paste) error {
 	pID := p.GetID()
 	result, err := broker.sqlDb.Exec("UPDATE paste_reports SET count = count + 1 WHERE paste_id = ?", pID.String())
 	if nrows, _ := result.RowsAffected(); nrows == 0 {
@@ -219,13 +220,13 @@ func (broker *dbBroker) ReportPaste(p Paste) error {
 	return err
 }
 
-func (broker *dbBroker) GetReport(pID PasteID) (Report, error) {
+func (broker *dbBroker) GetReport(pID model.PasteID) (model.Report, error) {
 	row := broker.sqlDb.QueryRow("SELECT count FROM paste_reports WHERE paste_id = ?", pID.String())
 
 	var count int
 	err := row.Scan(&count)
 	if err == sql.ErrNoRows {
-		return nil, ErrNotFound
+		return nil, model.ErrNotFound
 	} else if err != nil {
 		// TODO(DH) errors?
 		return nil, err
@@ -238,8 +239,8 @@ func (broker *dbBroker) GetReport(pID PasteID) (Report, error) {
 	}, nil
 }
 
-func (broker *dbBroker) GetReports() ([]Report, error) {
-	reports := make([]Report, 0, 16)
+func (broker *dbBroker) GetReports() ([]model.Report, error) {
+	reports := make([]model.Report, 0, 16)
 
 	rows, err := broker.sqlDb.Query("SELECT paste_id, count FROM paste_reports")
 	if err != nil {
@@ -255,11 +256,11 @@ func (broker *dbBroker) GetReports() ([]Report, error) {
 	return reports, rows.Err()
 }
 
-func (broker *dbBroker) setLoggerOption(log logrus.FieldLogger) {
+func (broker *dbBroker) SetLoggerOption(log logrus.FieldLogger) {
 	broker.Logger = log
 }
 
-func (broker *dbBroker) setDebugOption(debug bool) {
+func (broker *dbBroker) SetDebugOption(debug bool) {
 	// no-op
 }
 
@@ -351,7 +352,7 @@ func (broker *dbBroker) migrateDb() error {
 	return nil
 }
 
-func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.ChallengeProvider, options ...Option) (Broker, error) {
+func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.ChallengeProvider, options ...model.Option) (model.Broker, error) {
 	if dialect == "sqlite" || dialect == "sqlite3" {
 		sqlDb.Exec("PRAGMA foreign_keys = ON")
 	}
@@ -361,6 +362,7 @@ func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.C
 		return nil, err
 	}
 
+	//db = db.Debug()
 	broker := &dbBroker{
 		sqlDb:             sqlDb,
 		DB:                db,

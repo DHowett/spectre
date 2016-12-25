@@ -120,7 +120,7 @@ var pasteEncryptionCodecs = map[PasteEncryptionMethod]PasteEncryptionCodec{
 	PasteEncryptionMethodAES_CTR: &aesCtrEncryptionCodec{},
 }
 
-func getPasteEncryptionCodec(e PasteEncryptionMethod) PasteEncryptionCodec {
+func GetPasteEncryptionCodec(e PasteEncryptionMethod) PasteEncryptionCodec {
 	eh, ok := pasteEncryptionCodecs[e]
 	if !ok {
 		return &noopEncryptionCodec{}

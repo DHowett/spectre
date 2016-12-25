@@ -1,4 +1,4 @@
-package model
+package postgres
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/DHowett/ghostbin/model"
 	log "github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 )
@@ -34,7 +35,7 @@ type dbPaste struct {
 
 	HMAC             []byte `gorm:"null"`
 	EncryptionSalt   []byte `gorm:"null"`
-	EncryptionMethod PasteEncryptionMethod
+	EncryptionMethod model.PasteEncryptionMethod
 
 	encryptionKey []byte `gorm:"-"`
 	broker        *dbBroker
@@ -51,15 +52,15 @@ func (p *dbPaste) BeforeCreate(scope *gorm.Scope) error {
 	scope.SetColumn("ID", id)
 
 	if p.IsEncrypted() {
-		hmac := getPasteEncryptionCodec(p.EncryptionMethod).GenerateHMAC(id, p.EncryptionSalt, p.encryptionKey)
+		hmac := model.GetPasteEncryptionCodec(p.EncryptionMethod).GenerateHMAC(id, p.EncryptionSalt, p.encryptionKey)
 		scope.SetColumn("HMAC", hmac)
 	}
 
 	return nil
 }
 
-func (p *dbPaste) GetID() PasteID {
-	return PasteID(p.ID)
+func (p *dbPaste) GetID() model.PasteID {
+	return model.PasteID(p.ID)
 }
 func (p *dbPaste) GetModificationTime() time.Time {
 	return p.UpdatedAt
@@ -74,7 +75,7 @@ func (p *dbPaste) SetLanguageName(language string) {
 	p.LanguageName.String = language
 }
 func (p *dbPaste) IsEncrypted() bool {
-	return p.EncryptionMethod != PasteEncryptionMethodNone
+	return p.EncryptionMethod != model.PasteEncryptionMethodNone
 }
 func (p *dbPaste) GetExpirationTime() *time.Time {
 	return p.ExpireAt
@@ -102,7 +103,7 @@ func (p *dbPaste) Commit() error {
 }
 
 func (p *dbPaste) Erase() error {
-	return p.broker.DestroyPaste(PasteID(p.ID))
+	return p.broker.DestroyPaste(model.PasteID(p.ID))
 }
 
 func (p *dbPaste) Reader() (io.ReadCloser, error) {
@@ -113,7 +114,7 @@ func (p *dbPaste) Reader() (io.ReadCloser, error) {
 	}
 	r := ioutil.NopCloser(bytes.NewReader(b.Data))
 	if p.IsEncrypted() {
-		return getPasteEncryptionCodec(p.EncryptionMethod).Reader(p.encryptionKey, r), nil
+		return model.GetPasteEncryptionCodec(p.EncryptionMethod).Reader(p.encryptionKey, r), nil
 	}
 	return r, nil
 }
@@ -167,7 +168,7 @@ func (p *dbPaste) Writer() (io.WriteCloser, error) {
 	}
 
 	if p.IsEncrypted() {
-		return getPasteEncryptionCodec(p.EncryptionMethod).Writer(p.encryptionKey, w), nil
+		return model.GetPasteEncryptionCodec(p.EncryptionMethod).Writer(p.encryptionKey, w), nil
 	}
 	return w, nil
 }

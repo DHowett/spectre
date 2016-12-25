@@ -1,4 +1,6 @@
-package model
+package postgres
+
+import "github.com/DHowett/ghostbin/model"
 
 type dbReport struct {
 	PasteID string
@@ -7,8 +9,8 @@ type dbReport struct {
 	broker *dbBroker
 }
 
-func (r *dbReport) GetPasteID() PasteID {
-	return PasteIDFromString(r.PasteID)
+func (r *dbReport) GetPasteID() model.PasteID {
+	return model.PasteIDFromString(r.PasteID)
 }
 
 func (r *dbReport) GetCount() int {
