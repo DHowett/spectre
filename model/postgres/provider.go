@@ -8,19 +8,19 @@ import (
 	"strings"
 
 	"github.com/DHowett/ghostbin/lib/crypto"
-	"github.com/DHowett/ghostbin/lib/sql/querybuilder"
 	"github.com/DHowett/ghostbin/model"
 	"github.com/Sirupsen/logrus"
-	"github.com/jinzhu/gorm"
 
 	"github.com/GeertJohan/go.rice"
+
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
 type dbBroker struct {
 	*gorm.DB
 	sqlDb             *sql.DB
 	Logger            logrus.FieldLogger
-	QB                querybuilder.QueryBuilder
 	ChallengeProvider crypto.ChallengeProvider
 }
 
@@ -274,7 +274,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS uix__schema_version ON _schema USING btree (ve
 `
 
 func (broker *dbBroker) migrateDb() error {
-	rice.Debug = true
 	schemaBox, err := rice.FindBox("schema")
 	if err != nil {
 		return err
@@ -294,7 +293,7 @@ func (broker *dbBroker) migrateDb() error {
 		var desc string
 		n, _ := fmt.Sscanf(path, "%d_%s", &ver, &desc)
 		if n != 2 {
-			return fmt.Errorf("model: invalid schema migration filename %s", path)
+			return fmt.Errorf("model.postgres: invalid schema migration filename %s", path)
 		}
 		schemas[ver] = path
 		if ver > maxVersion {
@@ -319,7 +318,7 @@ func (broker *dbBroker) migrateDb() error {
 	}
 
 	if schemaVersion > maxVersion {
-		return fmt.Errorf("model: database is newer than we can support! (%d > %d)", schemaVersion, maxVersion)
+		return fmt.Errorf("model.postgres: database is newer than we can support! (%d > %d)", schemaVersion, maxVersion)
 	}
 
 	logrus.Info(schemas)
@@ -352,45 +351,61 @@ func (broker *dbBroker) migrateDb() error {
 	return nil
 }
 
-func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.ChallengeProvider, options ...model.Option) (model.Provider, error) {
-	if dialect == "sqlite" || dialect == "sqlite3" {
-		sqlDb.Exec("PRAGMA foreign_keys = ON")
+type pqDriver struct{}
+
+func (pqDriver) Open(arguments ...interface{}) (model.Provider, error) {
+	p := &dbBroker{}
+
+	for _, arg := range arguments {
+		switch a := arg.(type) {
+		case *sql.DB:
+			p.sqlDb = a
+		case crypto.ChallengeProvider:
+			p.ChallengeProvider = a
+		case model.Option:
+			a(p)
+		default:
+			return nil, fmt.Errorf("model.postgres: unknown option type %T (%v)", a, a)
+		}
 	}
 
-	db, err := gorm.Open(dialect, sqlDb)
+	if p.sqlDb == nil {
+		return nil, errors.New("model.postgres: no *sql.DB provided")
+	}
+
+	if p.ChallengeProvider == nil {
+		return nil, errors.New("model.postgres: no ChallengeProvider provided")
+	}
+
+	db, err := gorm.Open("postgres", p.sqlDb)
 	if err != nil {
 		return nil, err
 	}
 
 	//db = db.Debug()
-	broker := &dbBroker{
-		sqlDb:             sqlDb,
-		DB:                db,
-		QB:                querybuilder.New(dialect),
-		ChallengeProvider: challengeProvider,
-	}
+	p.DB = db
 
-	for _, opt := range options {
-		opt(broker)
-	}
-
-	err = broker.migrateDb()
+	err = p.migrateDb()
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := sqlDb.Exec(
+	res, err := p.sqlDb.Exec(
 		`DELETE FROM pastes WHERE expire_at < NOW()`,
 	)
 	if err != nil {
 		return nil, err
 	}
-	if broker.Logger != nil {
+	if p.Logger != nil {
 		nrows, _ := res.RowsAffected()
 		if nrows > 0 {
-			broker.Logger.Infof("removed %d lingering expirees", nrows)
+			p.Logger.Infof("removed %d lingering expirees", nrows)
 		}
 	}
 
-	return broker, nil
+	return p, nil
+}
+
+func init() {
+	model.Register("postgres", &pqDriver{})
 }

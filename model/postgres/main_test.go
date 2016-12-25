@@ -9,7 +9,6 @@ import (
 
 	"github.com/DHowett/ghostbin/model"
 	"github.com/Sirupsen/logrus"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
 type noopChallengeProvider struct{}
@@ -44,7 +43,7 @@ func TestMain(m *testing.M) {
 	`)
 	fmt.Println(err)
 
-	broker, err = NewDatabaseBroker("postgres", sqlDb, &noopChallengeProvider{}, model.FieldLoggingOption(logrus.New()))
+	broker, err = model.Open("postgres", sqlDb, &noopChallengeProvider{}, model.FieldLoggingOption(logrus.New()))
 	if err != nil {
 		panic(err)
 	}
