@@ -15,11 +15,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const (
-	EnvironmentDevelopment string = "dev"
-	EnvironmentProduction  string = "production"
-)
-
 var base32Encoder = base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789")
 
 func generateRandomBytes(nbytes int) ([]byte, error) {
@@ -82,27 +77,21 @@ func BaseURLForRequest(r *http.Request) *url.URL {
 }
 
 func RequestIsHTTPS(r *http.Request) bool {
-	proto := strings.ToLower(r.Header.Get("X-Forwarded-Proto"))
-	if proto == "" {
-		proto = strings.ToLower(r.URL.Scheme)
-	}
+	proto := strings.ToLower(r.URL.Scheme)
 	return proto == "https"
 }
 
 func SourceIPForRequest(r *http.Request) string {
-	ip := r.Header.Get("X-Forwarded-For")
-	if ip == "" {
-		ip = r.RemoteAddr[:strings.LastIndex(r.RemoteAddr, ":")]
-	}
+	ip := r.RemoteAddr[:strings.LastIndex(r.RemoteAddr, ":")]
 	return ip
 }
 
 func HTTPSMuxMatcher(r *http.Request, rm *mux.RouteMatch) bool {
-	return Env() == EnvironmentDevelopment || RequestIsHTTPS(r)
+	return RequestIsHTTPS(r)
 }
 
 func NonHTTPSMuxMatcher(r *http.Request, rm *mux.RouteMatch) bool {
-	return !HTTPSMuxMatcher(r, rm)
+	return !RequestIsHTTPS(r)
 }
 
 type ByteSize float64

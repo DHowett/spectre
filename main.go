@@ -1,12 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"encoding/gob"
 	"errors"
-	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -16,23 +15,29 @@ import (
 	"runtime"
 	"sync"
 	"syscall"
-	"time"
 
+	"github.com/jessevdk/go-flags"
+
+	// Ghostbin
 	"github.com/DHowett/ghostbin/lib/formatting"
 	"github.com/DHowett/ghostbin/lib/four"
 	"github.com/DHowett/ghostbin/lib/templatepack"
 	"github.com/DHowett/ghostbin/views"
+	"github.com/DHowett/gotimeout"
+	"github.com/facebookgo/inject"
 
+	// Model
 	"github.com/DHowett/ghostbin/model"
 	_ "github.com/DHowett/ghostbin/model/postgres"
 
-	"github.com/DHowett/gotimeout"
-	log "github.com/Sirupsen/logrus"
+	// Logging
+	"github.com/Sirupsen/logrus"
+
+	// Web
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/sessions"
-
-	"github.com/facebookgo/inject"
 )
 
 func isEditAllowed(p model.Paste, r *http.Request) bool {
@@ -78,31 +83,6 @@ var sessionBroker *SessionBroker
 var pasteExpirator *gotimeout.Expirator
 var ephStore *gotimeout.Map
 
-type args struct {
-	root, addr string
-	rebuild    bool
-
-	registrationOnce sync.Once
-	parseOnce        sync.Once
-}
-
-func (a *args) register() {
-	a.registrationOnce.Do(func() {
-		flag.StringVar(&a.root, "root", "./", "path to generated file storage")
-		flag.StringVar(&a.addr, "addr", "0.0.0.0:8080", "bind address and port")
-		flag.BoolVar(&a.rebuild, "rebuild", false, "rebuild all templates for each request")
-	})
-}
-
-func (a *args) parse() error {
-	a.parseOnce.Do(func() {
-		flag.Parse()
-	})
-	return nil
-}
-
-var arguments = &args{}
-
 func loadOrGenerateSessionKey(path string, keyLength int) (data []byte, err error) {
 	data, err = ioutil.ReadFile(path)
 	if err != nil {
@@ -112,37 +92,36 @@ func loadOrGenerateSessionKey(path string, keyLength int) (data []byte, err erro
 	return
 }
 
-func initSessionStore() *SessionBroker {
-	sessionKeyFile := filepath.Join(arguments.root, "session.key")
+func initSessionStore(config *Configuration) *SessionBroker {
+	sessionKeyFile := filepath.Join(arguments.Root, "session.key")
 	sessionKey, err := loadOrGenerateSessionKey(sessionKeyFile, 32)
 	if err != nil {
-		log.Fatal("session.key not found, and an attempt to create one failed: ", err)
+		logrus.Fatal("session.key not found, and an attempt to create one failed: ", err)
 	}
 
-	sesdir := filepath.Join(arguments.root, "sessions")
+	sesdir := filepath.Join(arguments.Root, "sessions")
 	os.Mkdir(sesdir, 0700)
 	serverSessionStore := sessions.NewFilesystemStore(sesdir, sessionKey)
 	serverSessionStore.Options.Path = "/"
 	serverSessionStore.Options.MaxAge = 86400 * 365
 
-	clientKeyFile := filepath.Join(arguments.root, "client_session_enc.key")
+	clientKeyFile := filepath.Join(arguments.Root, "client_session_enc.key")
 	clientOnlySessionEncryptionKey, err := loadOrGenerateSessionKey(clientKeyFile, 32)
 	if err != nil {
-		log.Fatal("client_session_enc.key not found, and an attempt to create one failed: ", err)
+		logrus.Fatal("client_session_enc.key not found, and an attempt to create one failed: ", err)
 	}
 	sensitiveSessionStore := sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
-	if Env() != EnvironmentDevelopment {
-		sensitiveSessionStore.Options.Secure = true
-	}
 	sensitiveSessionStore.Options.Path = "/"
 	sensitiveSessionStore.Options.MaxAge = 0
 
 	clientSessionStore := sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
-	if Env() != EnvironmentDevelopment {
-		clientSessionStore.Options.Secure = true
-	}
 	clientSessionStore.Options.Path = "/"
 	clientSessionStore.Options.MaxAge = 86400 * 365
+
+	if config.Application.ForceInsecureEncryption {
+		sensitiveSessionStore.Options.Secure = true
+		clientSessionStore.Options.Secure = true
+	}
 
 	return NewSessionBroker(map[SessionScope]sessions.Store{
 		SessionScopeServer:    serverSessionStore,
@@ -151,19 +130,16 @@ func initSessionStore() *SessionBroker {
 	})
 }
 
-func establishModelConnection() model.Broker {
-	dbDialect := "sqlite3"
-	sqlDb, err := sql.Open(dbDialect, "ghostbin.db")
-	//dbDialect := "postgres"
-	//sqlDb, err := sql.Open(dbDialect, "postgres://postgres:password@antares:32768/ghostbin?sslmode=disable")
-	//  "postgres://postgres:password@antares:32768/ghostbin?sslmode=disable"
+func establishModelConnection(config *Configuration) model.Provider {
+	dbDialect := config.Database.Dialect
+	sqlDb, err := sql.Open(dbDialect, config.Database.Connection)
 	if err != nil {
 		panic(err)
 	}
 
-	broker, err := model.Open(dbDialect, sqlDb, &AuthChallengeProvider{}, model.FieldLoggingOption(log.WithField("ctx", "model")))
+	broker, err := model.Open(dbDialect, sqlDb, &AuthChallengeProvider{}, model.FieldLoggingOption(logrus.WithField("ctx", "model")))
 	if err != nil {
-		panic(err)
+		logrus.Fatal(err)
 	}
 
 	// TODO(DH): destruction callbacks
@@ -176,7 +152,7 @@ func establishModelConnection() model.Broker {
 		for {
 			select {
 			case err := <-pasteExpirator.ErrorChannel:
-				log.Error("Expirator Error: ", err.Error())
+				logrus.Error("Expirator Error: ", err.Error())
 			}
 		}
 	}()
@@ -196,7 +172,8 @@ type ghostbinApplication struct {
 	aboutView *views.View
 	errorView *views.View
 
-	Logger log.FieldLogger `inject:""`
+	Logger        logrus.FieldLogger `inject:""`
+	Configuration *Configuration
 }
 
 func (a *ghostbinApplication) RegisterRouteForURLType(ut URLType, route *mux.Route) {
@@ -221,7 +198,7 @@ func (a *ghostbinApplication) GenerateURL(ut URLType, params ...string) *url.URL
 	}
 
 	if err != nil {
-		log.Error("unable to generate url type <%s> (params %v): %v", ut, params, err)
+		logrus.Error("unable to generate url type <%s> (params %v): %v", ut, params, err)
 
 		return &url.URL{
 			Path: "/",
@@ -286,59 +263,19 @@ func (a *ghostbinApplication) RespondWithError(w http.ResponseWriter, webErr Web
 	w.WriteHeader(webErr.StatusCode())
 	err2 := a.errorView.Exec(w, nil, webErr)
 	if err2 != nil {
-		log.Error("failed to render error response:", err2)
+		logrus.Error("failed to render error response:", err2)
 	}
 }
 
-// TODO(DH) DO NOT LEAVE GLOBAL
-var ghostbin = &ghostbinApplication{}
-
-/////////////////////////////////////
-// Temporarily keep env stuff here //
-/////////////////////////////////////
-var environment string = EnvironmentDevelopment
-
-func Env() string {
-	return environment
-}
-
-/////////////////////////////////////
-
-func init() {
-	// N.B. this should not be necessary.
-	gob.Register(map[model.PasteID][]byte(nil))
-	gob.Register(map[model.PasteID]model.Permission{})
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
-	arguments.register()
-
-	/////////////////////////////////////
-	// Temporarily keep env stuff here //
-	/////////////////////////////////////
-	environment = os.Getenv("GHOSTBIN_ENV")
-	if environment != EnvironmentProduction {
-		environment = EnvironmentDevelopment
-	}
-	/////////////////////////////////////
-
-}
-
-func main() {
-	arguments.parse()
-
-	//////////////////////////////////////
-	// Temporarily keep lang stuff here //
-	//////////////////////////////////////
-	formatting.LoadLanguageConfig("languages.yml")
-	//////////////////////////////////////
-
-	logger := log.New()
-
-	var config Configuration
-
-	viewModel, err := views.New("templates/*.tmpl", views.FieldLoggingOption(logger.WithField("ctx", "viewmodel")), views.GlobalDataProviderOption(ghostbin), views.GlobalFunctionsOption(ghostbin))
+func (a *ghostbinApplication) Run() error {
+	viewModel, err := views.New(
+		"templates/*.tmpl",
+		views.FieldLoggingOption(a.Logger.WithField("ctx", "viewmodel")),
+		views.GlobalDataProviderOption(a),
+		views.GlobalFunctionsOption(a),
+	)
 	if err != nil {
-		log.Fatal(err)
+		a.Logger.Fatal(err)
 	}
 
 	// Establish a signal handler to trigger the reinitializer.
@@ -346,7 +283,7 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGHUP)
 	go func() {
 		for _ = range sigChan {
-			log.Info("Received SIGHUP")
+			a.Logger.Info("Received SIGHUP")
 			viewModel.Reload()
 			// TODO(DH) DUPED
 			formatting.LoadLanguageConfig("languages.yml")
@@ -354,16 +291,17 @@ func main() {
 	}()
 
 	// global
-	sessionBroker = initSessionStore()
+	sessionBroker = initSessionStore(a.Configuration)
 
-	modelBroker := establishModelConnection()
+	modelBroker := establishModelConnection(a.Configuration)
+
 	pasteController := &PasteController{}
 	adminController := &AdminController{}
 	sessionController := &SessionController{}
 	authController := &AuthController{}
 
 	var graph inject.Graph
-	graph.Logger = logger.WithField("ctx", "inject")
+	graph.Logger = a.Logger.WithField("ctx", "inject")
 	err = graph.Provide(
 		&inject.Object{
 			Complete: true,
@@ -371,14 +309,14 @@ func main() {
 		},
 		&inject.Object{
 			Complete: true,
-			Value:    &config,
+			Value:    a.Configuration,
 		},
 		&inject.Object{
 			Complete: true,
-			Value:    logger,
+			Value:    a.Logger,
 		},
 		&inject.Object{
-			Value: ghostbin,
+			Value: a,
 		},
 		&inject.Object{
 			Value: pasteController,
@@ -394,12 +332,12 @@ func main() {
 		},
 	)
 	if err != nil {
-		log.Fatal(err)
+		a.Logger.Fatal(err)
 	}
 
 	err = graph.Populate()
 	if err != nil {
-		log.Fatal(err)
+		a.Logger.Fatal(err)
 	}
 
 	controllerRoutes := map[string]Controller{
@@ -407,14 +345,14 @@ func main() {
 		"/auth":    authController,
 		"/session": sessionController,
 		"/admin":   adminController,
-		"":         ghostbin, // Application
+		"":         a, // Application
 	}
 
 	router := mux.NewRouter()
 	// Set Strict Slashes because subrouters/controller routes can register on Path("/").
 	router.StrictSlash(true)
 	for pathPrefix, controller := range controllerRoutes {
-		l := log.WithFields(log.Fields{
+		l := a.Logger.WithFields(logrus.Fields{
 			"controller": fmt.Sprintf("%+T", controller),
 			"path":       pathPrefix,
 		})
@@ -449,11 +387,133 @@ func main() {
 	// User depends on Session, so install that handler last.
 	rootHandler = sessionBroker.Handler(rootHandler)
 
-	http.Handle("/", rootHandler)
+	var wg sync.WaitGroup
+	for _, webConfig := range a.Configuration.Web {
+		logger := a.Logger.WithFields(logrus.Fields{
+			"ctx":  "http",
+			"addr": webConfig.Bind,
+		})
 
-	var addr string = arguments.addr
-	server := &http.Server{
-		Addr: addr,
+		var handler http.Handler = rootHandler
+
+		if webConfig.Proxied {
+			handler = handlers.ProxyHeaders(handler)
+			logger = logger.WithField("proxied", true)
+		}
+
+		if webConfig.SSL != nil {
+			logger = logger.WithField("ssl", true)
+		}
+
+		server := &http.Server{
+			Addr:      webConfig.Bind,
+			Handler:   handler,
+			TLSConfig: defaultTLSConfig,
+		}
+
+		wg.Add(1)
+		go func() {
+			var err error
+			if webConfig.SSL == nil {
+				err = server.ListenAndServe()
+			} else {
+				err = server.ListenAndServeTLS(webConfig.SSL.Certificate, webConfig.SSL.Key)
+			}
+
+			if err != nil {
+				logger.Fatal(err)
+			}
+			wg.Done()
+		}()
+		logger.Info("listening")
 	}
-	server.ListenAndServe()
+	wg.Wait()
+	a.Logger.Warning("all servers terminated")
+	return nil
+}
+
+func init() {
+	// N.B. this should not be necessary.
+	gob.Register(map[model.PasteID][]byte(nil))
+	gob.Register(map[model.PasteID]model.Permission{})
+	runtime.GOMAXPROCS(runtime.NumCPU())
+}
+
+var arguments struct {
+	Environment string   `long:"env" description:"Ghostbin environment (dev/production). Influences the default configuration set by including config.$ENV.yml." default:"dev"`
+	Root        string   `long:"root" short:"r" description:"A directory to store Slate's state in."`
+	ConfigFiles []string `long:"config" short:"c" description:"A configuration file (.yml) to read; can be specified multiple times."`
+	Verbose     []bool   `short:"v" description:"Increase verbosity; can be specified multiple times"`
+}
+
+func loadConfiguration(logger logrus.FieldLogger) *Configuration {
+	var config Configuration
+	// Base config: required
+	err := config.AppendFile("config.yml")
+	if err != nil {
+		logger.Fatalf("failed to load base config file config.yml: %v", err)
+	}
+
+	envConfig := fmt.Sprintf("config.%s.yml", arguments.Environment)
+	err = config.AppendFile(envConfig)
+	if err != nil {
+		logger.Fatalf("failed to load environment config file %s: %v", envConfig, err)
+	}
+
+	for _, c := range arguments.ConfigFiles {
+		err = config.AppendFile(c)
+		if err != nil {
+			logger.Fatalf("failed to load additional config file %s: %v", c, err)
+		}
+	}
+
+	return &config
+}
+
+func main() {
+	_, err := flags.Parse(&arguments)
+	if flagErr, ok := err.(*flags.Error); flagErr != nil && ok {
+		return
+	}
+
+	//////////////////////////////////////
+	// Temporarily keep lang stuff here //
+	//////////////////////////////////////
+	formatting.LoadLanguageConfig("languages.yml")
+	//////////////////////////////////////
+
+	logger := logrus.New()
+	logger.Formatter = &logrus.TextFormatter{
+		ForceColors: true,
+	}
+
+	config := loadConfiguration(logger)
+
+	app := &ghostbinApplication{
+		Logger:        logger,
+		Configuration: config,
+	}
+
+	app.Run()
+}
+
+var defaultTLSConfig *tls.Config = &tls.Config{
+	PreferServerCipherSuites: true,
+	CurvePreferences: []tls.CurveID{
+		tls.CurveP256,
+	},
+	MinVersion: tls.VersionTLS12,
+	CipherSuites: []uint16{
+		tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		//tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305, // Go 1.8 only
+		//tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,   // Go 1.8 only
+		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+
+		// Best disabled, as they don't provide Forward Secrecy,
+		// but might be necessary for some clients
+		// tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+		// tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+	},
 }
