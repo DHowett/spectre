@@ -31,7 +31,7 @@ type dbUser struct {
 	UserPermissions  model.Permission `gorm:"column:permissions"`
 	PastePermissions []*dbUserPastePermission
 
-	broker *dbBroker
+	provider *provider
 }
 
 // gorm
@@ -52,7 +52,7 @@ func (u *dbUser) GetSource() model.UserSource {
 }
 
 func (u *dbUser) SetSource(source model.UserSource) {
-	tx := u.broker.Begin().Model(u)
+	tx := u.provider.Begin().Model(u)
 	if err := tx.Updates(map[string]interface{}{"Source": source}).Error; err != nil {
 		tx.Rollback()
 	}
@@ -60,8 +60,8 @@ func (u *dbUser) SetSource(source model.UserSource) {
 }
 
 func (u *dbUser) UpdateChallenge(password string) {
-	tx := u.broker.Begin().Model(u)
-	challengeProvider := u.broker.ChallengeProvider
+	tx := u.provider.Begin().Model(u)
+	challengeProvider := u.provider.ChallengeProvider
 
 	salt := challengeProvider.RandomSalt()
 	key := challengeProvider.DeriveKey(password, salt)
@@ -84,7 +84,7 @@ func (u *dbUser) Check(password string) bool {
 	if salt == nil {
 		return false
 	}
-	challengeProvider := u.broker.ChallengeProvider
+	challengeProvider := u.provider.ChallengeProvider
 	key := challengeProvider.DeriveKey(password, salt)
 	challengeMessage := append(salt, []byte(u.Name)...)
 	newChallenge := challengeProvider.Challenge(challengeMessage, key)
@@ -105,14 +105,14 @@ func (u *dbUser) Permissions(class model.PermissionClass, args ...interface{}) m
 		default:
 			return nil
 		}
-		return newUserPastePermissionScope(u.broker, u, pid)
+		return newUserPastePermissionScope(u.provider, u, pid)
 	}
 	return nil
 }
 
 func (u *dbUser) GetPastes() ([]model.PasteID, error) {
 	var ids []string
-	if err := u.broker.Model(&dbUserPastePermission{}).Where("user_id = ? AND permissions > 0", u.ID).Pluck("paste_id", &ids).Error; err != nil {
+	if err := u.provider.Model(&dbUserPastePermission{}).Where("user_id = ? AND permissions > 0", u.ID).Pluck("paste_id", &ids).Error; err != nil {
 		return nil, err
 	}
 	pids := make([]model.PasteID, len(ids))

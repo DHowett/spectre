@@ -12,13 +12,13 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-type dbPasteBody struct {
+type pasteBody struct {
 	PasteID string `gorm:"primary_key;type:varchar(256);unique"`
 	Data    []byte
 }
 
 // gorm
-func (dbPasteBody) TableName() string {
+func (pasteBody) TableName() string {
 	return "paste_bodies"
 }
 
@@ -38,7 +38,7 @@ type dbPaste struct {
 	EncryptionMethod model.PasteEncryptionMethod
 
 	encryptionKey []byte `gorm:"-"`
-	broker        *dbBroker
+	provider      *provider
 }
 
 // gorm
@@ -48,7 +48,7 @@ func (dbPaste) TableName() string {
 
 // gorm
 func (p *dbPaste) BeforeCreate(scope *gorm.Scope) error {
-	id := p.broker.GenerateNewPasteID(p.IsEncrypted())
+	id := p.provider.GenerateNewPasteID(p.IsEncrypted())
 	scope.SetColumn("ID", id)
 
 	if p.IsEncrypted() {
@@ -99,16 +99,16 @@ func (p *dbPaste) SetTitle(title string) {
 }
 
 func (p *dbPaste) Commit() error {
-	return p.broker.DB.Save(p).Error
+	return p.provider.DB.Save(p).Error
 }
 
 func (p *dbPaste) Erase() error {
-	return p.broker.DestroyPaste(model.PasteID(p.ID))
+	return p.provider.DestroyPaste(model.PasteID(p.ID))
 }
 
 func (p *dbPaste) Reader() (io.ReadCloser, error) {
-	var b dbPasteBody
-	if err := p.broker.Model(p).Related(&b, "PasteID").Error; err != nil {
+	var b pasteBody
+	if err := p.provider.Model(p).Related(&b, "PasteID").Error; err != nil {
 		log.Errorln(err)
 		return devZero, nil
 	}
@@ -121,27 +121,27 @@ func (p *dbPaste) Reader() (io.ReadCloser, error) {
 
 type pasteWriter struct {
 	bytes.Buffer
-	p      *dbPaste // for UpdatedAt
-	b      *dbPasteBody
-	broker *dbBroker
+	p        *dbPaste // for UpdatedAt
+	b        *pasteBody
+	provider *provider
 }
 
-func newPasteWriter(broker *dbBroker, p *dbPaste) (*pasteWriter, error) {
-	var b dbPasteBody
-	err := broker.FirstOrInit(&b, dbPasteBody{PasteID: p.ID}).Error
+func newPasteWriter(pr *provider, p *dbPaste) (*pasteWriter, error) {
+	var b pasteBody
+	err := pr.FirstOrInit(&b, pasteBody{PasteID: p.ID}).Error
 	if err != nil {
 		return nil, err
 	}
 	return &pasteWriter{
-		p:      p,
-		b:      &b,
-		broker: broker,
+		p:        p,
+		b:        &b,
+		provider: pr,
 	}, nil
 }
 
 func (pw *pasteWriter) Close() error {
 	newData := pw.Buffer.Bytes()
-	tx := pw.broker.Begin()
+	tx := pw.provider.Begin()
 
 	_, err := tx.CommonDB().Exec(`
 	INSERT INTO paste_bodies(paste_id, data)
@@ -162,7 +162,7 @@ func (pw *pasteWriter) Close() error {
 }
 
 func (p *dbPaste) Writer() (io.WriteCloser, error) {
-	w, err := newPasteWriter(p.broker, p)
+	w, err := newPasteWriter(p.provider, p)
 	if err != nil {
 		return nil, err
 	}

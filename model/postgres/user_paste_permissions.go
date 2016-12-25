@@ -6,13 +6,13 @@ type userPastePermissionScope struct {
 	pPerm *dbUserPastePermission
 	err   error
 
-	broker *dbBroker
+	provider *provider
 }
 
-func newUserPastePermissionScope(broker *dbBroker, u *dbUser, id model.PasteID) *userPastePermissionScope {
+func newUserPastePermissionScope(prov *provider, u *dbUser, id model.PasteID) *userPastePermissionScope {
 	var pPerm dbUserPastePermission
-	err := u.broker.FirstOrInit(&pPerm, dbUserPastePermission{UserID: u.ID, PasteID: id.String()}).Error
-	return &userPastePermissionScope{broker: broker, pPerm: &pPerm, err: err}
+	err := u.provider.FirstOrInit(&pPerm, dbUserPastePermission{UserID: u.ID, PasteID: id.String()}).Error
+	return &userPastePermissionScope{provider: prov, pPerm: &pPerm, err: err}
 }
 
 func (s *userPastePermissionScope) Has(p model.Permission) bool {
@@ -27,7 +27,7 @@ func (s *userPastePermissionScope) Grant(p model.Permission) error {
 		return s.err
 	}
 
-	db := s.broker.DB
+	db := s.provider.DB
 	row := db.CommonDB().QueryRow(`
 	INSERT INTO user_paste_permissions(user_id, paste_id, permissions)
 	VALUES($1, $2, $3)
@@ -39,13 +39,13 @@ func (s *userPastePermissionScope) Grant(p model.Permission) error {
 
 	var newPerms uint32
 	if err := row.Scan(&newPerms); err == nil {
-		if s.broker.Logger != nil {
-			s.broker.Logger.Infof("New permission set %x", newPerms)
+		if s.provider.Logger != nil {
+			s.provider.Logger.Infof("New permission set %x", newPerms)
 		}
 		s.pPerm.Permissions = model.Permission(newPerms)
 	} else {
-		if s.broker.Logger != nil {
-			s.broker.Logger.Error(err)
+		if s.provider.Logger != nil {
+			s.provider.Logger.Error(err)
 		}
 		s.err = err
 	}
@@ -65,9 +65,9 @@ func (s *userPastePermissionScope) Revoke(p model.Permission) error {
 	pPerm := s.pPerm
 	newPerms := pPerm.Permissions & (^p)
 	if newPerms == 0 {
-		s.err = s.broker.Delete(pPerm).Error
+		s.err = s.provider.Delete(pPerm).Error
 	} else {
-		s.err = s.broker.Model(pPerm).Update("Permissions", newPerms).Error
+		s.err = s.provider.Model(pPerm).Update("Permissions", newPerms).Error
 	}
 
 	if s.err == nil {

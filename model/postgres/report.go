@@ -6,7 +6,7 @@ type dbReport struct {
 	PasteID string
 	Count   int
 
-	broker *dbBroker
+	provider *provider
 }
 
 func (r *dbReport) GetPasteID() model.PasteID {
@@ -18,6 +18,6 @@ func (r *dbReport) GetCount() int {
 }
 
 func (r *dbReport) Destroy() error {
-	_, err := r.broker.CommonDB().Exec("DELETE FROM paste_reports WHERE paste_id = ?", r.PasteID)
+	_, err := r.provider.CommonDB().Exec("DELETE FROM paste_reports WHERE paste_id = ?", r.PasteID)
 	return err
 }

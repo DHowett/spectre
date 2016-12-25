@@ -25,7 +25,7 @@ func (n *noopChallengeProvider) Challenge(message []byte, key []byte) []byte {
 	return append(message, key...)
 }
 
-var broker model.Provider
+var gTestProvider model.Provider
 
 func TestMain(m *testing.M) {
 	flag.Parse()
@@ -43,7 +43,7 @@ func TestMain(m *testing.M) {
 	`)
 	fmt.Println(err)
 
-	broker, err = model.Open("postgres", sqlDb, &noopChallengeProvider{}, model.FieldLoggingOption(logrus.New()))
+	gTestProvider, err = model.Open("postgres", sqlDb, &noopChallengeProvider{}, model.FieldLoggingOption(logrus.New()))
 	if err != nil {
 		panic(err)
 	}

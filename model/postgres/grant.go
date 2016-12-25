@@ -9,7 +9,7 @@ type dbGrant struct {
 	ID      string `gorm:"primary_key;type:varchar(256);unique"`
 	PasteID string `gorm:"type:varchar(256);index:idx_grant_by_paste"`
 
-	broker *dbBroker
+	provider *provider
 }
 
 // gorm
@@ -36,5 +36,5 @@ func (g *dbGrant) GetPasteID() model.PasteID {
 }
 
 func (g *dbGrant) Destroy() error {
-	return g.broker.Delete(g).Error
+	return g.provider.Delete(g).Error
 }
