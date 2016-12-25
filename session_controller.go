@@ -11,8 +11,8 @@ import (
 )
 
 type SessionController struct {
-	App   Application  `inject:""`
-	Model model.Broker `inject:""`
+	App   Application    `inject:""`
+	Model model.Provider `inject:""`
 
 	sessionView *views.View
 }

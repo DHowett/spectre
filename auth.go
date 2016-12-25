@@ -25,8 +25,8 @@ type authReply struct {
 }
 
 type AuthController struct {
-	App   Application  `inject:""`
-	Model model.Broker `inject:""`
+	App   Application    `inject:""`
+	Model model.Provider `inject:""`
 }
 
 func (ac *AuthController) loginPostHandler(w http.ResponseWriter, r *http.Request) {
@@ -195,7 +195,7 @@ func (a *AuthChallengeProvider) Challenge(message []byte, key []byte) []byte {
 }
 
 type ManglingUserStore struct {
-	model.Broker
+	model.Provider
 }
 
 func (m *ManglingUserStore) mangle(name string) string {
@@ -207,11 +207,11 @@ func (m *ManglingUserStore) mangle(name string) string {
 }
 
 func (m *ManglingUserStore) GetUserNamed(name string) (model.User, error) {
-	return m.Broker.GetUserNamed(m.mangle(name))
+	return m.Provider.GetUserNamed(m.mangle(name))
 }
 
 func (m *ManglingUserStore) CreateUser(name string) (model.User, error) {
-	return m.Broker.CreateUser(m.mangle(name))
+	return m.Provider.CreateUser(m.mangle(name))
 }
 
 /*
@@ -268,11 +268,11 @@ func (c *CachingUserStore) Create(name string) *account.User {
 */
 
 type PromoteFirstUserToAdminStore struct {
-	model.Broker
+	model.Provider
 }
 
 func (c *PromoteFirstUserToAdminStore) CreateUser(name string) (model.User, error) {
-	u, err := c.Broker.CreateUser(name)
+	u, err := c.Provider.CreateUser(name)
 	if err != nil {
 		return u, err
 	}

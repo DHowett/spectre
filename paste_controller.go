@@ -59,7 +59,7 @@ type renderedPaste struct {
 
 type PasteController struct {
 	App    Application    `inject:""`
-	Model  model.Broker   `inject:""`
+	Model  model.Provider `inject:""`
 	Config *Configuration `inject:""`
 
 	renderCacheMu sync.RWMutex

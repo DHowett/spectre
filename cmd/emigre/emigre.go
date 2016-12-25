@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/DHowett/ghostbin/model"
+	"github.com/DHowett/ghostbin/model/postgres"
 	"github.com/Sirupsen/logrus"
 	"github.com/jessevdk/go-flags"
 
@@ -91,7 +92,7 @@ func newMigrator(opts options) (*migrator, error) {
 }
 
 func (m *migrator) InitSchema() error {
-	_, err := model.NewDatabaseBroker(m.dialect, m.db, nil)
+	_, err := postgres.NewDatabaseBroker(m.dialect, m.db, nil)
 	return err
 }
 

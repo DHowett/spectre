@@ -12,7 +12,7 @@ type lateUser struct {
 	m sync.RWMutex
 
 	s    *Session
-	b    model.Broker
+	b    model.Provider
 	u    model.User
 	done bool
 }
@@ -60,7 +60,7 @@ var userContextKey int = 1
 
 // UserLookupHandler wraps and returns a http.Handler, providing a request context bound
 // login manager.
-func UserLookupHandler(broker model.Broker, h http.Handler) http.Handler {
+func UserLookupHandler(broker model.Provider, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lu := &lateUser{
 			s: sessionBroker.Get(r),

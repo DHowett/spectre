@@ -6,7 +6,7 @@ import (
 )
 
 type ExpiringPasteStore struct {
-	model.Broker
+	model.Provider
 }
 
 type ExpiringPasteID model.PasteID
@@ -16,7 +16,7 @@ func (e *ExpiringPasteStore) GetExpirable(id gotimeout.ExpirableID) gotimeout.Ex
 }
 
 func (e *ExpiringPasteStore) DestroyExpirable(ex gotimeout.Expirable) {
-	e.Broker.DestroyPaste(model.PasteID(ex.ExpirationID()))
+	e.Provider.DestroyPaste(model.PasteID(ex.ExpirationID()))
 }
 
 func (p ExpiringPasteID) ExpirationID() gotimeout.ExpirableID {

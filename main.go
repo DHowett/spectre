@@ -22,6 +22,7 @@ import (
 	"github.com/DHowett/ghostbin/lib/four"
 	"github.com/DHowett/ghostbin/lib/templatepack"
 	"github.com/DHowett/ghostbin/model"
+	"github.com/DHowett/ghostbin/model/postgres"
 	"github.com/DHowett/ghostbin/views"
 
 	"github.com/DHowett/gotimeout"
@@ -162,7 +163,7 @@ func establishModelConnection() model.Broker {
 		panic(err)
 	}
 
-	broker, err := model.NewDatabaseBroker(dbDialect, sqlDb, &AuthChallengeProvider{})
+	broker, err := postgres.NewDatabaseBroker(dbDialect, sqlDb, &AuthChallengeProvider{}, model.FieldLoggingOption(log.WithField("ctx", "model")))
 	if err != nil {
 		panic(err)
 	}
