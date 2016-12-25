@@ -6,6 +6,7 @@ database:
 web:
     - bind: 0.0.0.0:8080
 logging:
+    level: info
     components:
         db: true
         web: true

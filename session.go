@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/sessions"
 )
 
@@ -120,7 +120,7 @@ func (s *Session) getGorillaSession(scope SessionScope, create bool) (*sessions.
 			var err error // Using := below will create a new `session' in scope.
 			session, err = store.Get(s.request, scopeCookieName[scope])
 			if err != nil {
-				log.Error(err)
+				logrus.Error(err)
 				return nil, err
 			}
 
@@ -177,7 +177,7 @@ func (s *Session) Get(scope SessionScope, key string) interface{} {
 func (s *Session) Set(scope SessionScope, key string, val interface{}) {
 	store, err := s.getGorillaSession(scope, true)
 	if err != nil {
-		log.Errorf("failed to save <%s> into session(%d): %v", key, scope, err)
+		logrus.Errorf("failed to save <%s> into session(%d): %v", key, scope, err)
 		return
 	}
 
@@ -211,7 +211,7 @@ func (s *Session) Delete(scope SessionScope, key string) {
 	// nocreate: deleting a nonexistent key from a nonexistent session is useless.
 	store, err := s.getGorillaSession(scope, false)
 	if err != nil {
-		log.Errorf("failed to delete <%s> from session(%d): %v", key, scope, err)
+		logrus.Errorf("failed to delete <%s> from session(%d): %v", key, scope, err)
 		return
 	}
 

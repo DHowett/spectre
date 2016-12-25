@@ -6,6 +6,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/Sirupsen/logrus"
+
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -17,6 +19,26 @@ func (d *yamlDuration) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	parsed, err := ParseDuration(s)
 	*d = yamlDuration(parsed)
 	return err
+}
+
+type ConfigLogLevel struct {
+	l *logrus.Level
+}
+
+func (l *ConfigLogLevel) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	unmarshal(&s)
+	lev, err := logrus.ParseLevel(s)
+	l.l = &lev
+	return err
+}
+
+func (l *ConfigLogLevel) LogrusLevel() logrus.Level {
+	if l.l == nil {
+		// default?
+		return logrus.InfoLevel
+	}
+	return *l.l
 }
 
 type Configuration struct {
@@ -41,6 +63,7 @@ type Configuration struct {
 			Type string
 			Path string
 		}
+		Level ConfigLogLevel
 	}
 
 	Application struct {

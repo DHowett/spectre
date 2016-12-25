@@ -239,7 +239,7 @@ func (a *ghostbinApplication) initModelProvider() (model.Provider, error) {
 		dbDialect,
 		sqlDb,
 		&AuthChallengeProvider{},
-		model.FieldLoggingOption(logrus.WithField("ctx", "model")),
+		model.FieldLoggingOption(a.Logger.WithField("ctx", "model")),
 	)
 	if err != nil {
 		return nil, err
@@ -255,7 +255,7 @@ func (a *ghostbinApplication) initModelProvider() (model.Provider, error) {
 		for {
 			select {
 			case err := <-pasteExpirator.ErrorChannel:
-				logrus.Error("Expirator Error: ", err.Error())
+				a.Logger.Error("Expirator Error: ", err.Error())
 			}
 		}
 	}()
@@ -449,7 +449,6 @@ var arguments struct {
 	Environment string   `long:"env" description:"Ghostbin environment (dev/production). Influences the default configuration set by including config.$ENV.yml." default:"dev"`
 	Root        string   `long:"root" short:"r" description:"A directory to store Slate's state in."`
 	ConfigFiles []string `long:"config" short:"c" description:"A configuration file (.yml) to read; can be specified multiple times."`
-	Verbose     []bool   `short:"v" description:"Increase verbosity; can be specified multiple times"`
 }
 
 func loadConfiguration(logger logrus.FieldLogger) *Configuration {
@@ -494,6 +493,14 @@ func main() {
 	}
 
 	config := loadConfiguration(logger)
+
+	switch config.Logging.Destination.Type {
+	case "terminal":
+		// no-op: logger is terminal by default
+	case "file":
+		// TODO(DH): This.
+	}
+	logger.Level = config.Logging.Level.LogrusLevel()
 
 	app := &ghostbinApplication{
 		Logger:        logger,
