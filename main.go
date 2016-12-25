@@ -21,7 +21,6 @@ import (
 	// Ghostbin
 	"github.com/DHowett/ghostbin/lib/formatting"
 	"github.com/DHowett/ghostbin/lib/four"
-	"github.com/DHowett/ghostbin/lib/templatepack"
 	"github.com/DHowett/ghostbin/views"
 	"github.com/DHowett/gotimeout"
 	"github.com/facebookgo/inject"
@@ -44,14 +43,6 @@ func isEditAllowed(p model.Paste, r *http.Request) bool {
 	return GetPastePermissionScope(p.GetID(), r).Has(model.PastePermissionEdit)
 }
 
-func requestVariable(rc *templatepack.Context, variable string) string {
-	v, _ := mux.Vars(rc.Request)[variable]
-	if v == "" {
-		v = rc.Request.FormValue(variable)
-	}
-	return v
-}
-
 func partialGetHandler(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["id"]
 	templatePack.ExecutePartial(w, r, name, nil)
@@ -67,15 +58,15 @@ func pasteDestroyCallback(p model.Paste) {
 
 	pasteExpirator.CancelObjectExpiration(ExpiringPasteID(p.GetID()))
 
-	defer renderCache.mu.Unlock()
-	renderCache.mu.Lock()
-	if renderCache.c == nil {
-		return
-	}
+	//defer renderCache.mu.Unlock()
+	//renderCache.mu.Lock()
+	//if renderCache.c == nil {
+	//return
+	//}
 
-	log.Info("RENDER CACHE: Removing ", p.GetID(), " due to destruction.")
+	//log.Info("RENDER CACHE: Removing ", p.GetID(), " due to destruction.")
 	// Clear the cached render when a paste is destroyed
-	renderCache.c.Remove(p.GetID())
+	//renderCache.c.Remove(p.GetID())
 }
 
 var sessionBroker *SessionBroker
@@ -92,78 +83,6 @@ func loadOrGenerateSessionKey(path string, keyLength int) (data []byte, err erro
 	return
 }
 
-func initSessionStore(config *Configuration) *SessionBroker {
-	sessionKeyFile := filepath.Join(arguments.Root, "session.key")
-	sessionKey, err := loadOrGenerateSessionKey(sessionKeyFile, 32)
-	if err != nil {
-		logrus.Fatal("session.key not found, and an attempt to create one failed: ", err)
-	}
-
-	sesdir := filepath.Join(arguments.Root, "sessions")
-	os.Mkdir(sesdir, 0700)
-	serverSessionStore := sessions.NewFilesystemStore(sesdir, sessionKey)
-	serverSessionStore.Options.Path = "/"
-	serverSessionStore.Options.MaxAge = 86400 * 365
-
-	clientKeyFile := filepath.Join(arguments.Root, "client_session_enc.key")
-	clientOnlySessionEncryptionKey, err := loadOrGenerateSessionKey(clientKeyFile, 32)
-	if err != nil {
-		logrus.Fatal("client_session_enc.key not found, and an attempt to create one failed: ", err)
-	}
-	sensitiveSessionStore := sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
-	sensitiveSessionStore.Options.Path = "/"
-	sensitiveSessionStore.Options.MaxAge = 0
-
-	clientSessionStore := sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
-	clientSessionStore.Options.Path = "/"
-	clientSessionStore.Options.MaxAge = 86400 * 365
-
-	if config.Application.ForceInsecureEncryption {
-		sensitiveSessionStore.Options.Secure = true
-		clientSessionStore.Options.Secure = true
-	}
-
-	return NewSessionBroker(map[SessionScope]sessions.Store{
-		SessionScopeServer:    serverSessionStore,
-		SessionScopeClient:    clientSessionStore,
-		SessionScopeSensitive: sensitiveSessionStore,
-	})
-}
-
-func establishModelConnection(config *Configuration) model.Provider {
-	dbDialect := config.Database.Dialect
-	sqlDb, err := sql.Open(dbDialect, config.Database.Connection)
-	if err != nil {
-		panic(err)
-	}
-
-	broker, err := model.Open(dbDialect, sqlDb, &AuthChallengeProvider{}, model.FieldLoggingOption(logrus.WithField("ctx", "model")))
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
-	// TODO(DH): destruction callbacks
-	//pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
-
-	ephStore = gotimeout.NewMap()
-	pasteExpirator = gotimeout.NewExpiratorWithStorage(gotimeout.NoopAdapter{}, &ExpiringPasteStore{broker})
-
-	go func() {
-		for {
-			select {
-			case err := <-pasteExpirator.ErrorChannel:
-				logrus.Error("Expirator Error: ", err.Error())
-			}
-		}
-	}()
-
-	return &PromoteFirstUserToAdminStore{
-		&ManglingUserStore{
-			broker,
-		},
-	}
-}
-
 type ghostbinApplication struct {
 	mutex     sync.RWMutex
 	urlRoutes map[URLType]*mux.Route
@@ -171,6 +90,8 @@ type ghostbinApplication struct {
 	indexView *views.View
 	aboutView *views.View
 	errorView *views.View
+
+	rootHandler http.Handler
 
 	Logger        logrus.FieldLogger `inject:""`
 	Configuration *Configuration
@@ -220,6 +141,8 @@ func (a *ghostbinApplication) ViewValue(r *http.Request, name string) interface{
 		return a
 	case "user":
 		return GetLoggedInUser(r)
+	case "encryption":
+		return RequestIsHTTPS(r) || a.Configuration.Application.ForceInsecureEncryption
 	}
 	return nil
 }
@@ -263,11 +186,88 @@ func (a *ghostbinApplication) RespondWithError(w http.ResponseWriter, webErr Web
 	w.WriteHeader(webErr.StatusCode())
 	err2 := a.errorView.Exec(w, nil, webErr)
 	if err2 != nil {
-		logrus.Error("failed to render error response:", err2)
+		a.Logger.Error("failed to render error response:", err2)
 	}
 }
 
-func (a *ghostbinApplication) Run() error {
+func (a *ghostbinApplication) initSessionStore() (*SessionBroker, error) {
+	sessionKeyFile := filepath.Join(arguments.Root, "session.key")
+	sessionKey, err := loadOrGenerateSessionKey(sessionKeyFile, 32)
+	if err != nil {
+		return nil, fmt.Errorf("session.key not found, and an attempt to create one failed: %v", err)
+	}
+
+	sesdir := filepath.Join(arguments.Root, "sessions")
+	os.Mkdir(sesdir, 0700)
+	serverSessionStore := sessions.NewFilesystemStore(sesdir, sessionKey)
+	serverSessionStore.Options.Path = "/"
+	serverSessionStore.Options.MaxAge = 86400 * 365
+
+	clientKeyFile := filepath.Join(arguments.Root, "client_session_enc.key")
+	clientOnlySessionEncryptionKey, err := loadOrGenerateSessionKey(clientKeyFile, 32)
+	if err != nil {
+		return nil, fmt.Errorf("client_session_enc.key not found, and an attempt to create one failed: %v", err)
+	}
+	sensitiveSessionStore := sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
+	sensitiveSessionStore.Options.Path = "/"
+	sensitiveSessionStore.Options.MaxAge = 0
+
+	clientSessionStore := sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
+	clientSessionStore.Options.Path = "/"
+	clientSessionStore.Options.MaxAge = 86400 * 365
+
+	if a.Configuration.Application.ForceInsecureEncryption {
+		sensitiveSessionStore.Options.Secure = true
+		clientSessionStore.Options.Secure = true
+	}
+
+	return NewSessionBroker(map[SessionScope]sessions.Store{
+		SessionScopeServer:    serverSessionStore,
+		SessionScopeClient:    clientSessionStore,
+		SessionScopeSensitive: sensitiveSessionStore,
+	}), nil
+}
+
+func (a *ghostbinApplication) initModelProvider() (model.Provider, error) {
+	dbDialect := a.Configuration.Database.Dialect
+	sqlDb, err := sql.Open(dbDialect, a.Configuration.Database.Connection)
+	if err != nil {
+		return nil, err
+	}
+
+	broker, err := model.Open(
+		dbDialect,
+		sqlDb,
+		&AuthChallengeProvider{},
+		model.FieldLoggingOption(logrus.WithField("ctx", "model")),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO(DH): destruction callbacks
+	//pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
+
+	ephStore = gotimeout.NewMap()
+	pasteExpirator = gotimeout.NewExpiratorWithStorage(gotimeout.NoopAdapter{}, &ExpiringPasteStore{broker})
+
+	go func() {
+		for {
+			select {
+			case err := <-pasteExpirator.ErrorChannel:
+				logrus.Error("Expirator Error: ", err.Error())
+			}
+		}
+	}()
+
+	return &PromoteFirstUserToAdminStore{
+		&ManglingUserStore{
+			broker,
+		},
+	}, nil
+}
+
+func (a *ghostbinApplication) init() error {
 	viewModel, err := views.New(
 		"templates/*.tmpl",
 		views.FieldLoggingOption(a.Logger.WithField("ctx", "viewmodel")),
@@ -275,7 +275,7 @@ func (a *ghostbinApplication) Run() error {
 		views.GlobalFunctionsOption(a),
 	)
 	if err != nil {
-		a.Logger.Fatal(err)
+		return err
 	}
 
 	// Establish a signal handler to trigger the reinitializer.
@@ -291,9 +291,15 @@ func (a *ghostbinApplication) Run() error {
 	}()
 
 	// global
-	sessionBroker = initSessionStore(a.Configuration)
+	sessionBroker, err = a.initSessionStore()
+	if err != nil {
+		return err
+	}
 
-	modelBroker := establishModelConnection(a.Configuration)
+	modelBroker, err := a.initModelProvider()
+	if err != nil {
+		return err
+	}
 
 	pasteController := &PasteController{}
 	adminController := &AdminController{}
@@ -303,6 +309,7 @@ func (a *ghostbinApplication) Run() error {
 	var graph inject.Graph
 	graph.Logger = a.Logger.WithField("ctx", "inject")
 	err = graph.Provide(
+		&inject.Object{Value: a},
 		&inject.Object{
 			Complete: true,
 			Value:    modelBroker,
@@ -315,29 +322,18 @@ func (a *ghostbinApplication) Run() error {
 			Complete: true,
 			Value:    a.Logger,
 		},
-		&inject.Object{
-			Value: a,
-		},
-		&inject.Object{
-			Value: pasteController,
-		},
-		&inject.Object{
-			Value: adminController,
-		},
-		&inject.Object{
-			Value: sessionController,
-		},
-		&inject.Object{
-			Value: authController,
-		},
+		&inject.Object{Value: pasteController},
+		&inject.Object{Value: adminController},
+		&inject.Object{Value: sessionController},
+		&inject.Object{Value: authController},
 	)
 	if err != nil {
-		a.Logger.Fatal(err)
+		return err
 	}
 
 	err = graph.Populate()
 	if err != nil {
-		a.Logger.Fatal(err)
+		return err
 	}
 
 	controllerRoutes := map[string]Controller{
@@ -359,7 +355,7 @@ func (a *ghostbinApplication) Run() error {
 
 		err := controller.BindViews(viewModel)
 		if err != nil {
-			l.Fatal("unable to bind views:", err)
+			return fmt.Errorf("unable to bind views: %v", err)
 		}
 
 		r := router
@@ -387,6 +383,16 @@ func (a *ghostbinApplication) Run() error {
 	// User depends on Session, so install that handler last.
 	rootHandler = sessionBroker.Handler(rootHandler)
 
+	a.rootHandler = rootHandler
+	return nil
+}
+
+func (a *ghostbinApplication) Run() error {
+	err := a.init()
+	if err != nil {
+		return err
+	}
+
 	var wg sync.WaitGroup
 	for _, webConfig := range a.Configuration.Web {
 		logger := a.Logger.WithFields(logrus.Fields{
@@ -394,7 +400,7 @@ func (a *ghostbinApplication) Run() error {
 			"addr": webConfig.Bind,
 		})
 
-		var handler http.Handler = rootHandler
+		var handler http.Handler = a.rootHandler
 
 		if webConfig.Proxied {
 			handler = handlers.ProxyHeaders(handler)
@@ -494,7 +500,10 @@ func main() {
 		Configuration: config,
 	}
 
-	app.Run()
+	err = app.Run()
+	if err != nil {
+		logger.Fatal(err)
+	}
 }
 
 var defaultTLSConfig *tls.Config = &tls.Config{
