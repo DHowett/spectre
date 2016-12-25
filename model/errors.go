@@ -6,4 +6,6 @@ var (
 	ErrInvalidKey     = errors.New("invalid password")
 	ErrPasteEncrypted = errors.New("paste encrypted")
 	ErrNotFound       = errors.New("record not found")
+
+	ErrUnknownDriver = errors.New("model: unknown driver")
 )
