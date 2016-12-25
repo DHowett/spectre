@@ -352,7 +352,7 @@ func (broker *dbBroker) migrateDb() error {
 	return nil
 }
 
-func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.ChallengeProvider, options ...model.Option) (model.Broker, error) {
+func NewDatabaseBroker(dialect string, sqlDb *sql.DB, challengeProvider crypto.ChallengeProvider, options ...model.Option) (model.Provider, error) {
 	if dialect == "sqlite" || dialect == "sqlite3" {
 		sqlDb.Exec("PRAGMA foreign_keys = ON")
 	}

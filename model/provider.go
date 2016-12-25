@@ -1,6 +1,6 @@
 package model
 
-type Broker interface {
+type Provider interface {
 	// User Management
 	GetUserNamed(name string) (User, error)
 	GetUserByID(id uint) (User, error)

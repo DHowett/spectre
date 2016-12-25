@@ -26,7 +26,7 @@ func (n *noopChallengeProvider) Challenge(message []byte, key []byte) []byte {
 	return append(message, key...)
 }
 
-var broker model.Broker
+var broker model.Provider
 
 func TestMain(m *testing.M) {
 	flag.Parse()
