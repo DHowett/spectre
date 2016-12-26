@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/DHowett/ghostbin/lib/config"
 	"github.com/DHowett/ghostbin/model"
 	"github.com/DHowett/ghostbin/views"
 	"github.com/gorilla/mux"
@@ -12,7 +13,7 @@ import (
 type AdminController struct {
 	App    Application    `inject:""`
 	Model  model.Provider `inject:""`
-	Config *Configuration `inject:""`
+	Config *config.C      `inject:""`
 
 	adminHomeView *views.View
 }

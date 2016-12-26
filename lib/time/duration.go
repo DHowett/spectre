@@ -1,8 +1,9 @@
-package main
+// Package time provides a replacement for the standard library's time.ParseDuration that supports larger units.
+package time
 
 import (
 	"errors"
-	"time"
+	stdtime "time"
 )
 
 var errLeadingInt = errors.New("time: bad [0-9]*") // never printed
@@ -25,16 +26,16 @@ func leadingInt(s string) (x int64, rem string, err error) {
 }
 
 var unitMap = map[string]float64{
-	"ns": float64(time.Nanosecond),
-	"us": float64(time.Microsecond),
-	"µs": float64(time.Microsecond), // U+00B5 = micro symbol
-	"μs": float64(time.Microsecond), // U+03BC = Greek letter mu
-	"ms": float64(time.Millisecond),
-	"s":  float64(time.Second),
-	"m":  float64(time.Minute),
-	"h":  float64(time.Hour),
-	"d":  float64(time.Hour * 24),
-	"w":  float64(time.Hour * 24 * 7),
+	"ns": float64(stdtime.Nanosecond),
+	"us": float64(stdtime.Microsecond),
+	"µs": float64(stdtime.Microsecond), // U+00B5 = micro symbol
+	"μs": float64(stdtime.Microsecond), // U+03BC = Greek letter mu
+	"ms": float64(stdtime.Millisecond),
+	"s":  float64(stdtime.Second),
+	"m":  float64(stdtime.Minute),
+	"h":  float64(stdtime.Hour),
+	"d":  float64(stdtime.Hour * 24),
+	"w":  float64(stdtime.Hour * 24 * 7),
 }
 
 // ParseDuration parses a duration string.
@@ -42,7 +43,7 @@ var unitMap = map[string]float64{
 // decimal numbers, each with optional fraction and a unit suffix,
 // such as "300ms", "-1.5h" or "2h45m".
 // Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
-func ParseDuration(s string) (time.Duration, error) {
+func ParseDuration(s string) (stdtime.Duration, error) {
 	// [-+]?([0-9]*(\.[0-9]*)?[a-z]+)+
 	orig := s
 	f := float64(0)
@@ -127,5 +128,5 @@ func ParseDuration(s string) (time.Duration, error) {
 	if neg {
 		f = -f
 	}
-	return time.Duration(f), nil
+	return stdtime.Duration(f), nil
 }

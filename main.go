@@ -19,6 +19,7 @@ import (
 	"github.com/jessevdk/go-flags"
 
 	// Ghostbin
+	"github.com/DHowett/ghostbin/lib/config"
 	"github.com/DHowett/ghostbin/lib/formatting"
 	"github.com/DHowett/ghostbin/lib/four"
 	"github.com/DHowett/ghostbin/views"
@@ -94,7 +95,7 @@ type ghostbinApplication struct {
 	rootHandler http.Handler
 
 	Logger        logrus.FieldLogger `inject:""`
-	Configuration *Configuration
+	Configuration *config.C
 }
 
 func (a *ghostbinApplication) RegisterRouteForURLType(ut URLType, route *mux.Route) {
@@ -451,28 +452,28 @@ var arguments struct {
 	ConfigFiles []string `long:"config" short:"c" description:"A configuration file (.yml) to read; can be specified multiple times."`
 }
 
-func loadConfiguration(logger logrus.FieldLogger) *Configuration {
-	var config Configuration
+func loadConfiguration(logger logrus.FieldLogger) *config.C {
+	var c config.C
 	// Base config: required
-	err := config.AppendFile("config.yml")
+	err := c.AppendFile("config.yml")
 	if err != nil {
 		logger.Fatalf("failed to load base config file config.yml: %v", err)
 	}
 
 	envConfig := fmt.Sprintf("config.%s.yml", arguments.Environment)
-	err = config.AppendFile(envConfig)
+	err = c.AppendFile(envConfig)
 	if err != nil {
 		logger.Fatalf("failed to load environment config file %s: %v", envConfig, err)
 	}
 
-	for _, c := range arguments.ConfigFiles {
-		err = config.AppendFile(c)
+	for _, f := range arguments.ConfigFiles {
+		err = c.AppendFile(f)
 		if err != nil {
-			logger.Fatalf("failed to load additional config file %s: %v", c, err)
+			logger.Fatalf("failed to load additional config file %s: %v", f, err)
 		}
 	}
 
-	return &config
+	return &c
 }
 
 func main() {
@@ -492,19 +493,19 @@ func main() {
 		ForceColors: true,
 	}
 
-	config := loadConfiguration(logger)
+	conf := loadConfiguration(logger)
 
-	switch config.Logging.Destination.Type {
+	switch conf.Logging.Destination.Type {
 	case "terminal":
 		// no-op: logger is terminal by default
 	case "file":
 		// TODO(DH): This.
 	}
-	logger.Level = config.Logging.Level.LogrusLevel()
+	logger.Level = conf.Logging.Level.LogrusLevel()
 
 	app := &ghostbinApplication{
 		Logger:        logger,
-		Configuration: config,
+		Configuration: conf,
 	}
 
 	err = app.Run()

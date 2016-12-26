@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"bytes"
@@ -6,26 +6,28 @@ import (
 	"text/template"
 	"time"
 
+	ghtime "github.com/DHowett/ghostbin/lib/time"
+
 	"github.com/Sirupsen/logrus"
 
 	yaml "gopkg.in/yaml.v2"
 )
 
-type yamlDuration time.Duration
+type Duration time.Duration
 
-func (d *yamlDuration) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (d *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var s string
 	unmarshal(&s)
-	parsed, err := ParseDuration(s)
-	*d = yamlDuration(parsed)
+	parsed, err := ghtime.ParseDuration(s)
+	*d = Duration(parsed)
 	return err
 }
 
-type ConfigLogLevel struct {
+type LogLevel struct {
 	l *logrus.Level
 }
 
-func (l *ConfigLogLevel) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (l *LogLevel) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var s string
 	unmarshal(&s)
 	lev, err := logrus.ParseLevel(s)
@@ -33,7 +35,7 @@ func (l *ConfigLogLevel) UnmarshalYAML(unmarshal func(interface{}) error) error 
 	return err
 }
 
-func (l *ConfigLogLevel) LogrusLevel() logrus.Level {
+func (l *LogLevel) LogrusLevel() logrus.Level {
 	if l.l == nil {
 		// default?
 		return logrus.InfoLevel
@@ -41,7 +43,7 @@ func (l *ConfigLogLevel) LogrusLevel() logrus.Level {
 	return *l.l
 }
 
-type Configuration struct {
+type C struct {
 	Database *struct {
 		Dialect    string
 		Connection string
@@ -50,7 +52,6 @@ type Configuration struct {
 	Web []struct {
 		Bind string
 		SSL  *struct {
-			CA          string `yaml:"ca"`
 			Certificate string `yaml:"cert"`
 			Key         string `yaml:"key"`
 		}
@@ -63,20 +64,20 @@ type Configuration struct {
 			Type string
 			Path string
 		}
-		Level ConfigLogLevel
+		Level LogLevel
 	}
 
 	Application struct {
 		ForceInsecureEncryption bool `yaml:"force_insecure_encryption"`
 		Limits                  struct {
-			PasteSize          uint         `yaml:"paste_size"`
-			PasteCache         uint         `yaml:"paste_cache"`
-			PasteMaxExpiration yamlDuration `yaml:"paste_max_expiration"`
+			PasteSize          uint     `yaml:"paste_size"`
+			PasteCache         uint     `yaml:"paste_cache"`
+			PasteMaxExpiration Duration `yaml:"paste_max_expiration"`
 		}
 	}
 }
 
-func (c *Configuration) AppendFile(filename string) error {
+func (c *C) AppendFile(filename string) error {
 	tmpl, err := template.ParseFiles(filename)
 	if err != nil {
 		return err

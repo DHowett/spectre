@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/DHowett/ghostbin/lib/formatting"
+	ghtime "github.com/DHowett/ghostbin/lib/time"
 	"github.com/DHowett/ghostbin/model"
 	"github.com/DHowett/ghostbin/views"
 
@@ -298,7 +299,7 @@ func (pc *PasteController) updateOrCreatePaste(p model.Paste, w http.ResponseWri
 	expireIn := r.FormValue("expire")
 	ePid := ExpiringPasteID(p.GetID())
 	if expireIn != "" && expireIn != "-1" {
-		dur, _ := ParseDuration(expireIn)
+		dur, _ := ghtime.ParseDuration(expireIn)
 		if dur > MAX_EXPIRE_DURATION {
 			dur = MAX_EXPIRE_DURATION
 		}
