@@ -93,9 +93,10 @@ func (m *migrator) migratePastes(logger logrus.FieldLogger) (int, error) {
 	}()
 	nPastes := 0
 
-	inserter := NewBulkInserter(m.db, `INSERT INTO
+	inserter, err := NewBulkInserter(m.db, `INSERT INTO
 		pastes(id, created_at, updated_at, expire_at, title, language_name, hmac, encryption_salt, encryption_method)
 		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	_ = err // ignore missing placeholders & bad driver limit errors.
 
 	filepath.Walk(m.opts.Pastes, func(path string, fi os.FileInfo, err error) error {
 		if fi.IsDir() {
@@ -123,7 +124,7 @@ func (m *migrator) migratePastes(logger logrus.FieldLogger) (int, error) {
 	})
 
 	logger.Infof("%d...", nPastes)
-	err := inserter.Flush()
+	err = inserter.Flush()
 	if err != nil {
 		logger.Errorf("%d batch failed: %v", nPastes, err)
 	}
@@ -178,9 +179,10 @@ func (m *migrator) migrateUsers(logger logrus.FieldLogger) (int, int, error) {
 		close(m.pendingUserPerms)
 	}()
 
-	inserter := NewBulkInserter(m.db, `INSERT INTO
+	inserter, err := NewBulkInserter(m.db, `INSERT INTO
 		users(updated_at, name, salt, challenge, source, permissions)
 		VALUES(?, ?, ?, ?, ?, ?)`)
+	_ = err // ignore missing placeholders & bad driver limit errors.
 
 	nUsers := 0
 	nUserPerms := 0
@@ -224,7 +226,8 @@ func (m *migrator) migrateUsers(logger logrus.FieldLogger) (int, int, error) {
 		m.pendingUserPerms <- u
 		return nil
 	})
-	err := inserter.Flush()
+
+	err = inserter.Flush()
 	if err != nil {
 		logger.Errorf("%d batch failed: %v", nUsers, err)
 	}
@@ -303,9 +306,10 @@ func (m *migrator) userPermTask(logger logrus.FieldLogger, returnCh chan taskRet
 	m.s2wg.Wait()
 	logger.Info("starting")
 
-	inserter := NewBulkInserter(m.db, `INSERT INTO
+	inserter, err := NewBulkInserter(m.db, `INSERT INTO
 		user_paste_permissions(user_id, paste_id, permissions)
 		VALUES((SELECT id FROM users WHERE name = ?), ?, ?)`)
+	_ = err // ignore missing placeholders & bad driver limit errors.
 
 	var r taskReturn
 outer:
@@ -341,7 +345,7 @@ outer:
 		}
 	}
 
-	err := inserter.Flush()
+	err = inserter.Flush()
 	if err != nil {
 		logger.Errorf("flush user perms failed: %v", err)
 	}
