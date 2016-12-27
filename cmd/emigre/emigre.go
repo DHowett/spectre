@@ -1,172 +1,145 @@
 package main
 
 import (
-	"database/sql"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
+	"runtime"
 	"sync"
 	"time"
 
+	"github.com/DHowett/ghostbin/lib/config"
 	"github.com/DHowett/ghostbin/model"
-	"github.com/DHowett/ghostbin/model/postgres"
+	_ "github.com/DHowett/ghostbin/model/postgres"
 	"github.com/Sirupsen/logrus"
 	"github.com/jessevdk/go-flags"
-
-	_ "github.com/jinzhu/gorm/dialects/postgres"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/jmoiron/sqlx"
 )
 
 type options struct {
 	Pastes   string `short:"p" long:"pastes" description:"paste store directory" default:"./pastes"`
 	Accounts string `short:"a" long:"accounts" description:"account store directory" default:"./accounts"`
 
-	Dialect  string `short:"D" long:"dialect" description:"database dialect for -d" default:"sqlite3"`
-	Database string `short:"d" long:"db" description:"output sql file" default:"out.db"`
-}
+	// These options mirror those in spectre core.
+	Environment string   `long:"env" description:"Ghostbin environment (dev/production). Influences the default configuration set by including config.$ENV.yml." default:"dev"`
+	ConfigFiles []string `long:"config" short:"c" description:"A configuration file (.yml) to read; can be specified multiple times."`
 
-// SQLITE3
-//  DATETIME(%d, "unixepoch")
-// POSTGRESQL
-//  TO_TIMESTAMP(%d)
-
-func execBatchQuery(db *sql.DB, base, repeat string, per int, values ...interface{}) (sql.Result, error) {
-	placeholders := make([]string, len(values)/per)
-	for i, _ := range placeholders {
-		placeholders[i] = repeat
-	}
-
-	query := base + strings.Join(placeholders, ", ")
-	return db.Exec(query, values...)
-}
-
-type pendingDbUser struct {
-	u  *User
-	id int64
+	SkipPastes      bool `long:"sp" description:"skip pastes (and paste bodies, user perms)"`
+	SkipUsers       bool `long:"su" description:"skip users (and user perms)"`
+	SkipPasteBodies bool `long:"sb" description:"skip paste bodies"`
+	SkipUserPerms   bool `long:"sup" description:"skip user perms"`
 }
 
 type migrator struct {
-	Logger logrus.FieldLogger
+	logger logrus.FieldLogger
 
-	opts options
+	config *config.C
+	opts   options
 
 	// source
 	pasteStore *FilesystemPasteStore
 	userStore  *FilesystemUserStore
 
 	// destination
-	dialect string
-	mu      sync.Mutex
-	db      *sql.DB
+	db *sqlx.DB
 
 	pasteHits map[model.PasteID]struct{}
 	userHits  map[string]struct{}
 
 	pendingPasteBodies chan *fsPaste
-	pendingUserPerms   chan *pendingDbUser
+	pendingUserPerms   chan *User
 
-	Finished chan bool
+	// stages 1/2 waitgroups
+	// stage 1: pastes
+	// stage 2: users
+	s1wg, s2wg sync.WaitGroup
+
+	finished chan bool
 }
 
-func newMigrator(opts options) (*migrator, error) {
+func newMigrator(opts options, config *config.C, logger logrus.FieldLogger) (*migrator, error) {
 	m := &migrator{
+		logger:             logger,
+		config:             config,
 		opts:               opts,
-		dialect:            opts.Dialect,
 		pasteHits:          make(map[model.PasteID]struct{}),
 		userHits:           make(map[string]struct{}),
 		pendingPasteBodies: make(chan *fsPaste, 1000000),
-		pendingUserPerms:   make(chan *pendingDbUser, 100000),
-		Finished:           make(chan bool),
+		pendingUserPerms:   make(chan *User, 100000),
+		finished:           make(chan bool),
 	}
 	m.pasteStore = NewFilesystemPasteStore(opts.Pastes)
 	m.userStore = NewFilesystemUserStore(opts.Accounts)
 
-	db, err := sql.Open(m.dialect, opts.Database)
+	db, err := sqlx.Open(m.config.Database.Dialect, m.config.Database.Connection)
 	if err != nil {
 		return nil, err
 	}
 	m.db = db
-	go m.runBackgroundTasks()
 	return m, nil
 }
 
-func (m *migrator) InitSchema() error {
-	_, err := postgres.NewDatabaseBroker(m.dialect, m.db, nil)
+func (m *migrator) initSchema() error {
+	_, err := model.Open(m.config.Database.Dialect, m.db.DB, &noopChallengeProvider{})
 	return err
 }
 
-func (m *migrator) MigratePastes() (int, error) {
+func (m *migrator) migratePastes(logger logrus.FieldLogger) (int, error) {
+	logger = logger.WithField("m", "paste")
+
 	defer func() {
 		close(m.pendingPasteBodies)
 	}()
-	insertPasteQueryBase := `INSERT INTO
-		pastes(id, created_at, updated_at, expire_at, title, language_name, hmac, encryption_salt, encryption_method)
-		VALUES`
-	insertPasteQueryRepeat := `(?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	valPerQuery := 9
-
 	nPastes := 0
 
-	batchSz := 999 / valPerQuery
-	pasteV := make([]interface{}, 0, batchSz*valPerQuery)
+	inserter := NewBulkInserter(m.db, `INSERT INTO
+		pastes(id, created_at, updated_at, expire_at, title, language_name, hmac, encryption_salt, encryption_method)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+
 	filepath.Walk(m.opts.Pastes, func(path string, fi os.FileInfo, err error) error {
 		if fi.IsDir() {
 			return nil
 		}
-		plog := m.Logger.WithField("paste", fi.Name())
+		plog := logger.WithField("paste", fi.Name())
 		fsp, err := m.pasteStore.Get(model.PasteIDFromString(fi.Name()), nil)
 		if err != nil {
 			plog.Error(err)
 			return nil
 		}
-		pasteV = append(pasteV, []interface{}{fsp.ID.String(), fsp.ModTime, fsp.ModTime, fsp.ExpirationTime, fsp.Title, fsp.Language, fsp.HMAC, fsp.EncryptionSalt, fsp.EncryptionMethod}...)
 		m.pasteHits[fsp.ID] = struct{}{}
 		nPastes++
-		if nPastes%batchSz == 0 {
-			m.mu.Lock()
-			_, err := execBatchQuery(m.db, insertPasteQueryBase, insertPasteQueryRepeat, valPerQuery, pasteV...)
-			if err != nil {
-				m.Logger.Errorf("%d batch(%d) failed: %v", nPastes, batchSz, err)
-			}
-			m.Logger.Infof("%d...", nPastes)
-			pasteV = pasteV[0:0]
-			m.mu.Unlock()
+		if nPastes%1000 == 0 {
+			logger.Infof("%d...", nPastes)
 		}
+
+		err = inserter.Insert(fsp.ID.String(), fsp.ModTime, fsp.ModTime, fsp.ExpirationTime, fsp.Title, fsp.Language, fsp.HMAC, fsp.EncryptionSalt, fsp.EncryptionMethod)
+		if err != nil {
+			logger.Errorf("%d batch failed: %v", nPastes, err)
+		}
+
 		m.pendingPasteBodies <- fsp
 		return nil
 	})
-	if nPastes%batchSz != 0 {
-		m.mu.Lock()
-		n := nPastes % batchSz
-		_, err := execBatchQuery(m.db, insertPasteQueryBase, insertPasteQueryRepeat, valPerQuery, pasteV[:valPerQuery*n]...)
-		if err != nil {
-			m.Logger.Errorf("%d batch(%d) failed: %v", nPastes, n, err)
-		}
-		m.mu.Unlock()
+
+	logger.Infof("%d...", nPastes)
+	err := inserter.Flush()
+	if err != nil {
+		logger.Errorf("%d batch failed: %v", nPastes, err)
 	}
+
 	return nPastes, nil
 }
 
-func (m *migrator) migratePasteBody(p *fsPaste, body []byte) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	_, err := m.db.Exec("INSERT INTO paste_bodies(paste_id, data) VALUES(?, ?)", p.ID.String(), body)
+func (m *migrator) migratePasteBody(logger logrus.FieldLogger, p *fsPaste, body []byte) error {
+	_, err := m.db.Exec("INSERT INTO paste_bodies(paste_id, data) VALUES($1, $2)", p.ID.String(), body)
 	return err
 }
 
-func (m *migrator) migrateUserPermissions(pu *pendingDbUser) (int, error) {
-	insertUserPermissionQueryBase := `INSERT INTO
-		user_paste_permissions(user_id, paste_id, permissions)
-		VALUES`
-	insertUserPermissionQueryRepeat := `(?, ?, ?)`
-	valPerQuery := 3
-
+func (m *migrator) migrateUserPermissions(logger logrus.FieldLogger, u *User, inserter *BulkInserter) (int, error) {
 	nUserPerms := 0
-	batchSz := 999 / valPerQuery
 
-	if userPerms, ok := pu.u.Values["permissions"].(*PastePermissionSet); ok {
-		permsV := make([]interface{}, 0, valPerQuery*batchSz)
+	if userPerms, ok := u.Values["permissions"].(*PastePermissionSet); ok {
 		nCurrentPerms := 0
 		for pid, pperm := range userPerms.Entries {
 			if _, ok := m.pasteHits[model.PasteID(pid)]; !ok {
@@ -185,45 +158,29 @@ func (m *migrator) migrateUserPermissions(pu *pendingDbUser) (int, error) {
 				newPerm = model.PastePermissionAll
 			}
 
-			permsV = append(permsV, pu.id)
-			permsV = append(permsV, string(pid))
-			permsV = append(permsV, newPerm)
-			nCurrentPerms++
-			if nCurrentPerms%batchSz == 0 {
-				m.mu.Lock()
-				_, err := execBatchQuery(m.db, insertUserPermissionQueryBase, insertUserPermissionQueryRepeat, valPerQuery, permsV...)
-				if err != nil {
-					m.Logger.Errorf("%d batch(%d) failed: %v", nCurrentPerms, batchSz, err)
-				}
-				permsV = permsV[0:0]
-				m.mu.Unlock()
-			}
-		}
-		if nCurrentPerms%batchSz != 0 {
-			m.mu.Lock()
-			n := nCurrentPerms % batchSz
-			_, err := execBatchQuery(m.db, insertUserPermissionQueryBase, insertUserPermissionQueryRepeat, valPerQuery, permsV[:valPerQuery*n]...)
+			// This INSERT is prepared with a (SELECT id FROM users WHERE name ...)
+			err := inserter.Insert(u.Name, string(pid), newPerm)
 			if err != nil {
-				m.Logger.Errorf("%d batch(%d) failed: %v", nCurrentPerms, n, err)
+				logger.Errorf("%d batch failed: %v", nCurrentPerms, err)
 			}
-			m.mu.Unlock()
+			nCurrentPerms++
 		}
+
 		nUserPerms += len(userPerms.Entries)
 	}
 	return nUserPerms, nil
-
 }
 
-func (m *migrator) MigrateUsers() (int, int, error) {
+func (m *migrator) migrateUsers(logger logrus.FieldLogger) (int, int, error) {
+	logger = logger.WithField("m", "user")
+
 	defer func() {
 		close(m.pendingUserPerms)
 	}()
-	insertUserQuery, err := m.db.Prepare(`INSERT INTO
+
+	inserter := NewBulkInserter(m.db, `INSERT INTO
 		users(updated_at, name, salt, challenge, source, permissions)
 		VALUES(?, ?, ?, ?, ?, ?)`)
-	if err != nil {
-		return 0, 0, err
-	}
 
 	nUsers := 0
 	nUserPerms := 0
@@ -231,7 +188,7 @@ func (m *migrator) MigrateUsers() (int, int, error) {
 		if fi.IsDir() {
 			return nil
 		}
-		ulog := m.Logger.WithField("user", fi.Name())
+		ulog := logger.WithField("user", fi.Name())
 		u := m.userStore.Get(fi.Name())
 		if u == nil {
 			ulog.Error("couldn't load?")
@@ -253,28 +210,24 @@ func (m *migrator) MigrateUsers() (int, int, error) {
 				perms = perms | uint64(model.UserPermissionAll)
 			}
 		}
-		m.mu.Lock()
-		res, err := insertUserQuery.Exec(time.Now(), u.Name, u.Salt, u.Challenge, source, perms)
-		if err != nil {
-			m.mu.Unlock()
-			ulog.Error(err)
-			return nil
-		}
-		sqlUid, err := res.LastInsertId()
-		if err != nil {
-			m.mu.Unlock()
-			ulog.Error(err)
-			return nil
-		}
-		m.mu.Unlock()
 
-		m.pendingUserPerms <- &pendingDbUser{u: u, id: sqlUid}
 		nUsers++
 		if nUsers%50 == 0 {
-			m.Logger.Infof("%d...", nUsers)
+			logger.Infof("%d...", nUsers)
 		}
+
+		err = inserter.Insert(time.Now(), u.Name, u.Salt, u.Challenge, source, perms)
+		if err != nil {
+			logger.Errorf("%d batch failed: %v", nUsers, err)
+		}
+
+		m.pendingUserPerms <- u
 		return nil
 	})
+	err := inserter.Flush()
+	if err != nil {
+		logger.Errorf("%d batch failed: %v", nUsers, err)
+	}
 	return nUsers, nUserPerms, nil
 }
 
@@ -287,21 +240,30 @@ type taskReturn struct {
 	NUserPermissionsMissed int
 }
 
-func (m *migrator) backgroundTask(n int, returnCh chan taskReturn) {
-	logger := m.Logger.WithField("task", n)
+func (m *migrator) pasteBodyTask(logger logrus.FieldLogger, returnCh chan taskReturn) {
+	logger = logger.WithField("m", "body")
+
+	logger.Info("waiting")
+	m.s1wg.Wait()
+	logger.Info("starting")
+
 	var r taskReturn
+outer:
 	for {
 		select {
 		case paste, ok := <-m.pendingPasteBodies:
 			if !ok {
-				logger.Info("Done with pastes.")
 				m.pendingPasteBodies = nil
+				continue
+			}
+
+			if m.opts.SkipPasteBodies {
 				continue
 			}
 
 			plog := logger.WithField("paste", paste.ID.String())
 			rdr, err := paste.Reader()
-			// simulate load.
+
 			if rdr == nil || err != nil {
 				r.NPasteBodiesFailed++
 				plog.Error("failed to open; err: ", err)
@@ -315,44 +277,91 @@ func (m *migrator) backgroundTask(n int, returnCh chan taskReturn) {
 				continue
 			}
 			rdr.Close()
-			err = m.migratePasteBody(paste, buf)
+			err = m.migratePasteBody(plog, paste, buf)
 			if err != nil {
 				r.NPasteBodiesFailed++
 				plog.Error("failed to migrate; err: ", err)
 				continue
 			}
 			r.NPasteBodies++
-		case pendingUser, ok := <-m.pendingUserPerms:
+		default:
+			if m.pendingPasteBodies == nil {
+				break outer
+			}
+		}
+	}
+	logger.Info("Done with pastes.")
+	returnCh <- r
+	close(returnCh)
+}
+
+func (m *migrator) userPermTask(logger logrus.FieldLogger, returnCh chan taskReturn) {
+	logger = logger.WithField("m", "permission")
+
+	logger.Info("waiting")
+	m.s1wg.Wait()
+	m.s2wg.Wait()
+	logger.Info("starting")
+
+	inserter := NewBulkInserter(m.db, `INSERT INTO
+		user_paste_permissions(user_id, paste_id, permissions)
+		VALUES((SELECT id FROM users WHERE name = ?), ?, ?)`)
+
+	var r taskReturn
+outer:
+	for {
+		select {
+		case user, ok := <-m.pendingUserPerms:
 			if !ok {
-				logger.Info("Done with users.")
 				m.pendingUserPerms = nil
 				continue
 			}
 
-			nperms, err := m.migrateUserPermissions(pendingUser)
-			r.NUserPermissions += nperms
-			if err != nil {
-				logger.WithField("user", pendingUser.u.Name).Error("failed to migrate perms; err: ", err)
-				r.NUsersFailed++
-			} else {
-				r.NUsers++
+			if m.opts.SkipUserPerms || m.opts.SkipPastes {
+				continue
 			}
+
+			nperms, err := m.migrateUserPermissions(logger, user, inserter)
+			r.NUserPermissions += nperms
+			if r.NUserPermissions%50 == 0 {
+				logger.Infof("%d...", r.NUserPermissions)
+			}
+			if err == nil {
+				r.NUsers++
+				continue
+			}
+
+			logger.WithField("user", user.Name).Error("failed to migrate perms; err: ", err)
+			r.NUsersFailed++
+
 		default:
-			if m.pendingPasteBodies == nil && m.pendingUserPerms == nil {
-				returnCh <- r
-				close(returnCh)
-				return
+			if m.pendingUserPerms == nil {
+				break outer
 			}
 		}
 	}
+
+	err := inserter.Flush()
+	if err != nil {
+		logger.Errorf("flush user perms failed: %v", err)
+	}
+	logger.Info("Done with users.")
+	returnCh <- r
+	close(returnCh)
 }
 
-func (m *migrator) runBackgroundTasks() {
+func (m *migrator) runBackgroundTasks(logger logrus.FieldLogger) {
 	var chs []chan taskReturn
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 5; i++ {
+		taskLogger := logger.WithField("task", i)
+
 		rch := make(chan taskReturn)
 		chs = append(chs, rch)
-		go m.backgroundTask(i, rch)
+		go m.pasteBodyTask(taskLogger, rch)
+
+		rch = make(chan taskReturn)
+		chs = append(chs, rch)
+		go m.userPermTask(taskLogger, rch)
 	}
 
 	var r taskReturn
@@ -366,40 +375,87 @@ func (m *migrator) runBackgroundTasks() {
 		r.NUserPermissionsMissed += tret.NUserPermissionsMissed
 	}
 
-	m.Logger.Infof("%d pastes (%d failed).", r.NPasteBodies, r.NPasteBodiesFailed)
-	m.Logger.Infof("%d users (%d failed).", r.NUsers, r.NUsersFailed)
-	m.Logger.Infof("%d user permissions (%d skipped).", r.NUserPermissions, r.NUserPermissionsMissed)
-	m.Finished <- true
+	logger.Infof("%d pastes (%d failed).", r.NPasteBodies, r.NPasteBodiesFailed)
+	logger.Infof("%d users (%d failed).", r.NUsers, r.NUsersFailed)
+	logger.Infof("%d user permissions (%d skipped).", r.NUserPermissions, r.NUserPermissionsMissed)
+	m.finished <- true
+}
+
+func (m *migrator) Run() {
+	err := m.initSchema()
+	if err != nil {
+		m.logger.Fatal(err)
+	}
+
+	if !m.opts.SkipPastes {
+		m.s1wg.Add(1)
+		go func() {
+			m.logger.Info("Migrating pastes.")
+			_, err = m.migratePastes(m.logger)
+			if err != nil {
+				m.logger.Error(err)
+			}
+			m.s1wg.Done()
+		}()
+	}
+
+	if !m.opts.SkipUsers {
+		m.s2wg.Add(1)
+		go func() {
+			// Users are ungated on s1wg, but user perms require all paste metadata.
+			m.logger.Info("Migrating users.")
+			_, _, err = m.migrateUsers(m.logger)
+			if err != nil {
+				m.logger.Error(err)
+			}
+			m.s2wg.Done()
+		}()
+	}
+
+	go m.runBackgroundTasks(m.logger)
+
+	<-m.finished
+}
+
+func loadConfiguration(opts options, logger logrus.FieldLogger) *config.C {
+	var c config.C
+	// Base config: required
+	err := c.AppendFile("config.yml")
+	if err != nil {
+		logger.Fatalf("failed to load base config file config.yml: %v", err)
+	}
+
+	envConfig := fmt.Sprintf("config.%s.yml", opts.Environment)
+	err = c.AppendFile(envConfig)
+	if err != nil {
+		logger.Fatalf("failed to load environment config file %s: %v", envConfig, err)
+	}
+
+	for _, f := range opts.ConfigFiles {
+		err = c.AppendFile(f)
+		if err != nil {
+			logger.Fatalf("failed to load additional config file %s: %v", f, err)
+		}
+	}
+
+	return &c
 }
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	logger := logrus.New()
 	var opts options
 	_, err := flags.Parse(&opts)
+	if flagErr, ok := err.(*flags.Error); flagErr != nil && ok {
+		return
+	}
+
+	config := loadConfiguration(opts, logger)
+
+	m, err := newMigrator(opts, config, logger)
 	if err != nil {
 		logger.Fatal(err)
 	}
 
-	m, err := newMigrator(opts)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	m.Logger = logger
-
-	err = m.InitSchema()
-	if err != nil {
-		logger.Fatal(err)
-	}
-
-	_, err = m.MigratePastes()
-	if err != nil {
-		logger.Error(err)
-	}
-
-	_, _, err = m.MigrateUsers()
-	if err != nil {
-		logger.Error(err)
-	}
-
-	<-m.Finished
+	m.Run()
 }

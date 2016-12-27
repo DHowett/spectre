@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	ghtime "github.com/DHowett/ghostbin/lib/time"
 	"github.com/DHowett/ghostbin/model"
 	"github.com/DHowett/go-xattr"
 )
@@ -112,7 +113,7 @@ func (store *FilesystemPasteStore) Get(id model.PasteID, passphraseMaterial []by
 
 	expiration := getMetadata(filename, "expiration", "")
 	if expiration != "" {
-		if dur, err := ParseDuration(expiration); err == nil {
+		if dur, err := ghtime.ParseDuration(expiration); err == nil {
 			expTime := paste.ModTime.Add(dur)
 			paste.ExpirationTime = &expTime
 		}
