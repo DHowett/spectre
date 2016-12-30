@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/DHowett/ghostbin/lib/config"
 	"github.com/DHowett/ghostbin/lib/formatting"
 	ghtime "github.com/DHowett/ghostbin/lib/time"
 	"github.com/DHowett/ghostbin/model"
@@ -61,7 +62,7 @@ type renderedPaste struct {
 type PasteController struct {
 	App    Application    `inject:""`
 	Model  model.Provider `inject:""`
-	Config *Configuration `inject:""`
+	Config *config.C      `inject:""`
 
 	renderCacheMu sync.RWMutex
 	renderCache   *lru.Cache
@@ -373,7 +374,7 @@ func (pc *PasteController) pasteCreateHandler(w http.ResponseWriter, r *http.Req
 	password := r.FormValue("password")
 	encrypted := password != ""
 
-	if encrypted && (Env() != EnvironmentDevelopment && !RequestIsHTTPS(r)) {
+	if encrypted && (!RequestIsHTTPS(r) && !pc.Config.Application.ForceInsecureEncryption) {
 		pc.App.RespondWithError(w, webErrInsecurePassword)
 		return
 	}
@@ -629,21 +630,35 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 			Path("/{id}/report").
 			Handler(pc.pasteHandlerWrapper(http.HandlerFunc(pc.pasteReportHandler)))
 
-	pasteAuthenticateRoute :=
-		router.Methods("GET").
+	var pasteAuthenticateRoute *mux.Route
+	if pc.Config.Application.ForceInsecureEncryption {
+		// The only functional difference between this and the below is that
+		// these are not guarded with the HTTPS/!HTTPS mux matchers.
+		pasteAuthenticateRoute =
+			router.Methods("GET").
+				Path("/{id}/authenticate").
+				Handler(pc.pasteAuthenticateView)
+
+		router.Methods("POST").
+			Path("/{id}/authenticate").
+			HandlerFunc(pc.authenticatePastePOSTHandler)
+	} else {
+		pasteAuthenticateRoute =
+			router.Methods("GET").
+				MatcherFunc(HTTPSMuxMatcher).
+				Path("/{id}/authenticate").
+				Handler(pc.pasteAuthenticateView)
+
+		router.Methods("POST").
 			MatcherFunc(HTTPSMuxMatcher).
 			Path("/{id}/authenticate").
-			Handler(pc.pasteAuthenticateView)
+			HandlerFunc(pc.authenticatePastePOSTHandler)
 
-	router.Methods("POST").
-		MatcherFunc(HTTPSMuxMatcher).
-		Path("/{id}/authenticate").
-		HandlerFunc(pc.authenticatePastePOSTHandler)
-
-	router.Methods("GET").
-		MatcherFunc(NonHTTPSMuxMatcher).
-		Path("/{id}/authenticate").
-		Handler(pc.pasteAuthenticateDisallowedView)
+		router.Methods("GET").
+			MatcherFunc(NonHTTPSMuxMatcher).
+			Path("/{id}/authenticate").
+			Handler(pc.pasteAuthenticateDisallowedView)
+	}
 
 	// catch-all rule that redirects paste/ to /
 	router.Methods("GET").Path("/").Handler(RedirectHandler("/"))
