@@ -44,11 +44,6 @@ func isEditAllowed(p model.Paste, r *http.Request) bool {
 	return GetPastePermissionScope(p.GetID(), r).Has(model.PastePermissionEdit)
 }
 
-func partialGetHandler(w http.ResponseWriter, r *http.Request) {
-	name := mux.Vars(r)["id"]
-	templatePack.ExecutePartial(w, r, name, nil)
-}
-
 func pasteDestroyCallback(p model.Paste) {
 	tok := "P|H|" + p.GetID().String()
 	v, _ := ephStore.Get(tok)
@@ -85,17 +80,20 @@ func loadOrGenerateSessionKey(path string, keyLength int) (data []byte, err erro
 }
 
 type ghostbinApplication struct {
-	mutex     sync.RWMutex
+	mutex sync.RWMutex // protects urlRoutes, boundPartials
+
 	urlRoutes map[URLType]*mux.Route
 
-	indexView *views.View
-	aboutView *views.View
-	errorView *views.View
+	indexView     *views.View
+	aboutView     *views.View
+	errorView     *views.View
+	boundPartials map[string]*views.View
 
 	rootHandler http.Handler
 
 	Logger        logrus.FieldLogger `inject:""`
-	Configuration *config.C
+	Configuration *config.C          `inject:""`
+	ViewModel     *views.Model       `inject:""`
 }
 
 func (a *ghostbinApplication) RegisterRouteForURLType(ut URLType, route *mux.Route) {
@@ -166,10 +164,9 @@ func (a *ghostbinApplication) InitRoutes(router *mux.Router) {
 		http.ServeContent(w, r, "languages.json", modtime, reader)
 	}))
 
-	/* PARTIAL */
 	router.Methods("GET").
 		Path("/partial/{id}").
-		Handler(http.HandlerFunc(partialGetHandler))
+		Handler(http.HandlerFunc(a.partialGetHandler))
 
 	router.Path("/about").Handler(a.aboutView)
 	router.Path("/").Handler(a.indexView)
@@ -191,6 +188,34 @@ func (a *ghostbinApplication) RespondWithError(w http.ResponseWriter, webErr Web
 	}
 }
 
+// Application Handlers
+func (a *ghostbinApplication) partialGetHandler(w http.ResponseWriter, r *http.Request) {
+	name := mux.Vars(r)["id"]
+
+	a.mutex.RLock()
+	view, ok := a.boundPartials[name]
+	a.mutex.RUnlock()
+	if !ok {
+		a.mutex.Lock()
+		view, ok = a.boundPartials[name] // DCL
+		if !ok {
+			if a.boundPartials == nil {
+				a.boundPartials = make(map[string]*views.View)
+			}
+			var err error
+			view, err = a.ViewModel.Bind(fmt.Sprintf("partial_%s", name), nil)
+			if err != nil {
+				// TODO(DH) error handle this
+				panic(err)
+			}
+			a.boundPartials[name] = view
+		}
+		a.mutex.Unlock()
+	}
+	view.ServeHTTP(w, r)
+}
+
+// Initialization
 func (a *ghostbinApplication) initSessionStore() (*SessionBroker, error) {
 	sessionKeyFile := filepath.Join(arguments.Root, "session.key")
 	sessionKey, err := loadOrGenerateSessionKey(sessionKeyFile, 32)
@@ -310,7 +335,6 @@ func (a *ghostbinApplication) init() error {
 	var graph inject.Graph
 	graph.Logger = a.Logger.WithField("ctx", "inject")
 	err = graph.Provide(
-		&inject.Object{Value: a},
 		&inject.Object{
 			Complete: true,
 			Value:    modelBroker,
@@ -323,6 +347,11 @@ func (a *ghostbinApplication) init() error {
 			Complete: true,
 			Value:    a.Logger,
 		},
+		&inject.Object{
+			Complete: true,
+			Value:    viewModel,
+		},
+		&inject.Object{Value: a},
 		&inject.Object{Value: pasteController},
 		&inject.Object{Value: adminController},
 		&inject.Object{Value: sessionController},

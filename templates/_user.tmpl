@@ -47,8 +47,8 @@ $("form#loginForm").on('submit', function(event) {
 	event.stopPropagation();
 });
 </script>
-{{end}}
-{{end}}
+{{- end -}}
+{{- end}}
 
 {{define "authtoken_body"}}
 <div class="paste-toolbox">
@@ -58,6 +58,8 @@ $("form#loginForm").on('submit', function(event) {
 	</span>
 </div>
 <div class="well">
-{{template "partial_login_logout" .}}
+{{- with .With "partial" "login_logout" -}}
+	{{- template "partial" . -}}
+{{- end -}}
 </div>
 {{end}}

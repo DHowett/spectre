@@ -101,7 +101,9 @@ It looks like you've stumbled upon a page that should exist, but doesn't have a 
 			<input name="saveExpiration" type="checkbox" data-gb-key="saveExpiration"> Remember my last-used expiration
 		</label>
 		<h4><i class="icon icon-user"> </i>Account</h4>
-		{{template "partial_login_logout" .}}
+		{{with .With "partial" "login_logout" -}}
+			{{- template "partial" . -}}
+		{{- end}}
 		<h4><i class="icon icon-wrench"> </i>Miscellanea</h4>
 		<p><a target="_blank" href="/about">About Ghostbin</a> <small>(in a new window)</small>
 		<br><a href="/session">My Pastes</a></p>
@@ -111,3 +113,11 @@ It looks like you've stumbled upon a page that should exist, but doesn't have a 
 	</div>
 </div>
 {{end}}
+
+{{define "partial" -}}
+{{- $partial := .Value "partial" -}}
+<div id="partial_container_{{ $partial }}">
+{{- $template := print "partial_" $partial -}}
+{{- subexec . $template -}}
+</div>
+{{- end}}
