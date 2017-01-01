@@ -22,15 +22,15 @@ func varFromDataProvider(dp DataProvider) func(vctx viewContext, name string) in
 
 	// otherwise, capture dp and use it for view value generation.
 	return func(vctx viewContext, name string) interface{} {
-		if vctx.varCache != nil {
-			if val, ok := vctx.varCache[name]; ok {
+		if vctx.shared.varCache != nil {
+			if val, ok := vctx.shared.varCache[name]; ok {
 				return val
 			}
 		} else {
-			vctx.varCache = make(map[string]interface{})
+			vctx.shared.varCache = make(map[string]interface{})
 		}
-		val := dp.ViewValue(vctx.Request, name)
-		vctx.varCache[name] = val
+		val := dp.ViewValue(vctx.shared.request, name)
+		vctx.shared.varCache[name] = val
 		return val
 	}
 }

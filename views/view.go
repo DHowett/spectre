@@ -2,22 +2,13 @@ package views
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"net/http"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
 )
-
-// viewContext represents the template context passed to each render.
-type viewContext struct {
-	page string
-	r    *http.Request
-
-	// unguarded vis-a-vis concurrency: a single viewContext is not used in
-	// a multithreaded context.
-	varCache map[string]interface{}
-}
 
 // viewID is the internal interface that allows us to differentiate page-based
 // IDs from string-based IDs
@@ -44,7 +35,15 @@ func (p PageID) template() string {
 }
 
 func (p PageID) baseContext() *viewContext {
-	return &viewContext{page: string(p)}
+	return &viewContext{
+		shared: &contextShared{
+			page: string(p),
+		},
+	}
+}
+
+func (p PageID) String() string {
+	return "page " + string(p)
 }
 
 type stringViewID string
@@ -54,7 +53,13 @@ func (s stringViewID) template() string {
 }
 
 func (s stringViewID) baseContext() *viewContext {
-	return &viewContext{}
+	return &viewContext{
+		shared: &contextShared{},
+	}
+}
+
+func (s stringViewID) String() string {
+	return string(s)
 }
 
 // View represents an ID bound to a data provider and Model. Its behavior
@@ -71,9 +76,14 @@ type View struct {
 	tmpl *template.Template
 }
 
-func (v *View) subtemplate(vctx *viewContext, name string) template.HTML {
+// Exposed to templates.
+func (v *View) subexec(vctx *viewContext, name string) template.HTML {
+	v.mu.RLock()
+	t := v.tmpl
+	v.mu.RUnlock()
+
 	buf := &bytes.Buffer{}
-	st := v.tmpl.Lookup(vctx.page + "_" + name)
+	st := t.Lookup(name)
 	if st == nil {
 		// We return an empty snippet here, as a subtemplate failing to exist is non-fatal.
 		return template.HTML("")
@@ -83,13 +93,19 @@ func (v *View) subtemplate(vctx *viewContext, name string) template.HTML {
 	if err != nil {
 		if v.m.logger != nil {
 			v.m.logger.WithFields(logrus.Fields{
-				"page":        vctx.page,
+				"id":          v.id,
 				"subtemplate": name,
 				"error":       err,
 			}).Error("failed to service subtemplate request")
 		}
 	}
 	return template.HTML(buf.String())
+}
+
+// Exposed to templates.
+func (v *View) subtemplate(vctx *viewContext, name string) template.HTML {
+	parent := vctx.shared.page
+	return v.subexec(vctx, fmt.Sprintf("%s_%s", parent, name))
 }
 
 func (v *View) rebind(root *template.Template) error {
@@ -103,6 +119,7 @@ func (v *View) rebind(root *template.Template) error {
 
 	tmpl.Funcs(template.FuncMap{
 		"local":       varFromDataProvider(v.dp),
+		"subexec":     v.subexec,
 		"subtemplate": v.subtemplate,
 	})
 	v.tmpl = tmpl
@@ -112,13 +129,18 @@ func (v *View) rebind(root *template.Template) error {
 // Exec executes a view given a ResponseWriter and a Request. The Request
 // is used as the primary key for every variable lookup during the
 // template's execution.
-func (v *View) Exec(w http.ResponseWriter, r *http.Request) error {
+func (v *View) Exec(w http.ResponseWriter, r *http.Request, params ...interface{}) error {
 	v.mu.RLock()
 	t := v.tmpl
 	v.mu.RUnlock()
 
 	vctx := v.id.baseContext()
-	vctx.r = r
+	vctx.shared.request = r
+	if len(params) == 1 {
+		vctx = vctx.With("object", params[0])
+	} else if len(params) > 1 {
+		vctx = vctx.With("object", params)
+	}
 	return t.ExecuteTemplate(w, v.id.template(), vctx)
 }
 

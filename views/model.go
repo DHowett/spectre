@@ -33,8 +33,7 @@ type Model struct {
 
 // Bind combines a view model, a view ID, and a data provider into a
 // single, durable reference to a template. The supplied data provider
-// will be used for all `local` variable lookups for the durartion of the
-// View's life.
+// will be used for all `local` variable lookups for the View's lifetime.
 func (m *Model) Bind(id interface{}, dp DataProvider) (*View, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -106,6 +105,10 @@ func New(glob string, options ...ModelOption) (*Model, error) {
 		"now": time.Now,
 
 		// rebind in subviews.
+		"subexec": func(args ...interface{}) interface{} {
+			// subexec is rebound for all bound views.
+			panic(errors.New("unbound use of subexec"))
+		},
 		"subtemplate": func(args ...interface{}) interface{} {
 			// subtemplate is rebound for all bound views.
 			panic(errors.New("unbound use of subtemplate"))
