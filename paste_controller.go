@@ -19,7 +19,7 @@ import (
 	"github.com/DHowett/ghostbin/model"
 	"github.com/DHowett/ghostbin/views"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/mux"
 )
@@ -60,9 +60,10 @@ type renderedPaste struct {
 }
 
 type PasteController struct {
-	App    Application    `inject:""`
-	Model  model.Provider `inject:""`
-	Config *config.C      `inject:""`
+	App    Application        `inject:""`
+	Model  model.Provider     `inject:""`
+	Config *config.C          `inject:""`
+	Logger logrus.FieldLogger `inject:""`
 
 	renderCacheMu sync.RWMutex
 	renderCache   *lru.Cache
@@ -518,7 +519,7 @@ func throttleAuthForRequest(r *http.Request) bool {
 
 // TODO(DH) MOVE
 func (pc *PasteController) renderPaste(p model.Paste) template.HTML {
-	logger := log.WithFields(log.Fields{
+	logger := pc.Logger.WithFields(logrus.Fields{
 		"ctx":   "cache",
 		"paste": p.GetID(),
 	})
@@ -552,7 +553,7 @@ func (pc *PasteController) renderPaste(p model.Paste) template.HTML {
 				pc.renderCache = &lru.Cache{
 					MaxEntries: PASTE_CACHE_MAX_ENTRIES,
 					OnEvicted: func(key lru.Key, value interface{}) {
-						log.WithFields(log.Fields{
+						pc.Logger.WithFields(logrus.Fields{
 							"ctx":   "cache",
 							"paste": key,
 						}).Info("evicted paste")
