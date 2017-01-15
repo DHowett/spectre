@@ -184,14 +184,11 @@ func (a *ghostbinApplication) RespondWithError(w http.ResponseWriter, webErr Web
 	w.WriteHeader(webErr.StatusCode())
 	err2 := a.errorView.Exec(w, nil, webErr)
 	if err2 != nil {
-		a.Logger.Error("failed to render error response:", err2)
+		a.Logger.Error("failed to render error response: ", err2)
 	}
 }
 
-// Application Handlers
-func (a *ghostbinApplication) partialGetHandler(w http.ResponseWriter, r *http.Request) {
-	name := mux.Vars(r)["id"]
-
+func (a *ghostbinApplication) execPartial(w http.ResponseWriter, r *http.Request, name string) error {
 	a.mutex.RLock()
 	view, ok := a.boundPartials[name]
 	a.mutex.RUnlock()
@@ -205,14 +202,26 @@ func (a *ghostbinApplication) partialGetHandler(w http.ResponseWriter, r *http.R
 			var err error
 			view, err = a.ViewModel.Bind(fmt.Sprintf("partial_%s", name), nil)
 			if err != nil {
-				// TODO(DH) error handle this
-				panic(err)
+				return err
 			}
 			a.boundPartials[name] = view
 		}
 		a.mutex.Unlock()
 	}
-	view.ServeHTTP(w, r)
+	return view.Exec(w, r)
+}
+
+// Application Handlers
+func (a *ghostbinApplication) partialGetHandler(w http.ResponseWriter, r *http.Request) {
+	name := mux.Vars(r)["id"]
+
+	err := a.execPartial(w, r, name)
+	if err != nil {
+		err = a.execPartial(w, r, "error")
+		if err != nil {
+			a.Logger.WithField("partial", name).Error("failed to render error recovery partial! error=", err)
+		}
+	}
 }
 
 // Initialization

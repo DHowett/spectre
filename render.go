@@ -21,17 +21,6 @@ func errorRecoveryHandler(w http.ResponseWriter) {
 	}
 }
 
-func RenderPartialHandler(page string) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				templatePack.ExecutePartial(w, r, "error", err.(error))
-			}
-		}()
-		templatePack.ExecutePartial(w, r, page, nil)
-	})
-}
-
 func SetFlash(w http.ResponseWriter, kind, body string) {
 	flashBody, err := json.Marshal(map[string]string{
 		"type": kind,

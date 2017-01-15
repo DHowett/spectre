@@ -181,8 +181,7 @@ func (pc *PasteController) pasteHandlerWrapper(handler http.Handler) http.Handle
 					w.WriteHeader(http.StatusNotFound)
 					pc.pasteNotFoundView.Exec(w, r)
 				} else {
-					w.WriteHeader(http.StatusInternalServerError)
-					templatePack.ExecutePage(w, r, "error", err)
+					panic(err)
 				}
 				return
 			}

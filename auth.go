@@ -27,6 +27,8 @@ type authReply struct {
 type AuthController struct {
 	App   Application    `inject:""`
 	Model model.Provider `inject:""`
+
+	authTokenView *views.View
 }
 
 func (ac *AuthController) loginPostHandler(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +149,7 @@ func (ac *AuthController) tokenPageHandler(w http.ResponseWriter, r *http.Reques
 	if user != nil {
 		ephStore.Put("A|U|"+token, user, 30*time.Minute)
 	}
-	templatePack.ExecutePage(w, r, "authtoken", map[string]string{"token": token})
+	ac.authTokenView.Exec(w, r, token)
 }
 
 func (ac *AuthController) InitRoutes(router *mux.Router) {
@@ -161,7 +163,9 @@ func (ac *AuthController) InitRoutes(router *mux.Router) {
 }
 
 func (ac *AuthController) BindViews(viewModel *views.Model) error {
-	return nil
+	return bindViews(viewModel, nil, map[interface{}]**views.View{
+		views.PageID("authtoken"): &ac.authTokenView,
+	})
 }
 
 type AuthChallengeProvider struct{}

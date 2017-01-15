@@ -15,7 +15,8 @@ type AdminController struct {
 	Model  model.Provider `inject:""`
 	Config *config.C      `inject:""`
 
-	adminHomeView *views.View
+	adminHomeView    *views.View
+	adminReportsView *views.View
 }
 
 func (ac *AdminController) loggedInUserMatcher(r *http.Request, matcher *mux.RouteMatch) bool {
@@ -78,7 +79,7 @@ func (ac *AdminController) reportsHandler(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		panic(err)
 	}
-	templatePack.ExecutePage(w, r, "admin_reports", reports)
+	ac.adminReportsView.Exec(w, r, reports)
 }
 
 func (ac *AdminController) reportClearHandler(w http.ResponseWriter, r *http.Request) {
@@ -137,6 +138,7 @@ func (ac *AdminController) InitRoutes(router *mux.Router) {
 
 func (ac *AdminController) BindViews(viewModel *views.Model) error {
 	return bindViews(viewModel, nil, map[interface{}]**views.View{
-		views.PageID("admin_home"): &ac.adminHomeView,
+		views.PageID("admin_home"):    &ac.adminHomeView,
+		views.PageID("admin_reports"): &ac.adminReportsView,
 	})
 }
