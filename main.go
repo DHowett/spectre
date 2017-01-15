@@ -485,7 +485,7 @@ func init() {
 }
 
 var arguments struct {
-	Environment string   `long:"env" description:"Ghostbin environment (dev/production). Influences the default configuration set by including config.$ENV.yml." default:"dev"`
+	Environment string   `long:"env" description:"Ghostbin environment (dev/production). Influences the default configuration set by including config.$ENV.yml." default:"dev" env:"GHOSTBIN_ENV"`
 	Root        string   `long:"root" short:"r" description:"A directory to store Slate's state in."`
 	ConfigFiles []string `long:"config" short:"c" description:"A configuration file (.yml) to read; can be specified multiple times."`
 }
