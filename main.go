@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -153,6 +154,9 @@ func (a *ghostbinApplication) GetViewFunctions() views.FuncMap {
 		},
 		"getLanguageNamed": func(name string) *formatting.Language {
 			return formatting.LanguageNamed(name)
+		},
+		"rand": func(from, to int) int {
+			return rand.Intn(to+1) + from
 		},
 	}
 }

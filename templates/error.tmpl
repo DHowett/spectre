@@ -28,7 +28,7 @@
 {{template "partial_warning_title" "Ghost got your paste?"}}
 <div class="well well-error">
 	Paste {{.Obj}} was not found.
-	<code class="code ghost">{{local . "randomGhost"}}</code>
+	{{- template "_rand_ghost" . -}}
 	<a href="/">Go to the homepage and try again.</a>
 </div>
 {{end}}
@@ -38,3 +38,75 @@
 	{{.Obj.Error}}
 </div>
 {{end}}
+
+{{define "_rand_ghost" -}}
+{{- $i := rand 0 3 -}}
+{{- $template := print "_rand_ghost_" $i -}}
+{{- with subexec . $template -}}
+<code class="code ghost">{{- . -}}</code>
+{{- else -}}
+<div>
+	<strong>Double 404</strong>: Random ghost did not respond to summoning ritual.
+	Try to not find something else, would you?
+</div>
+{{- end -}}
+{{- end}}
+
+{{define "_rand_ghost_0"}}
+                .---.
+              /       \
+---- _       |  O   O  |       _ ---
+\       ~-.  `.       .'  .-~      /
+ \          ~-_>     <_-~         /
+   \                             /
+     \                         /
+       \                     /
+         \                 /
+           \             /
+             \         /
+               \       \
+                 \      \
+                   \     \
+                     \    \
+                       \   l
+                         \ /
+                          V
+{{- end}}
+
+{{define "_rand_ghost_1"}}
+                   .-.
+                  /aa \_
+                __\-  / )                 .-.
+      .-.      (__/    /                _/oo \
+    _/ ..\       /     \               ( \v  /__
+   ( \  u/__    /       \__             \/   ___)
+    \    \__)   \_.-._._   )  .-.       /     \
+    /     \             `-`  / ee\_    /       \_
+ __/       \   jgs         __\  o/ )   \_.-.__   )
+(   _._.-._/              (___   \/           '-'
+ '-'                        /     \
+                          _/       \
+                         (   __.-._/
+                          '-'
+{{- end}}
+
+{{define "_rand_ghost_2"}}
+  _----------_
+ /            \
+|    o    o    |
+|              |
+|      ___     |
+ \_             \
+   \__________   \_
+              \_   \_
+  vad           \____\
+{{- end}}
+
+{{define "_rand_ghost_3"}}
+  ______
+ /      \
+|  o  o  |
+|        | bill
+|        |
+|/\/\/\/\|
+{{- end}}

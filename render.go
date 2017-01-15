@@ -36,37 +36,3 @@ func SetFlash(w http.ResponseWriter, kind, body string) {
 		MaxAge: 60,
 	})
 }
-
-var ghosts []string
-
-func _loadGhosts() error {
-	ghosts = []string{}
-	err := YAMLUnmarshalFile("ghosts.yml", &ghosts)
-	if err != nil {
-		return err
-	}
-	for i, v := range ghosts {
-		ghosts[i] = " " + v[1:]
-	}
-	return nil
-}
-
-/*
-TODO(DH) remove
-func init() {
-	globalInit.Add(&InitHandler{
-		Priority: 20,
-		Name:     "ghosts",
-		Do: func() error {
-			templatePack.AddFunction("randomGhost", func() string {
-				if len(ghosts) == 0 {
-					return "[no ghosts found :(]"
-				}
-				return ghosts[rand.Intn(len(ghosts))]
-			})
-			return _loadGhosts()
-		},
-		Redo: _loadGhosts,
-	})
-}
-*/

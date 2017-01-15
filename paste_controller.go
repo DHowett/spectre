@@ -180,7 +180,7 @@ func (pc *PasteController) pasteHandlerWrapper(handler http.Handler) http.Handle
 			if err != nil {
 				if err == model.ErrNotFound {
 					w.WriteHeader(http.StatusNotFound)
-					pc.pasteNotFoundView.Exec(w, r)
+					pc.pasteNotFoundView.Exec(w, r, id)
 				} else {
 					panic(err)
 				}
