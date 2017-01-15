@@ -131,7 +131,7 @@ func (ac *AuthController) logoutPostHandler(w http.ResponseWriter, r *http.Reque
 }
 
 func (ac *AuthController) tokenHandler(w http.ResponseWriter, r *http.Request) {
-	authToken, _ := generateRandomBase32String(20, 32)
+	authToken, _ := generateRandomBase32String(32)
 	ephStore.Put("A|"+authToken, true, 30*time.Minute)
 	url := ac.App.GenerateURL(URLTypeAuthToken, "token", authToken)
 	w.Header().Set("Location", url.String())
