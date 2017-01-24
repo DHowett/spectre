@@ -1,39 +1,50 @@
-{{define "paste_authenticate_title"}}Authenticate{{end}}
-{{define "paste_authenticate_body"}}
+{{define "paste_authenticate_title" -}}
+{{- $id := local . "id" -}}
+{{$id}} - Authenticate
+{{- end}}
+
+{{define "paste_authenticate_body" -}}
+{{- $id := local . "id" -}}
+{{- $i := local . "i" -}}
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
-		<i class="icon-lock"></i><strong>Paste {{requestVariable . "id"}}</strong>
+		<i class="icon-lock"></i><strong>Paste {{$id}}</strong>
 		<span class="paste-subtitle">Authentication Required</span>
 	</span>
 </div>
 <div class="well">
 <form method="post">
-<p>Paste <strong>{{requestVariable . "id"}}</strong> is password-protected.</p>
-{{$i:=requestVariable . "i"}}
+<p>Paste <strong>{{$id}}</strong> is password-protected.</p>
 <div class="control-group{{if $i}} error{{end}}">
 <div class="input-prepend phone-expand">
 	<span class="add-on"><i class="icon-lock"> </i></span>
 	<div class="input-wrapper"><input type="password" name="password" autocomplete="off" autofocus="autofocus"></div>
 </div>
-{{if $i}}<span class="help-inline">Incorrect Password</span>{{end}}
+{{- if $i}}
+	<span class="help-inline">Incorrect Password</span>
+{{end -}}
 </div>
 <button type="submit" class="btn btn-phone-expand">Okay!</button>
 </form>
 </div>
 {{end}}
 
-{{define "paste_authenticate_disallowed_title"}}Authenticate{{end}}
-{{define "paste_authenticate_disallowed_body"}}
+{{define "paste_authenticate_disallowed_title" -}}
+{{- template "paste_authenticate_title" . -}}
+{{- end}}
+
+{{define "paste_authenticate_disallowed_body" -}}
+{{- $id := local . "id" -}}
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
-		<i class="icon-lock"></i><strong>Paste {{requestVariable . "id"}}</strong>
+		<i class="icon-lock"></i><strong>Paste {{$id}}</strong>
 		<span class="paste-subtitle">Authentication Required</span>
 	</span>
 </div>
 <div class="well well-error">
-<p>Paste <strong>{{requestVariable . "id"}}</strong> is password-protected.<br>
+<p>Paste <strong>{{$id}}</strong> is password-protected.<br>
 <em>Unfortunately, you're not using an encrypted connection and you cannot be allowed access to it.</em></p>
 </div>
-{{end}}
+{{- end}}

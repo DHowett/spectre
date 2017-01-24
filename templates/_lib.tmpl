@@ -1,13 +1,14 @@
-{{define "tmpl_page"}}<!DOCTYPE HTML>
+{{define "tmpl_page" -}}
+<!DOCTYPE HTML>
 <html lang="en">
 <head>
 	<meta charset="utf-8">
 
-	{{with subtemplate . "title"}}
+	{{with subtemplate . "title" -}}
 	<title>{{.}} - Ghostbin</title>
-	{{else}}
+	{{- else -}}
 	<title>Ghostbin</title>
-	{{end}}
+	{{- end}}
 	<meta name="viewport" content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0">
 	<meta name="apple-mobile-web-app-capable" content="yes">
 	<meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -59,19 +60,20 @@
 			<p></p>
 		</div>
 	</div>
-{{with subtemplate . "body"}}
+{{with subtemplate . "body" -}}
 {{.}}
-{{else}}
+{{- else -}}
 {{template "missing_page_body" .}}
-{{end}}
+{{- end}}
 </body>
-</html>{{end}}
+</html>
+{{- end}}
 
-{{define "home-button"}}
+{{define "home-button" -}}
 <a title="Home" href="/" id="home" class="btn btn-inverse"><i class="icon-home icon-large"></i></a>
-{{end}}
+{{- end}}
 
-{{define "missing_page_body"}}
+{{define "missing_page_body" -}}
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
@@ -84,9 +86,9 @@
 It looks like you've stumbled upon a page that should exist, but doesn't have a template?
 </p>
 </div>
-{{end}}
+{{- end}}
 
-{{define "options_modal"}}
+{{define "options_modal" -}}
 <div id="optionsModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
 	<div class="modal-header">
 		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">x</button>
@@ -112,7 +114,7 @@ It looks like you've stumbled upon a page that should exist, but doesn't have a 
 		<button data-dismiss="modal" class="btn" aria-hidden="true">Okay</button>
 	</div>
 </div>
-{{end}}
+{{- end}}
 
 {{define "partial" -}}
 {{- $partial := .Value "partial" -}}

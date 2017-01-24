@@ -16,7 +16,9 @@
 	<form id="loginForm" action="">
 		<input type="hidden" name="type" value="username">
 		<input type="hidden" name="promote_token" value="">
-		{{if .Obj}}{{with .Obj.token}}<input type="hidden" name="requested_auth_token" value="{{.}}">{{end}}{{end}}
+		{{with local . "token" -}}
+			<input type="hidden" name="requested_auth_token" value="{{.}}">
+		{{- end}}
 		<div class="control-group">
 			<div class="input-prepend phone-expand">
 				<span class="add-on"><i class="icon icon-user"> </i></span>
@@ -50,7 +52,7 @@ $("form#loginForm").on('submit', function(event) {
 {{- end -}}
 {{- end}}
 
-{{define "authtoken_body"}}
+{{define "authtoken_body" -}}
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
@@ -62,4 +64,4 @@ $("form#loginForm").on('submit', function(event) {
 	{{- template "partial" . -}}
 {{- end -}}
 </div>
-{{end}}
+{{- end}}

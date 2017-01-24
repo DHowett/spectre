@@ -1,43 +1,51 @@
-{{define "partial_warning_title"}}<div class="paste-toolbox">
+{{define "partial_warning_title" -}}
+<div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
 		<i class="icon-warning"></i> <strong>{{.}}</strong>
 	</span>
-</div>{{end}}
+</div>
+{{- end}}
 
-{{define "error_title"}}Error{{end}}
-{{define "error_body"}}
+{{define "error_title" -}}
+Error
+{{- end}}
+{{define "error_body" -}}
 {{template "partial_warning_title" "Something's Wrong :("}}
 <div class="well well-error">
 	{{.Obj.Error}}<br>
 	<a href="/">Go to the homepage and try again.</a>
 </div>
-{{end}}
+{{- end}}
 
-{{define "404_title"}}404{{end}}
-{{define "404_body"}}
+{{define "404_title" -}}404{{- end}}
+{{define "404_body" -}}
 {{template "partial_warning_title" "404 - File Not Found :("}}
 <div class="well well-error">
-	The file you were looking for{{if .Request}}, "{{.Request.URL.Path}}",{{end}} could not be found.<br>
+	The file you were looking for
+	{{- if .Request -}}
+		, "{{.Request.URL.Path}}",
+	{{- end}} could not be found.
+	<br>
 	<a href="/">Go to the homepage and try again.</a>
 </div>
 {{end}}
 
-{{define "paste_not_found_title"}}404{{end}}
-{{define "paste_not_found_body"}}
+{{define "paste_not_found_title" -}}404{{- end}}
+{{define "paste_not_found_body" -}}
 {{template "partial_warning_title" "Ghost got your paste?"}}
 <div class="well well-error">
 	Paste {{.Obj}} was not found.
 	{{- template "_rand_ghost" . -}}
 	<a href="/">Go to the homepage and try again.</a>
 </div>
-{{end}}
+{{- end}}
 
-{{define "partial_error"}}
+{{define "partial_error" -}}
 <div class="well well-error">
-	{{.Obj.Error}}
+	{{- .Obj.Error -}}
 </div>
-{{end}}
+{{- end}}
 
 {{define "_rand_ghost" -}}
 {{- $i := rand 0 3 -}}

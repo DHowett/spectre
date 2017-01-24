@@ -1,13 +1,17 @@
-{{define "admin_reports_title"}}Administration (Reports){{end}}
-{{define "admin_reports_body"}}
+{{define "admin_reports_title" -}}
+Administration (Reports)
+{{- end}}
+
+{{define "admin_reports_body" -}}
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
-		<strong>Administration (Reports)</strong>
+		<strong>{{template "admin_reports_title"}}</strong>
 	</span>
 </div>
 <ul class="report-list">
-{{range $report := .Obj}}<li>
+{{range $report := .Obj -}}
+<li>
 	{{- $pasteID := $report.GetPasteID -}}
 	<div class="report-buttons">
 		<a title="View Paste" href="/paste/{{$pasteID}}" target="_blank" class="btn btn-link"><i class="icon-file-text"></i></a>
@@ -35,8 +39,9 @@
 		</div>
 	</div>
 	<div class="clearfix"></div>
-</li>{{else}}
+</li>
+{{- else -}}
 <div class="well">No reports!</div>
-{{end}}
+{{- end}}
 </ul>
-{{end}}
+{{- end}}
