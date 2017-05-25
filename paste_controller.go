@@ -18,6 +18,7 @@ import (
 	ghtime "github.com/DHowett/ghostbin/lib/time"
 	"github.com/DHowett/ghostbin/model"
 	"github.com/DHowett/ghostbin/views"
+	"github.com/DHowett/gotimeout"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/golang/groupcache/lru"
@@ -67,6 +68,8 @@ type PasteController struct {
 
 	renderCacheMu sync.RWMutex
 	renderCache   *lru.Cache
+
+	tempHashes gotimeout.Map
 
 	// General purpose views.
 	pasteShowView         *views.View
@@ -348,11 +351,11 @@ func (pc *PasteController) pasteUpdateHandler(w http.ResponseWriter, r *http.Req
 	pc.updateOrCreatePaste(p, w, r, body)
 
 	// Blow away the hashcache.
-	tok := "P|H|" + p.GetID().String()
-	v, _ := ephStore.Get(tok)
+	pid := p.GetID().String()
+	v, _ := pc.tempHashes.Get(pid)
 	if hash, ok := v.(string); ok {
-		ephStore.Delete(hash)
-		ephStore.Delete(tok)
+		pc.tempHashes.Delete(hash)
+		pc.tempHashes.Delete(pid)
 	}
 }
 
@@ -388,19 +391,29 @@ func (pc *PasteController) pasteCreateHandler(w http.ResponseWriter, r *http.Req
 		io.WriteString(hasher, body)
 		hashToken := "H|" + SourceIPForRequest(r) + "|" + base32Encoder.EncodeToString(hasher.Sum(nil))
 
-		v, _ := ephStore.Get(hashToken)
-		if hashedPaste, ok := v.(model.Paste); ok {
+		tempPid, _ := pc.tempHashes.Get(hashToken)
+		if hPid, ok := tempPid.(model.PasteID); ok {
 			// update it later (and harmlessly renew permissions)
-			p = hashedPaste
-		} else {
+			// only do so if the user is already the de-facto owner
+			if GetPastePermissionScope(hPid, r).Has(model.PastePermissionAll) {
+				var err error
+				p, err = pc.Model.GetPaste(hPid, nil)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+
+		if p == nil {
 			p, err = pc.Model.CreatePaste()
 			if err != nil {
 				panic(err)
 			}
 		}
 
-		ephStore.Put(hashToken, p, 5*time.Minute)
-		ephStore.Put("P|H|"+p.GetID().String(), hashToken, 5*time.Minute)
+		// Temporarily map hash -> paste ID and paste ID -> hash (for invalidation purposes)
+		pc.tempHashes.Put(hashToken, p.GetID(), 5*time.Minute)
+		pc.tempHashes.Put(p.GetID().String(), hashToken, 5*time.Minute)
 	} else {
 		p, err = pc.Model.CreateEncryptedPaste(CURRENT_ENCRYPTION_METHOD, []byte(password))
 		if err != nil {
