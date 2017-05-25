@@ -18,17 +18,17 @@ func TestEntryWithError(t *testing.T) {
 
 	err := fmt.Errorf("kaboom at layer %d", 4711)
 
-	assert.Equal(err, WithError(err).Data["error"])
+	assert.Equal(err, WithError(err).(*Entry).Data["error"])
 
 	logger := New()
 	logger.Out = &bytes.Buffer{}
 	entry := NewEntry(logger)
 
-	assert.Equal(err, entry.WithError(err).Data["error"])
+	assert.Equal(err, entry.WithError(err).(*Entry).Data["error"])
 
 	ErrorKey = "err"
 
-	assert.Equal(err, entry.WithError(err).Data["err"])
+	assert.Equal(err, entry.WithError(err).(*Entry).Data["err"])
 
 }
 

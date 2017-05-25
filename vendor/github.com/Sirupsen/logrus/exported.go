@@ -49,7 +49,7 @@ func AddHook(hook Hook) {
 }
 
 // WithError creates an entry from the standard logger and adds an error to it, using the value defined in ErrorKey as key.
-func WithError(err error) *Entry {
+func WithError(err error) FieldLogger {
 	return std.WithField(ErrorKey, err)
 }
 
@@ -58,7 +58,7 @@ func WithError(err error) *Entry {
 //
 // Note that it doesn't log until you call Debug, Print, Info, Warn, Fatal
 // or Panic on the Entry it returns.
-func WithField(key string, value interface{}) *Entry {
+func WithField(key string, value interface{}) FieldLogger {
 	return std.WithField(key, value)
 }
 
@@ -68,7 +68,7 @@ func WithField(key string, value interface{}) *Entry {
 //
 // Note that it doesn't log until you call Debug, Print, Info, Warn, Fatal
 // or Panic on the Entry it returns.
-func WithFields(fields Fields) *Entry {
+func WithFields(fields Fields) FieldLogger {
 	return std.WithFields(fields)
 }
 

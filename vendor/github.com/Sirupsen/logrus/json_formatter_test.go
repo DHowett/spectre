@@ -10,7 +10,7 @@ import (
 func TestErrorNotLost(t *testing.T) {
 	formatter := &JSONFormatter{}
 
-	b, err := formatter.Format(WithField("error", errors.New("wild walrus")))
+	b, err := formatter.Format(WithField("error", errors.New("wild walrus")).(*Entry))
 	if err != nil {
 		t.Fatal("Unable to format entry: ", err)
 	}
@@ -29,7 +29,7 @@ func TestErrorNotLost(t *testing.T) {
 func TestErrorNotLostOnFieldNotNamedError(t *testing.T) {
 	formatter := &JSONFormatter{}
 
-	b, err := formatter.Format(WithField("omg", errors.New("wild walrus")))
+	b, err := formatter.Format(WithField("omg", errors.New("wild walrus")).(*Entry))
 	if err != nil {
 		t.Fatal("Unable to format entry: ", err)
 	}
@@ -48,7 +48,7 @@ func TestErrorNotLostOnFieldNotNamedError(t *testing.T) {
 func TestFieldClashWithTime(t *testing.T) {
 	formatter := &JSONFormatter{}
 
-	b, err := formatter.Format(WithField("time", "right now!"))
+	b, err := formatter.Format(WithField("time", "right now!").(*Entry))
 	if err != nil {
 		t.Fatal("Unable to format entry: ", err)
 	}
@@ -71,7 +71,7 @@ func TestFieldClashWithTime(t *testing.T) {
 func TestFieldClashWithMsg(t *testing.T) {
 	formatter := &JSONFormatter{}
 
-	b, err := formatter.Format(WithField("msg", "something"))
+	b, err := formatter.Format(WithField("msg", "something").(*Entry))
 	if err != nil {
 		t.Fatal("Unable to format entry: ", err)
 	}
@@ -90,7 +90,7 @@ func TestFieldClashWithMsg(t *testing.T) {
 func TestFieldClashWithLevel(t *testing.T) {
 	formatter := &JSONFormatter{}
 
-	b, err := formatter.Format(WithField("level", "something"))
+	b, err := formatter.Format(WithField("level", "something").(*Entry))
 	if err != nil {
 		t.Fatal("Unable to format entry: ", err)
 	}
@@ -109,7 +109,7 @@ func TestFieldClashWithLevel(t *testing.T) {
 func TestJSONEntryEndsWithNewline(t *testing.T) {
 	formatter := &JSONFormatter{}
 
-	b, err := formatter.Format(WithField("level", "something"))
+	b, err := formatter.Format(WithField("level", "something").(*Entry))
 	if err != nil {
 		t.Fatal("Unable to format entry: ", err)
 	}
@@ -143,7 +143,7 @@ func TestJSONLevelKey(t *testing.T) {
 		},
 	}
 
-	b, err := formatter.Format(WithField("level", "something"))
+	b, err := formatter.Format(WithField("level", "something").(*Entry))
 	if err != nil {
 		t.Fatal("Unable to format entry: ", err)
 	}
@@ -160,7 +160,7 @@ func TestJSONTimeKey(t *testing.T) {
 		},
 	}
 
-	b, err := formatter.Format(WithField("level", "something"))
+	b, err := formatter.Format(WithField("level", "something").(*Entry))
 	if err != nil {
 		t.Fatal("Unable to format entry: ", err)
 	}
@@ -175,7 +175,7 @@ func TestJSONDisableTimestamp(t *testing.T) {
 		DisableTimestamp: true,
 	}
 
-	b, err := formatter.Format(WithField("level", "something"))
+	b, err := formatter.Format(WithField("level", "something").(*Entry))
 	if err != nil {
 		t.Fatal("Unable to format entry: ", err)
 	}
@@ -188,7 +188,7 @@ func TestJSONDisableTimestamp(t *testing.T) {
 func TestJSONEnableTimestamp(t *testing.T) {
 	formatter := &JSONFormatter{}
 
-	b, err := formatter.Format(WithField("level", "something"))
+	b, err := formatter.Format(WithField("level", "something").(*Entry))
 	if err != nil {
 		t.Fatal("Unable to format entry: ", err)
 	}

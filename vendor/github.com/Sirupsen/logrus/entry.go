@@ -64,17 +64,17 @@ func (entry *Entry) String() (string, error) {
 }
 
 // Add an error as single field (using the key defined in ErrorKey) to the Entry.
-func (entry *Entry) WithError(err error) *Entry {
+func (entry *Entry) WithError(err error) FieldLogger {
 	return entry.WithField(ErrorKey, err)
 }
 
 // Add a single field to the Entry.
-func (entry *Entry) WithField(key string, value interface{}) *Entry {
+func (entry *Entry) WithField(key string, value interface{}) FieldLogger {
 	return entry.WithFields(Fields{key: value})
 }
 
 // Add a map of fields to the Entry.
-func (entry *Entry) WithFields(fields Fields) *Entry {
+func (entry *Entry) WithFields(fields Fields) FieldLogger {
 	data := make(Fields, len(entry.Data)+len(fields))
 	for k, v := range entry.Data {
 		data[k] = v

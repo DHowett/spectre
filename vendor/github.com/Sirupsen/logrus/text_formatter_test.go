@@ -12,7 +12,7 @@ func TestQuoting(t *testing.T) {
 	tf := &TextFormatter{DisableColors: true}
 
 	checkQuoting := func(q bool, value interface{}) {
-		b, _ := tf.Format(WithField("test", value))
+		b, _ := tf.Format(WithField("test", value).(*Entry))
 		idx := bytes.Index(b, ([]byte)("test="))
 		cont := bytes.Contains(b[idx+5:], []byte(tf.QuoteCharacter))
 		if cont != q {
@@ -56,7 +56,7 @@ func TestQuoting(t *testing.T) {
 func TestTimestampFormat(t *testing.T) {
 	checkTimeStr := func(format string) {
 		customFormatter := &TextFormatter{DisableColors: true, TimestampFormat: format}
-		customStr, _ := customFormatter.Format(WithField("test", "test"))
+		customStr, _ := customFormatter.Format(WithField("test", "test").(*Entry))
 		timeStart := bytes.Index(customStr, ([]byte)("time="))
 		timeEnd := bytes.Index(customStr, ([]byte)("level="))
 		timeStr := customStr[timeStart+5+len(customFormatter.QuoteCharacter) : timeEnd-1-len(customFormatter.QuoteCharacter)]
@@ -77,7 +77,7 @@ func TestTimestampFormat(t *testing.T) {
 func TestDisableTimestampWithColoredOutput(t *testing.T) {
 	tf := &TextFormatter{DisableTimestamp: true, ForceColors: true}
 
-	b, _ := tf.Format(WithField("test", "test"))
+	b, _ := tf.Format(WithField("test", "test").(*Entry))
 	if strings.Contains(string(b), "[0000]") {
 		t.Error("timestamp not expected when DisableTimestamp is true")
 	}
