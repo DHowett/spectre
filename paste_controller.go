@@ -25,11 +25,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// paste http bindings
 const CURRENT_ENCRYPTION_METHOD model.PasteEncryptionMethod = model.PasteEncryptionMethodAES_CTR
-const PASTE_CACHE_MAX_ENTRIES int = 1000
-const PASTE_MAXIMUM_LENGTH ByteSize = 1048576 // 1 MB
-const MAX_EXPIRE_DURATION time.Duration = 15 * 24 * time.Hour
 
 type PasteAccessDeniedError struct {
 	action string
@@ -44,10 +40,10 @@ func (PasteAccessDeniedError) StatusCode() int {
 	return http.StatusUnauthorized
 }
 
-type PasteTooLargeError ByteSize
+type PasteTooLargeError int
 
 func (e PasteTooLargeError) Error() string {
-	return fmt.Sprintf("Your input (%v) exceeds the maximum paste length, which is %v.", ByteSize(e), PASTE_MAXIMUM_LENGTH)
+	return fmt.Sprintf("Your input (%v) exceeds the maximum paste length.", ByteSize(e))
 }
 
 func (PasteTooLargeError) StatusCode() int {
@@ -304,8 +300,8 @@ func (pc *PasteController) updateOrCreatePaste(p model.Paste, w http.ResponseWri
 	ePid := ExpiringPasteID(p.GetID())
 	if expireIn != "" && expireIn != "-1" {
 		dur, _ := ghtime.ParseDuration(expireIn)
-		if dur > MAX_EXPIRE_DURATION {
-			dur = MAX_EXPIRE_DURATION
+		if dur > time.Duration(pc.Config.Application.Limits.PasteMaxExpiration) {
+			dur = time.Duration(pc.Config.Application.Limits.PasteMaxExpiration)
 		}
 		expireAt := time.Now().Add(dur)
 		pasteExpirator.ExpireObject(ePid, dur)
@@ -342,8 +338,8 @@ func (pc *PasteController) pasteUpdateHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	pasteLen := ByteSize(len(body))
-	if pasteLen > PASTE_MAXIMUM_LENGTH {
+	pasteLen := len(body)
+	if pasteLen > pc.Config.Application.Limits.PasteSize {
 		pc.App.RespondWithError(w, PasteTooLargeError(pasteLen))
 		return
 	}
@@ -368,8 +364,8 @@ func (pc *PasteController) pasteCreateHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	pasteLen := ByteSize(len(body))
-	if pasteLen > PASTE_MAXIMUM_LENGTH {
+	pasteLen := len(body)
+	if pasteLen > pc.Config.Application.Limits.PasteSize {
 		pc.App.RespondWithError(w, PasteTooLargeError(pasteLen))
 		return
 	}
@@ -564,7 +560,7 @@ func (pc *PasteController) renderPaste(p model.Paste) template.HTML {
 		if !p.IsEncrypted() {
 			if pc.renderCache == nil {
 				pc.renderCache = &lru.Cache{
-					MaxEntries: PASTE_CACHE_MAX_ENTRIES,
+					MaxEntries: pc.Config.Application.Limits.PasteCache,
 					OnEvicted: func(key lru.Key, value interface{}) {
 						pc.Logger.WithFields(logrus.Fields{
 							"ctx":   "cache",
