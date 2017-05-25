@@ -3,17 +3,18 @@ package gormrus
 import (
 	"database/sql/driver"
 	"fmt"
-	"github.com/Sirupsen/logrus"
 	"reflect"
 	"regexp"
 	"time"
+
+	"github.com/Sirupsen/logrus"
 )
 
 var sqlRegexp = regexp.MustCompile(`(\$\d+)|\?`)
 
 type gormLogger struct {
 	name   string
-	logger *logrus.Logger
+	logger logrus.FieldLogger
 }
 
 func (l *gormLogger) Print(values ...interface{}) {
@@ -73,6 +74,6 @@ func NewWithLogger(logger *logrus.Logger) *gormLogger {
 }
 
 // NewWithNameAndLogger Create new logger with custom name and logger
-func NewWithNameAndLogger(name string, logger *logrus.Logger) *gormLogger {
+func NewWithNameAndLogger(name string, logger logrus.FieldLogger) *gormLogger {
 	return &gormLogger{name: name, logger: logger}
 }
