@@ -2,7 +2,9 @@ package logrus
 
 import (
 	"io/ioutil"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -16,12 +18,14 @@ func TestRegister(t *testing.T) {
 }
 
 func TestHandler(t *testing.T) {
-	gofile := "/tmp/testprog.go"
+	tempdir := os.TempDir()
+
+	gofile := filepath.Join(tempdir, "testprog.go")
 	if err := ioutil.WriteFile(gofile, testprog, 0666); err != nil {
 		t.Fatalf("can't create go file")
 	}
 
-	outfile := "/tmp/testprog.out"
+	outfile := filepath.Join(tempdir, "testprog.out")
 	arg := time.Now().UTC().String()
 	err := exec.Command("go", "run", gofile, outfile, arg).Run()
 	if err == nil {
