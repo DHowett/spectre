@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/DHowett/ghostbin/lib/rayman"
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/sessions"
 )
@@ -47,9 +48,10 @@ func (b *SessionBroker) Handler(handler http.Handler) http.Handler {
 		session := &Session{
 			broker: b,
 			writer: w,
+			logger: rayman.RequestLogger(r).WithField("ctx", "session"),
 		}
 		r = r.WithContext(context.WithValue(r.Context(), b, session))
-		session.request = r
+		session.request = r // r changed with the context attach
 
 		handler.ServeHTTP(w, r)
 	})
@@ -80,6 +82,15 @@ type Session struct {
 
 	writer  http.ResponseWriter
 	request *http.Request
+	logger  logrus.FieldLogger
+}
+
+func (s *Session) logFailure(scope SessionScope, operation, key string, err error) {
+	s.logger.WithFields(logrus.Fields{
+		"scope":     scope,
+		"key":       key,
+		"operation": operation,
+	}).Error(err)
 }
 
 func (s *Session) Save() {
@@ -120,7 +131,6 @@ func (s *Session) getGorillaSession(scope SessionScope, create bool) (*sessions.
 			var err error // Using := below will create a new `session' in scope.
 			session, err = store.Get(s.request, scopeCookieName[scope])
 			if err != nil {
-				logrus.Error(err)
 				return nil, err
 			}
 
@@ -155,6 +165,7 @@ func (s *Session) Scope(scope SessionScope) *ScopedSession {
 func (s *Session) GetOk(scope SessionScope, key string) (interface{}, bool) {
 	store, err := s.getGorillaSession(scope, false)
 	if err != nil {
+		s.logFailure(scope, key, "get", err)
 		return nil, false
 	}
 
@@ -177,7 +188,7 @@ func (s *Session) Get(scope SessionScope, key string) interface{} {
 func (s *Session) Set(scope SessionScope, key string, val interface{}) {
 	store, err := s.getGorillaSession(scope, true)
 	if err != nil {
-		logrus.Errorf("failed to save <%s> into session(%d): %v", key, scope, err)
+		s.logFailure(scope, key, "set", err)
 		return
 	}
 
@@ -211,7 +222,7 @@ func (s *Session) Delete(scope SessionScope, key string) {
 	// nocreate: deleting a nonexistent key from a nonexistent session is useless.
 	store, err := s.getGorillaSession(scope, false)
 	if err != nil {
-		logrus.Errorf("failed to delete <%s> from session(%d): %v", key, scope, err)
+		s.logFailure(scope, key, "delete", err)
 		return
 	}
 

@@ -23,6 +23,7 @@ import (
 	"github.com/DHowett/ghostbin/lib/config"
 	"github.com/DHowett/ghostbin/lib/formatting"
 	"github.com/DHowett/ghostbin/lib/four"
+	"github.com/DHowett/ghostbin/lib/rayman"
 	"github.com/DHowett/ghostbin/views"
 	"github.com/DHowett/gotimeout"
 	"github.com/facebookgo/inject"
@@ -223,7 +224,7 @@ func (a *ghostbinApplication) partialGetHandler(w http.ResponseWriter, r *http.R
 	if err != nil {
 		err = a.execPartial(w, r, "error")
 		if err != nil {
-			a.Logger.WithField("partial", name).Error("failed to render error recovery partial! error=", err)
+			rayman.RequestLogger(r).WithField("partial", name).Error("failed to render error recovery partial! error=", err)
 		}
 	}
 }
@@ -426,8 +427,29 @@ func (a *ghostbinApplication) init() error {
 	// User depends on Session, so install that handler last.
 	rootHandler = sessionBroker.Handler(rootHandler)
 
+	rootHandler = a.errorRecoveryHandler(rootHandler)
+
+	rootHandler = rayman.LoggingHandler(rootHandler, a.Logger)
+
 	a.rootHandler = rootHandler
 	return nil
+}
+
+func (a *ghostbinApplication) errorRecoveryHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				if err, ok := rec.(error); ok {
+					rid, _ := rayman.FromRequest(r)
+					rayman.RequestLogger(r).Error(err)
+
+					w.WriteHeader(http.StatusInternalServerError)
+					a.errorView.Exec(w, r, fmt.Errorf("Sorry! You'll have to try that again. Ray %s.", rid))
+				}
+			}
+		}()
+		h.ServeHTTP(w, r)
+	})
 }
 
 func (a *ghostbinApplication) Run() error {
