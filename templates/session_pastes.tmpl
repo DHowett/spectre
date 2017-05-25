@@ -28,8 +28,8 @@ Session
 				{{- if .IsEncrypted -}}
 					<i class="icon-lock"></i>
 				{{- end -}}
-				{{- if not (eq "-1" .GetExpiration) -}}
-					<i class="icon-clock"></i>
+				{{- with .GetExpirationTime -}}
+					<i class="icon-clock" data-value="{{.UTC.Unix}}"></i>
 				{{- end -}}
 			</span>
 		</span></a>
