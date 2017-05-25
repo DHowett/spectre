@@ -31,7 +31,7 @@ func (l *lateUser) GetUser() model.User {
 		done = l.done
 		if !done {
 			l.done = true
-			if uID, ok := l.s.Get(SessionScopeServer, "acct_id").(uint); ok {
+			if uID, ok := l.s.Get(SessionScopeClient, "acct_id").(uint); ok {
 				// ignoring error: l.u will be nil if this lookup fails.
 				user, _ = l.b.GetUserByID(uID)
 				l.u = user
@@ -49,9 +49,9 @@ func (l *lateUser) SetUser(u model.User) {
 	l.u = u
 	l.done = true
 	if u != nil {
-		l.s.Set(SessionScopeServer, "acct_id", l.u.GetID())
+		l.s.Set(SessionScopeClient, "acct_id", l.u.GetID())
 	} else {
-		l.s.Delete(SessionScopeServer, "acct_id")
+		l.s.Delete(SessionScopeClient, "acct_id")
 	}
 	l.s.Save()
 }
