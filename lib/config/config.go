@@ -70,8 +70,8 @@ type C struct {
 	Application struct {
 		ForceInsecureEncryption bool `yaml:"force_insecure_encryption"`
 		Limits                  struct {
-			PasteSize          uint     `yaml:"paste_size"`
-			PasteCache         uint     `yaml:"paste_cache"`
+			PasteSize          int      `yaml:"paste_size"`
+			PasteCache         int      `yaml:"paste_cache"`
 			PasteMaxExpiration Duration `yaml:"paste_max_expiration"`
 		}
 	}
