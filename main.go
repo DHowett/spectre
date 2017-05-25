@@ -256,7 +256,7 @@ func (a *ghostbinApplication) initSessionStore() (*SessionBroker, error) {
 	clientSessionStore.Options.Path = "/"
 	clientSessionStore.Options.MaxAge = 86400 * 365
 
-	if a.Configuration.Application.ForceInsecureEncryption {
+	if !a.Configuration.Application.ForceInsecureEncryption {
 		sensitiveSessionStore.Options.Secure = true
 		clientSessionStore.Options.Secure = true
 	}
