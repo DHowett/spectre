@@ -241,7 +241,7 @@ func (a *ghostbinApplication) initSessionStore() (*SessionBroker, error) {
 	os.Mkdir(sesdir, 0700)
 	serverSessionStore := sessions.NewFilesystemStore(sesdir, sessionKey)
 	serverSessionStore.Options.Path = "/"
-	serverSessionStore.Options.MaxAge = 86400 * 365
+	serverSessionStore.MaxAge(86400 * 365)
 
 	clientKeyFile := filepath.Join(arguments.Root, "client_session_enc.key")
 	clientOnlySessionEncryptionKey, err := loadOrGenerateSessionKey(clientKeyFile, 32)
@@ -250,11 +250,11 @@ func (a *ghostbinApplication) initSessionStore() (*SessionBroker, error) {
 	}
 	sensitiveSessionStore := sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
 	sensitiveSessionStore.Options.Path = "/"
-	sensitiveSessionStore.Options.MaxAge = 0
+	sensitiveSessionStore.MaxAge(0)
 
 	clientSessionStore := sessions.NewCookieStore(sessionKey, clientOnlySessionEncryptionKey)
 	clientSessionStore.Options.Path = "/"
-	clientSessionStore.Options.MaxAge = 86400 * 365
+	clientSessionStore.MaxAge(86400 * 365)
 
 	if !a.Configuration.Application.ForceInsecureEncryption {
 		sensitiveSessionStore.Options.Secure = true
