@@ -16,7 +16,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 
-	"github.com/DHowett/gormrus"
+	"github.com/o1egl/gormrus"
 )
 
 type provider struct {
