@@ -48,7 +48,7 @@ func (b *SessionBroker) Handler(handler http.Handler) http.Handler {
 		session := &Session{
 			broker: b,
 			writer: w,
-			logger: rayman.RequestLogger(r).WithField("ctx", "session"),
+			logger: rayman.RequestLogger(r).WithField("facility", "session"),
 		}
 		r = r.WithContext(context.WithValue(r.Context(), b, session))
 		session.request = r // r changed with the context attach

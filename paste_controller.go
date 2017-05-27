@@ -15,6 +15,7 @@ import (
 
 	"github.com/DHowett/ghostbin/lib/config"
 	"github.com/DHowett/ghostbin/lib/formatting"
+	"github.com/DHowett/ghostbin/lib/rayman"
 	ghtime "github.com/DHowett/ghostbin/lib/time"
 	"github.com/DHowett/ghostbin/model"
 	"github.com/DHowett/ghostbin/views"
@@ -527,10 +528,10 @@ func throttleAuthForRequest(r *http.Request) bool {
 }
 
 // TODO(DH) MOVE
-func (pc *PasteController) renderPaste(p model.Paste) template.HTML {
-	logger := pc.Logger.WithFields(logrus.Fields{
-		"ctx":   "cache",
-		"paste": p.GetID(),
+func (pc *PasteController) renderPaste(ctx context.Context, p model.Paste) template.HTML {
+	logger := rayman.ContextLogger(ctx).WithFields(logrus.Fields{
+		"facility": "cache",
+		"paste":    p.GetID(),
 	})
 
 	pc.renderCacheMu.RLock()
@@ -563,8 +564,8 @@ func (pc *PasteController) renderPaste(p model.Paste) template.HTML {
 					MaxEntries: pc.Config.Application.Limits.PasteCache,
 					OnEvicted: func(key lru.Key, value interface{}) {
 						pc.Logger.WithFields(logrus.Fields{
-							"ctx":   "cache",
-							"paste": key,
+							"facility": "cache",
+							"paste":    key,
 						}).Info("evicted paste")
 					},
 				}

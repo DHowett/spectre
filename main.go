@@ -120,7 +120,7 @@ func (a *ghostbinApplication) GenerateURL(ut URLType, params ...string) *url.URL
 	}
 
 	if err != nil {
-		logrus.Error("unable to generate url type <%s> (params %v): %v", ut, params, err)
+		a.Logger.Error("unable to generate url type <%s> (params %v): %v", ut, params, err)
 
 		return &url.URL{
 			Path: "/",
@@ -279,7 +279,7 @@ func (a *ghostbinApplication) initModelProvider() (model.Provider, error) {
 		dbDialect,
 		sqlDb,
 		&AuthChallengeProvider{},
-		model.FieldLoggingOption(a.Logger.WithField("ctx", "model")),
+		model.FieldLoggingOption(a.Logger.WithField("facility", "model")),
 	)
 	if err != nil {
 		return nil, err
@@ -310,7 +310,7 @@ func (a *ghostbinApplication) initModelProvider() (model.Provider, error) {
 func (a *ghostbinApplication) init() error {
 	viewModel, err := views.New(
 		"templates/*.tmpl",
-		views.FieldLoggingOption(a.Logger.WithField("ctx", "viewmodel")),
+		views.FieldLoggingOption(a.Logger.WithField("facility", "viewmodel")),
 		views.GlobalDataProviderOption(a),
 		views.GlobalFunctionsOption(a),
 	)
@@ -347,7 +347,7 @@ func (a *ghostbinApplication) init() error {
 	authController := &AuthController{}
 
 	var graph inject.Graph
-	graph.Logger = a.Logger.WithField("ctx", "inject")
+	graph.Logger = a.Logger.WithField("facility", "inject")
 	err = graph.Provide(
 		&inject.Object{
 			Complete: true,
@@ -393,6 +393,7 @@ func (a *ghostbinApplication) init() error {
 	router.StrictSlash(true)
 	for pathPrefix, controller := range controllerRoutes {
 		l := a.Logger.WithFields(logrus.Fields{
+			"facility":   "routing",
 			"controller": fmt.Sprintf("%+T", controller),
 			"path":       pathPrefix,
 		})
@@ -429,8 +430,6 @@ func (a *ghostbinApplication) init() error {
 
 	rootHandler = a.errorRecoveryHandler(rootHandler)
 
-	rootHandler = rayman.LoggingHandler(rootHandler, a.Logger)
-
 	a.rootHandler = rootHandler
 	return nil
 }
@@ -459,13 +458,16 @@ func (a *ghostbinApplication) Run() error {
 	}
 
 	var wg sync.WaitGroup
-	for _, webConfig := range a.Configuration.Web {
-		logger := a.Logger.WithFields(logrus.Fields{
-			"ctx":  "http",
-			"addr": webConfig.Bind,
-		})
+	for i, webConfig := range a.Configuration.Web {
+		logger := a.Logger.WithField("listener", i)
 
-		var handler http.Handler = a.rootHandler
+		var handler http.Handler = rayman.LoggingHandler(a.rootHandler, logger)
+
+		// Now that we've captured the logger for every handled request, add some subsystem-specific fields
+		logger = logger.WithFields(logrus.Fields{
+			"facility": "http",
+			"addr":     webConfig.Bind,
+		})
 
 		if webConfig.Proxied {
 			handler = handlers.ProxyHeaders(handler)
@@ -496,7 +498,7 @@ func (a *ghostbinApplication) Run() error {
 			}
 			wg.Done()
 		}()
-		logger.Info("listening")
+		logger.Info("online")
 	}
 	wg.Wait()
 	a.Logger.Warning("all servers terminated")

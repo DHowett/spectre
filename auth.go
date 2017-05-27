@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/DHowett/ghostbin/lib/rayman"
 	"github.com/DHowett/ghostbin/model"
 	"github.com/DHowett/ghostbin/views"
-	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/scrypt"
 )
@@ -72,7 +72,7 @@ func (ac *AuthController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 			newuser, err := ac.Model.CreateUser(username)
 			if err != nil {
 				// TODO(DH): propagate.
-				log.Error(err)
+				rayman.RequestLogger(r).Error(err)
 				return
 			}
 			newuser.UpdateChallenge(password)
