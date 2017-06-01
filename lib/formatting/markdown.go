@@ -2,6 +2,7 @@ package formatting
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"sync"
 
@@ -20,7 +21,7 @@ func (h *MkdHtmlRenderer) BlockCode(out *bytes.Buffer, text []byte, lang string)
 		return
 	}
 	r := bytes.NewReader(text)
-	rendered, err := FormatStream(r, language)
+	rendered, err := FormatStream(context.TODO(), r, language)
 	if err == nil {
 		// TODO(DH): remove html from formatters subpackage.
 		out.WriteString(`<div class="code code-` + language.DisplayStyle + `">` + rendered + `</div>`)
@@ -38,7 +39,7 @@ var mkdHtmlRenderer blackfriday.Renderer
 var sanitationPolicy *bluemonday.Policy
 var markdownOnce sync.Once
 
-func markdownFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
+func markdownFormatter(formatter *Formatter, ctx context.Context, stream io.Reader, args ...string) (string, error) {
 	markdownOnce.Do(func() {
 		// one-time init
 		mkdHtmlRenderer = NewMkdHtmlRenderer()

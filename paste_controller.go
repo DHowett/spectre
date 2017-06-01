@@ -83,10 +83,11 @@ type pasteViewFacade struct {
 	model.Paste
 	c        *PasteController
 	editable bool
+	ctx      context.Context
 }
 
 func (pv *pasteViewFacade) GetRenderedBody() template.HTML {
-	return pv.c.renderPaste(pv.Paste)
+	return pv.c.renderPaste(pv.ctx, pv.Paste)
 }
 
 func (pc *pasteViewFacade) GetEditBody() (template.HTML, error) {
@@ -136,6 +137,7 @@ func (pc *PasteController) getPasteFromRequest(r *http.Request) (model.Paste, *h
 				Paste:    p,
 				c:        pc,
 				editable: isEditAllowed(p, r),
+				ctx:      r.Context(),
 			}
 		}
 		r = r.WithContext(context.WithValue(r.Context(), pasteSessionKey, p))
@@ -550,7 +552,8 @@ func (pc *PasteController) renderPaste(ctx context.Context, p model.Paste) templ
 	if !ok || cached.renderTime.Before(p.GetModificationTime()) {
 		defer pc.renderCacheMu.Unlock()
 		pc.renderCacheMu.Lock()
-		out, err := FormatPaste(p)
+		ctx, _ = context.WithTimeout(ctx, 5*time.Second)
+		out, err := FormatPaste(ctx, p)
 
 		if err != nil {
 			logger.WithField("err", err).Errorf("render failed: %s", out)

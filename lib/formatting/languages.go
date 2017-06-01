@@ -2,6 +2,7 @@ package formatting
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"html/template"
 	"io"
@@ -67,7 +68,7 @@ var unknownLanguage *Language = &Language{
 	Formatter: "text",
 }
 
-type FormatFunc func(*Formatter, io.Reader, ...string) (string, error)
+type FormatFunc func(*Formatter, context.Context, io.Reader, ...string) (string, error)
 
 type Formatter struct {
 	Name string
@@ -77,7 +78,7 @@ type Formatter struct {
 	fn   FormatFunc
 }
 
-func (f *Formatter) Format(stream io.Reader, lang string) (string, error) {
+func (f *Formatter) Format(ctx context.Context, stream io.Reader, lang string) (string, error) {
 	myargs := make([]string, len(f.Args))
 	for i, v := range f.Args {
 		n := v
@@ -86,12 +87,12 @@ func (f *Formatter) Format(stream io.Reader, lang string) (string, error) {
 		}
 		myargs[i] = n
 	}
-	return f.fn(f, stream, myargs...)
+	return f.fn(f, ctx, stream, myargs...)
 }
 
-func commandFormatter(formatter *Formatter, stream io.Reader, args ...string) (output string, err error) {
+func commandFormatter(formatter *Formatter, ctx context.Context, stream io.Reader, args ...string) (output string, err error) {
 	var outbuf, errbuf bytes.Buffer
-	command := exec.Command(args[0], args[1:]...)
+	command := exec.CommandContext(ctx, args[0], args[1:]...)
 	command.Stdin = stream
 	command.Stdout = &outbuf
 	command.Stderr = &errbuf
@@ -104,7 +105,7 @@ func commandFormatter(formatter *Formatter, stream io.Reader, args ...string) (o
 	return
 }
 
-func plainTextFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
+func plainTextFormatter(formatter *Formatter, ctx context.Context, stream io.Reader, args ...string) (string, error) {
 	buf := &bytes.Buffer{}
 	io.Copy(buf, stream)
 	return template.HTMLEscapeString(buf.String()), nil
@@ -116,14 +117,14 @@ var formatFunctions map[string]FormatFunc = map[string]FormatFunc{
 	"markdown":         markdownFormatter,
 }
 
-func FormatStream(r io.Reader, language *Language) (string, error) {
+func FormatStream(ctx context.Context, r io.Reader, language *Language) (string, error) {
 	var formatter *Formatter
 	var ok bool
 	if formatter, ok = languageConfig.Formatters[language.Formatter]; !ok {
 		formatter = languageConfig.Formatters["default"]
 	}
 
-	return formatter.Format(r, language.ID)
+	return formatter.Format(ctx, r, language.ID)
 }
 
 func GetLanguagesJSON() (time.Time, io.ReadSeeker) {
