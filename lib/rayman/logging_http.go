@@ -15,7 +15,10 @@ func LoggingHandler(h http.Handler, logger logrus.FieldLogger) http.Handler {
 		ctx := r.Context()
 		rid, ok := FromContext(ctx)
 		if ok {
-			rayedLogger := logger.WithField("ray", rid)
+			rayedLogger := logger.WithFields(logrus.Fields{
+				"ray":  rid,
+				"path": r.URL.Path,
+			})
 			r = r.WithContext(contextWithLogger(ctx, rayedLogger))
 		}
 		h.ServeHTTP(w, r)
