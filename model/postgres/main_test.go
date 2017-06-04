@@ -28,8 +28,9 @@ func (n *noopChallengeProvider) Challenge(message []byte, key []byte) []byte {
 var gTestProvider model.Provider
 
 func TestMain(m *testing.M) {
+	db := flag.String("db", "postgresql://ghostbin:password@localhost/ghostbintest?sslmode=disable", "database")
 	flag.Parse()
-	sqlDb, err := sql.Open("postgres", "postgresql://ghostbin:password@localhost/ghostbintest?sslmode=disable")
+	sqlDb, err := sql.Open("postgres", *db)
 	if err != nil {
 		panic(err)
 	}

@@ -9,14 +9,14 @@ import (
 func TestUserCreate(t *testing.T) {
 	u, err := gTestProvider.CreateUser("DHowett")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 		return
 	}
 	u.SetSource(model.UserSourceMozillaPersona)
 
 	u, err = gTestProvider.CreateUser("Timward")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 		return
 	}
 }
@@ -24,7 +24,7 @@ func TestUserCreate(t *testing.T) {
 func TestUserGetByName(t *testing.T) {
 	u, err := gTestProvider.GetUserNamed("DHowett")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if u == nil || u.GetName() != "DHowett" {
 		t.Error("Username doesn't match or user doesn't exist;", u)
@@ -34,7 +34,7 @@ func TestUserGetByName(t *testing.T) {
 func TestUserGetByID(t *testing.T) {
 	u, err := gTestProvider.GetUserByID(1)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if u == nil || u.GetName() != "DHowett" {
 		t.Error("Username doesn't match or user doesn't exist;", u)
@@ -44,12 +44,12 @@ func TestUserGetByID(t *testing.T) {
 func TestUserGrantUserPermission(t *testing.T) {
 	u, err := gTestProvider.GetUserByID(1)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	err = u.Permissions(model.PermissionClassUser).Grant(model.UserPermissionAdmin)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 		return
 	}
 
@@ -62,7 +62,7 @@ func TestUserRevokeUserPermission(t *testing.T) {
 	// permission was granted in the previous test.
 	u, err := gTestProvider.GetUserNamed("DHowett")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if !u.Permissions(model.PermissionClassUser).Has(model.UserPermissionAdmin) {
@@ -71,7 +71,7 @@ func TestUserRevokeUserPermission(t *testing.T) {
 
 	err = u.Permissions(model.PermissionClassUser).Revoke(model.UserPermissionAdmin)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if u.Permissions(model.PermissionClassUser).Has(model.UserPermissionAdmin) {
@@ -80,7 +80,7 @@ func TestUserRevokeUserPermission(t *testing.T) {
 
 	u, err = gTestProvider.GetUserNamed("DHowett")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if u.Permissions(model.PermissionClassUser).Has(model.UserPermissionAdmin) {
@@ -91,7 +91,7 @@ func TestUserRevokeUserPermission(t *testing.T) {
 func TestUserUpdateChallenge(t *testing.T) {
 	u, err := gTestProvider.GetUserNamed("DHowett")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	u.UpdateChallenge("hello world")
@@ -109,7 +109,7 @@ func TestUserGrantPastePermissions(t *testing.T) {
 
 	u, err := gTestProvider.GetUserNamed("DHowett")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	permScope := u.Permissions(model.PermissionClassPaste, paste.GetID())
@@ -120,12 +120,12 @@ func TestUserGrantPastePermissions(t *testing.T) {
 
 	err = permScope.Grant(model.PastePermissionEdit)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	err = permScope.Grant(model.PastePermissionGrant)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if !permScope.Has(model.PastePermissionEdit) {
@@ -146,18 +146,18 @@ func TestUserRevokePastePermissions(t *testing.T) {
 
 	u, err := gTestProvider.GetUserNamed("DHowett")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	permScope := u.Permissions(model.PermissionClassPaste, paste.GetID())
 	err = permScope.Revoke(model.PastePermissionEdit)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	err = permScope.Revoke(model.PastePermissionGrant)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if permScope.Has(model.PastePermissionEdit) {
@@ -167,7 +167,7 @@ func TestUserRevokePastePermissions(t *testing.T) {
 	// lookup anew
 	u, err = gTestProvider.GetUserNamed("DHowett")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	permScope = u.Permissions(model.PermissionClassPaste, paste.GetID())
@@ -187,19 +187,19 @@ func TestUserGrantRevokeGrant(t *testing.T) {
 
 	u, err := gTestProvider.GetUserNamed("DHowett")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	permScope := u.Permissions(model.PermissionClassPaste, paste.GetID())
 
 	err = permScope.Grant(model.PastePermissionEdit)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	err = permScope.Revoke(model.PastePermissionAll)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if permScope.Has(model.PastePermissionEdit) {
@@ -210,7 +210,7 @@ func TestUserGrantRevokeGrant(t *testing.T) {
 
 	err = permScope.Grant(model.PastePermissionEdit)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if !permScope.Has(model.PastePermissionEdit) {
@@ -232,7 +232,7 @@ func TestUserGetPastes(t *testing.T) {
 
 	u, err := gTestProvider.GetUserNamed("DHowett")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	u.Permissions(model.PermissionClassPaste, paste1.GetID()).Grant(model.PastePermissionEdit)
 	u.Permissions(model.PermissionClassPaste, paste2.GetID()).Grant(model.PastePermissionEdit)
