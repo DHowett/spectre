@@ -7,7 +7,6 @@ type Provider interface {
 	CreateUser(name string) (User, error)
 
 	// Pastes
-	GenerateNewPasteID(bool) PasteID
 	CreatePaste() (Paste, error)
 	CreateEncryptedPaste(PasteEncryptionMethod, []byte) (Paste, error)
 	GetPaste(PasteID, []byte) (Paste, error)
