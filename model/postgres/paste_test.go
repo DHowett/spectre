@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"testing"
+	"time"
 
 	"github.com/DHowett/ghostbin/model"
 )
@@ -137,6 +139,168 @@ func TestPaste(t *testing.T) {
 		if p != nil || err == nil {
 			t.Fatal("got a paste back/no error?")
 		}
+	})
+}
+
+func expectEq(t *testing.T, field string, l, r interface{}) {
+	if l == r || (l == nil && r == nil) {
+		return
+	}
+	t.Errorf("%s mismatch (`%v` != `%v`)", field, l, r)
+}
+
+func expectTimeEq(t *testing.T, field string, l, r time.Time) {
+	if math.Abs(float64(l.Local().Sub(r.Local()))) < float64(1*time.Millisecond) {
+		return
+	}
+	t.Errorf("%s mismatch (`%v` != `%v`)", field, l, r)
+}
+
+func TestPasteMutation(t *testing.T) {
+	// used in each subtest to look up the paste anew.
+	var pID model.PasteID
+
+	t.Run("Create", func(t *testing.T) {
+		p, err := gTestProvider.CreatePaste()
+		if err != nil {
+			t.Fatal(err)
+			return
+		}
+		pID = p.GetID()
+	})
+
+	expTime := time.Now().Add(1 * time.Hour)
+
+	t.Run("SetValues1", func(t *testing.T) {
+		p, err := gTestProvider.GetPaste(pID, nil)
+		if err != nil {
+			t.Fatal("failed to get", pID, ":", err)
+		}
+
+		p.SetTitle("Hello World")
+		p.SetLanguageName("c")
+		p.SetExpirationTime(expTime)
+
+		err = p.Commit()
+		if err != nil {
+			t.Fatal("failed to save", pID, err)
+		}
+	})
+
+	t.Run("GetValues1", func(t *testing.T) {
+		p, err := gTestProvider.GetPaste(pID, nil)
+		if err != nil {
+			t.Fatal("failed to get", pID, ":", err)
+		}
+
+		expectEq(t, "title", p.GetTitle(), "Hello World")
+		expectEq(t, "language", p.GetLanguageName(), "c")
+		expectTimeEq(t, "expiration", *p.GetExpirationTime(), expTime)
+	})
+
+	t.Run("ClearValues", func(t *testing.T) {
+		p, err := gTestProvider.GetPaste(pID, nil)
+		if err != nil {
+			t.Fatal("failed to get", pID, ":", err)
+		}
+
+		p.SetTitle("")
+		p.ClearExpirationTime()
+
+		err = p.Commit()
+		if err != nil {
+			t.Fatal("failed to save", pID, err)
+		}
+	})
+
+	t.Run("GetValues2", func(t *testing.T) {
+		p, err := gTestProvider.GetPaste(pID, nil)
+		if err != nil {
+			t.Fatal("failed to get", pID, ":", err)
+		}
+
+		expectEq(t, "title", p.GetTitle(), "")
+		var nilTime *time.Time
+		expectEq(t, "expiration", p.GetExpirationTime(), nilTime)
+	})
+}
+
+func TestPasteMutationViaWriterCommit(t *testing.T) {
+	// used in each subtest to look up the paste anew.
+	var pID model.PasteID
+
+	t.Run("Create", func(t *testing.T) {
+		p, err := gTestProvider.CreatePaste()
+		if err != nil {
+			t.Fatal(err)
+			return
+		}
+		pID = p.GetID()
+	})
+
+	expTime := time.Now().Add(1 * time.Hour)
+
+	t.Run("SetValues1", func(t *testing.T) {
+		p, err := gTestProvider.GetPaste(pID, nil)
+		if err != nil {
+			t.Fatal("failed to get", pID, ":", err)
+		}
+
+		p.SetTitle("Hello World")
+		p.SetLanguageName("c")
+		p.SetExpirationTime(expTime)
+
+		writer, err := p.Writer()
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = writer.Write([]byte{'-'})
+		err = writer.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("GetValues1", func(t *testing.T) {
+		p, err := gTestProvider.GetPaste(pID, nil)
+		if err != nil {
+			t.Fatal("failed to get", pID, ":", err)
+		}
+
+		expectEq(t, "title", p.GetTitle(), "Hello World")
+		expectEq(t, "language", p.GetLanguageName(), "c")
+		expectTimeEq(t, "expiration", *p.GetExpirationTime(), expTime)
+	})
+
+	t.Run("ClearValues", func(t *testing.T) {
+		p, err := gTestProvider.GetPaste(pID, nil)
+		if err != nil {
+			t.Fatal("failed to get", pID, ":", err)
+		}
+
+		p.SetTitle("")
+		p.ClearExpirationTime()
+
+		writer, err := p.Writer()
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = writer.Write([]byte{'-'})
+		err = writer.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("GetValues2", func(t *testing.T) {
+		p, err := gTestProvider.GetPaste(pID, nil)
+		if err != nil {
+			t.Fatal("failed to get", pID, ":", err)
+		}
+
+		expectEq(t, "title", p.GetTitle(), "")
+		var nilTime *time.Time
+		expectEq(t, "expiration", p.GetExpirationTime(), nilTime)
 	})
 }
 
