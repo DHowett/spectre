@@ -24,6 +24,8 @@ type provider struct {
 	sqlDb             *sql.DB
 	Logger            logrus.FieldLogger
 	ChallengeProvider crypto.ChallengeProvider
+
+	GenerateNewPasteID func(bool) model.PasteID
 }
 
 // User
@@ -57,7 +59,7 @@ func (p *provider) CreateUser(name string) (model.User, error) {
 }
 
 // Paste
-func (p *provider) GenerateNewPasteID(encrypted bool) model.PasteID {
+func defaultPasteIDGenerator(encrypted bool) model.PasteID {
 	nbytes, idlen := 4, 5
 	if encrypted {
 		nbytes, idlen = 5, 8
@@ -338,7 +340,9 @@ func (p *provider) migrateDb() error {
 type pqDriver struct{}
 
 func (pqDriver) Open(arguments ...interface{}) (model.Provider, error) {
-	p := &provider{}
+	p := &provider{
+		GenerateNewPasteID: defaultPasteIDGenerator,
+	}
 
 	for _, arg := range arguments {
 		switch a := arg.(type) {
