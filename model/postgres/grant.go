@@ -1,30 +1,16 @@
 package postgres
 
 import (
+	"context"
+
 	"github.com/DHowett/ghostbin/model"
-	"github.com/jinzhu/gorm"
 )
 
 type dbGrant struct {
-	ID      string `gorm:"primary_key;type:varchar(256);unique"`
-	PasteID string `gorm:"type:varchar(256);index:idx_grant_by_paste"`
+	ID      string `db:"id"`
+	PasteID string `db:"paste_id"`
 
 	provider *provider
-}
-
-// gorm
-func (dbGrant) TableName() string {
-	return "grants"
-}
-
-func (g *dbGrant) /* gorm */ BeforeCreate(scope *gorm.Scope) error {
-	id, err := generateRandomBase32String(20, 32)
-	if err != nil {
-		return err
-	}
-
-	scope.SetColumn("ID", id)
-	return nil
 }
 
 func (g *dbGrant) GetID() model.GrantID {
@@ -36,5 +22,6 @@ func (g *dbGrant) GetPasteID() model.PasteID {
 }
 
 func (g *dbGrant) Destroy() error {
-	return g.provider.Delete(g).Error
+	_, err := g.provider.DB.ExecContext(context.TODO(), `DELETE FROM grants WHERE id = $1`, g.ID)
+	return err
 }

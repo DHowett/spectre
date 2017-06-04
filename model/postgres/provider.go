@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -10,18 +11,14 @@ import (
 	"github.com/DHowett/ghostbin/lib/crypto"
 	"github.com/DHowett/ghostbin/model"
 	"github.com/Sirupsen/logrus"
+	"github.com/lib/pq"
 
 	"github.com/GeertJohan/go.rice"
-
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
-
-	"github.com/o1egl/gormrus"
+	"github.com/jmoiron/sqlx"
 )
 
 type provider struct {
-	*gorm.DB
-	sqlDb             *sql.DB
+	DB                *sqlx.DB
 	Logger            logrus.FieldLogger
 	ChallengeProvider crypto.ChallengeProvider
 
@@ -31,20 +28,21 @@ type provider struct {
 // User
 func (p *provider) getUserWithQuery(query string, args ...interface{}) (model.User, error) {
 	var u dbUser
-	if err := p.Where(query, args...).First(&u).Error; err != nil {
+	if err := p.DB.GetContext(context.TODO(), &u, `SELECT * FROM users WHERE `+query+` LIMIT 1`, args...); err != nil {
 		return nil, err
 	}
+
 	u.provider = p
 	return &u, nil
 }
 
 func (p *provider) GetUserNamed(name string) (model.User, error) {
-	u, err := p.getUserWithQuery("name = ?", name)
+	u, err := p.getUserWithQuery("name = $1", name)
 	return u, err
 }
 
 func (p *provider) GetUserByID(id uint) (model.User, error) {
-	return p.getUserWithQuery("id = ?", id)
+	return p.getUserWithQuery("id = $1", id)
 }
 
 func (p *provider) CreateUser(name string) (model.User, error) {
@@ -52,67 +50,97 @@ func (p *provider) CreateUser(name string) (model.User, error) {
 		Name:     name,
 		provider: p,
 	}
-	if err := p.Create(u).Error; err != nil {
+
+	if _, err := p.DB.ExecContext(context.TODO(), "INSERT INTO users(name, updated_at) VALUES($1, NOW())", name); err != nil {
 		return nil, err
 	}
+
 	return u, nil
 }
 
 // Paste
 func defaultPasteIDGenerator(encrypted bool) model.PasteID {
-	nbytes, idlen := 4, 5
+	idlen := 5
 	if encrypted {
-		nbytes, idlen = 5, 8
+		idlen = 8
 	}
 
 	for {
-		s, _ := generateRandomBase32String(nbytes, idlen)
+		s, _ := generateRandomBase32String(idlen)
 		return model.PasteIDFromString(s)
 	}
 }
 
-func (p *provider) CreatePaste() (model.Paste, error) {
-	paste := dbPaste{provider: p}
+func isUniquenessError(err error) bool {
+	pqe, ok := err.(*pq.Error)
+	return ok && pqe.Code == pq.ErrorCode("23505")
+}
+
+func (p *provider) createPaste(method model.PasteEncryptionMethod, passphraseMaterial []byte) (model.Paste, error) {
+	var salt []byte
+	var key []byte
+	var hmac []byte
+
 	for {
-		if err := p.Create(&paste).Error; err != nil {
-			panic(err)
+		id := p.GenerateNewPasteID(method != model.PasteEncryptionMethodNone)
+		var err error
+		if method != model.PasteEncryptionMethodNone {
+			if passphraseMaterial == nil {
+				return nil, errors.New("model: unacceptable encryption material")
+			}
+			salt, _ = generateRandomBytes(16)
+			codec := model.GetPasteEncryptionCodec(method)
+			key, err = codec.DeriveKey(passphraseMaterial, salt)
+			if err != nil {
+				return nil, err
+			}
+			hmac = codec.GenerateHMAC(id, salt, key)
 		}
-		paste.provider = p
-		return &paste, nil
+
+		_, err = p.DB.ExecContext(context.TODO(),
+			`INSERT INTO pastes(
+				id,
+				created_at,
+				updated_at,
+				encryption_salt,
+				encryption_method,
+				hmac
+			) VALUES($1, NOW(), NOW(), $2, $3, $4)`, id, salt, method, hmac)
+		if err != nil {
+			if isUniquenessError(err) {
+				continue
+			}
+			return nil, err
+		}
+
+		return &dbPaste{
+			provider:         p,
+			ID:               string(id),
+			EncryptionSalt:   salt,
+			EncryptionMethod: method,
+			HMAC:             hmac,
+			encryptionKey:    key,
+		}, nil
 	}
 }
 
-func (p *provider) CreateEncryptedPaste(method model.PasteEncryptionMethod, passphraseMaterial []byte) (model.Paste, error) {
-	if passphraseMaterial == nil {
-		return nil, errors.New("model: unacceptable encryption material")
-	}
-	paste := dbPaste{provider: p}
-	paste.EncryptionSalt, _ = generateRandomBytes(16)
-	paste.EncryptionMethod = model.PasteEncryptionMethodAES_CTR
-	key, err := model.GetPasteEncryptionCodec(method).DeriveKey(passphraseMaterial, paste.EncryptionSalt)
-	if err != nil {
-		return nil, err
-	}
-	paste.encryptionKey = key
+func (p *provider) CreatePaste() (model.Paste, error) {
+	return p.createPaste(model.PasteEncryptionMethodNone, nil)
+}
 
-	for {
-		if err := p.Create(&paste).Error; err != nil {
-			panic(err)
-		}
-		paste.provider = p
-		return &paste, nil
-	}
+func (p *provider) CreateEncryptedPaste(method model.PasteEncryptionMethod, passphraseMaterial []byte) (model.Paste, error) {
+	return p.createPaste(method, passphraseMaterial)
 }
 
 func (p *provider) GetPaste(id model.PasteID, passphraseMaterial []byte) (model.Paste, error) {
 	var paste dbPaste
-	if err := p.Find(&paste, "id = ?", id.String()).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+	if err := p.DB.GetContext(context.TODO(), &paste, `SELECT * FROM view_active_pastes WHERE id = $1 LIMIT 1`, id); err != nil {
+		if err == sql.ErrNoRows {
 			return nil, model.ErrNotFound
 		}
-
 		return nil, err
 	}
+
 	paste.provider = p
 
 	// This paste is encrypted
@@ -143,19 +171,34 @@ func (p *provider) GetPaste(id model.PasteID, passphraseMaterial []byte) (model.
 }
 
 func (p *provider) GetPastes(ids []model.PasteID) ([]model.Paste, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
 	stringIDs := make([]string, len(ids))
 	for i, v := range ids {
 		stringIDs[i] = string(v)
 	}
 
-	var ps []*dbPaste
-	if err := p.Find(&ps, "id in (?)", stringIDs).Error; err != nil {
+	query, args, err := sqlx.In(`SELECT * FROM view_active_pastes WHERE id IN (?)` /* .In() requires ? */, ids)
+	if err != nil {
 		return nil, err
 	}
 
-	iPastes := make([]model.Paste, len(ps))
-	for i, paste := range ps {
-		paste.provider = p
+	query = p.DB.Rebind(query)
+	rows, err := p.DB.QueryxContext(context.TODO(), query, args...)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, model.ErrNotFound
+		}
+		return nil, err
+	}
+
+	iPastes := make([]model.Paste, len(ids))
+	i := 0
+	for rows.Next() {
+		paste := &dbPaste{provider: p}
+		rows.StructScan(&paste)
 		if paste.IsEncrypted() {
 			iPastes[i] = &encryptedPastePlaceholder{
 				ID: paste.GetID(),
@@ -163,75 +206,105 @@ func (p *provider) GetPastes(ids []model.PasteID) ([]model.Paste, error) {
 		} else {
 			iPastes[i] = paste
 		}
+		i++
 	}
-	return iPastes, nil
+
+	return iPastes[:i], nil
 }
 
 func (p *provider) DestroyPaste(id model.PasteID) error {
-	tx := p.Begin()
-	if err := tx.Delete(&dbPaste{ID: id.String()}).Error; err != nil && err != gorm.ErrRecordNotFound {
+	tx, err := p.DB.BeginTxx(context.TODO(), nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(context.TODO(), `DELETE FROM pastes WHERE id = $1`, id)
+	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	return tx.Commit().Error
+	err = tx.Commit()
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+
+	return nil
 }
 
 func (p *provider) CreateGrant(paste model.Paste) (model.Grant, error) {
-	grant := dbGrant{PasteID: paste.GetID().String(), provider: p}
 	for {
-		if err := p.Create(&grant).Error; err != nil {
-			panic(err)
+		id, err := generateRandomBase32String(32)
+		if err != nil {
+			return nil, err
 		}
-		grant.provider = p
-		return &grant, nil
+
+		_, err = p.DB.ExecContext(context.TODO(),
+			`INSERT INTO grants(
+				id,
+				paste_id
+			) VALUES($1, $2)`, id, paste.GetID())
+		if err != nil {
+			if isUniquenessError(err) {
+				continue
+			}
+			return nil, err
+		}
+
+		return &dbGrant{
+			provider: p,
+			ID:       id,
+			PasteID:  paste.GetID().String(),
+		}, nil
 	}
 }
 
 func (p *provider) GetGrant(id model.GrantID) (model.Grant, error) {
-	var grant dbGrant
-	if err := p.Find(&grant, "id = ?", string(id)).Error; err != nil {
+	var g dbGrant
+	if err := p.DB.GetContext(context.TODO(), &g, `SELECT * FROM grants WHERE id = $1 LIMIT 1`, id); err != nil {
+		if err == sql.ErrNoRows {
+			err = model.ErrNotFound
+		}
 		return nil, err
 	}
-	grant.provider = p
-	return &grant, nil
+
+	g.provider = p
+	return &g, nil
 }
 
 func (p *provider) ReportPaste(paste model.Paste) error {
 	pID := paste.GetID()
-	result, err := p.sqlDb.Exec("UPDATE paste_reports SET count = count + 1 WHERE paste_id = ?", pID.String())
-	if nrows, _ := result.RowsAffected(); nrows == 0 {
-		_, err = p.sqlDb.Exec("INSERT INTO paste_reports(paste_id, count) VALUES(?, 1)", pID.String())
-		return err
-	}
-
+	_, err := p.DB.ExecContext(context.TODO(), `
+		INSERT INTO paste_reports(paste_id, count)
+		VALUES($1, $2)
+		ON CONFLICT(paste_id)
+		DO
+			UPDATE SET count = paste_reports.count + EXCLUDED.count
+		`, pID, 1)
 	return err
 }
 
 func (p *provider) GetReport(pID model.PasteID) (model.Report, error) {
-	row := p.sqlDb.QueryRow("SELECT count FROM paste_reports WHERE paste_id = ?", pID.String())
-
-	var count int
-	err := row.Scan(&count)
-	if err == sql.ErrNoRows {
-		return nil, model.ErrNotFound
-	} else if err != nil {
-		// TODO(DH) errors?
+	var r dbReport
+	if err := p.DB.GetContext(context.TODO(), &r, `SELECT paste_id, count FROM paste_reports WHERE paste_id = ?`, pID); err != nil {
+		if err == sql.ErrNoRows {
+			err = model.ErrNotFound
+		}
 		return nil, err
 	}
 
-	return &dbReport{
-		PasteID:  pID.String(),
-		Count:    count,
-		provider: p,
-	}, nil
+	r.provider = p
+	return &r, nil
 }
 
 func (p *provider) GetReports() ([]model.Report, error) {
 	reports := make([]model.Report, 0, 16)
 
-	rows, err := p.sqlDb.Query("SELECT paste_id, count FROM paste_reports")
+	rows, err := p.DB.QueryxContext(context.TODO(), `SELECT paste_id, count FROM paste_reports`)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			err = model.ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -292,7 +365,7 @@ func (p *provider) migrateDb() error {
 		return err
 	}
 
-	db := p.sqlDb
+	db := p.DB
 	_, err = db.Exec(dbV0Schema)
 	if err != nil {
 		return err
@@ -344,10 +417,11 @@ func (pqDriver) Open(arguments ...interface{}) (model.Provider, error) {
 		GenerateNewPasteID: defaultPasteIDGenerator,
 	}
 
+	var sqlDb *sql.DB
 	for _, arg := range arguments {
 		switch a := arg.(type) {
 		case *sql.DB:
-			p.sqlDb = a
+			sqlDb = a
 		case crypto.ChallengeProvider:
 			p.ChallengeProvider = a
 		case model.Option:
@@ -357,7 +431,7 @@ func (pqDriver) Open(arguments ...interface{}) (model.Provider, error) {
 		}
 	}
 
-	if p.sqlDb == nil {
+	if sqlDb == nil {
 		return nil, errors.New("model.postgres: no *sql.DB provided")
 	}
 
@@ -365,29 +439,20 @@ func (pqDriver) Open(arguments ...interface{}) (model.Provider, error) {
 		return nil, errors.New("model.postgres: no ChallengeProvider provided")
 	}
 
-	db, err := gorm.Open("postgres", p.sqlDb)
+	p.DB = sqlx.NewDb(sqlDb, "postgres")
+
+	err := p.migrateDb()
 	if err != nil {
 		return nil, err
 	}
 
-	if p.Logger != nil {
-		db.SetLogger(gormrus.NewWithNameAndLogger("pq", p.Logger))
-		db = db.Debug()
-	}
-
-	p.DB = db
-
-	err = p.migrateDb()
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := p.sqlDb.Exec(
+	res, err := p.DB.Exec(
 		`DELETE FROM pastes WHERE expire_at < NOW()`,
 	)
 	if err != nil {
 		return nil, err
 	}
+
 	if p.Logger != nil {
 		nrows, _ := res.RowsAffected()
 		if nrows > 0 {

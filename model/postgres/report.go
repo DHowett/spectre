@@ -1,6 +1,10 @@
 package postgres
 
-import "github.com/DHowett/ghostbin/model"
+import (
+	"context"
+
+	"github.com/DHowett/ghostbin/model"
+)
 
 type dbReport struct {
 	PasteID string
@@ -18,6 +22,6 @@ func (r *dbReport) GetCount() int {
 }
 
 func (r *dbReport) Destroy() error {
-	_, err := r.provider.CommonDB().Exec("DELETE FROM paste_reports WHERE paste_id = ?", r.PasteID)
+	_, err := r.provider.DB.ExecContext(context.TODO(), `DELETE FROM paste_reports WHERE paste_id = $1`, r.PasteID)
 	return err
 }

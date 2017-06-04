@@ -1,6 +1,10 @@
 package postgres
 
-import "github.com/DHowett/ghostbin/model"
+import (
+	"context"
+
+	"github.com/DHowett/ghostbin/model"
+)
 
 type dbUserPermissionScope struct {
 	u   *dbUser
@@ -11,23 +15,22 @@ func (u *dbUserPermissionScope) Has(p model.Permission) bool {
 	return u.u.UserPermissions&p != 0
 }
 
-func (u *dbUserPermissionScope) Grant(p model.Permission) error {
+func (u *dbUserPermissionScope) set(newPerms model.Permission) error {
 	if u.err != nil {
 		return u.err
 	}
-	if err := u.u.provider.Model(u.u).Update(dbUser{UserPermissions: u.u.UserPermissions | p}).Error; err != nil {
+	if _, err := u.u.provider.DB.ExecContext(context.TODO(), `UPDATE users SET permissions = $1 WHERE id = $2`, newPerms, u.u.ID); err != nil {
 		return err
 	}
+
+	u.u.UserPermissions = newPerms
 	return nil
 }
 
+func (u *dbUserPermissionScope) Grant(p model.Permission) error {
+	return u.set(u.u.UserPermissions | p)
+}
+
 func (u *dbUserPermissionScope) Revoke(p model.Permission) error {
-	if u.err != nil {
-		return u.err
-	}
-	newPerms := u.u.UserPermissions & (^p)
-	if err := u.u.provider.Model(u.u).Update("UserPermissions", newPerms).Error; err != nil {
-		return err
-	}
-	return nil
+	return u.set(u.u.UserPermissions & (^p))
 }

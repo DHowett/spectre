@@ -2,60 +2,55 @@ package postgres
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"io"
 	"io/ioutil"
 	"time"
 
 	"github.com/DHowett/ghostbin/model"
-	"github.com/jinzhu/gorm"
+	"github.com/jmoiron/sqlx"
 )
 
 type pasteBody struct {
-	PasteID string `gorm:"primary_key;type:varchar(256);unique"`
-	Data    []byte
-}
-
-// gorm
-func (pasteBody) TableName() string {
-	return "paste_bodies"
+	PasteID string `db:"paste_id"`
+	Data    []byte `db:"data"`
 }
 
 type dbPaste struct {
-	ID        string `gorm:"type:varchar(256);unique"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        string
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 
-	ExpireAt *time.Time `gorm:"null"`
+	ExpireAt *time.Time `db:"expire_at"`
 
-	Title sql.NullString `gorm:"type:text"`
+	Title sql.NullString
 
-	LanguageName sql.NullString `gorm:"type:varchar(128);default:'text'"`
+	LanguageName sql.NullString `db:"language_name"`
 
-	HMAC             []byte `gorm:"null"`
-	EncryptionSalt   []byte `gorm:"null"`
-	EncryptionMethod model.PasteEncryptionMethod
+	HMAC             []byte                      `db:"hmac"`
+	EncryptionSalt   []byte                      `db:"encryption_salt"`
+	EncryptionMethod model.PasteEncryptionMethod `db:"encryption_method"`
 
-	encryptionKey []byte `gorm:"-"`
+	encryptionKey []byte
 	provider      *provider
+
+	tx *sqlx.Tx
 }
 
-// gorm
-func (dbPaste) TableName() string {
-	return "pastes"
-}
-
-// gorm
-func (p *dbPaste) BeforeCreate(scope *gorm.Scope) error {
-	id := p.provider.GenerateNewPasteID(p.IsEncrypted())
-	scope.SetColumn("ID", id)
-
-	if p.IsEncrypted() {
-		hmac := model.GetPasteEncryptionCodec(p.EncryptionMethod).GenerateHMAC(id, p.EncryptionSalt, p.encryptionKey)
-		scope.SetColumn("HMAC", hmac)
+func (p *dbPaste) openTx() error {
+	if p.tx == nil {
+		var err error
+		p.tx, err = p.provider.DB.BeginTxx(context.TODO(), nil)
+		return err
 	}
-
 	return nil
+}
+
+func (p *dbPaste) commitTx() error {
+	tx := p.tx
+	p.tx = nil
+	return tx.Commit()
 }
 
 func (p *dbPaste) GetID() model.PasteID {
@@ -71,7 +66,10 @@ func (p *dbPaste) GetLanguageName() string {
 	return ""
 }
 func (p *dbPaste) SetLanguageName(language string) {
+	p.openTx()
+	p.LanguageName.Valid = language != ""
 	p.LanguageName.String = language
+	p.tx.ExecContext(context.TODO(), `UPDATE pastes SET language_name = $1 WHERE id = $2`, p.LanguageName, p.ID)
 }
 func (p *dbPaste) IsEncrypted() bool {
 	return p.EncryptionMethod != model.PasteEncryptionMethodNone
@@ -79,11 +77,16 @@ func (p *dbPaste) IsEncrypted() bool {
 func (p *dbPaste) GetExpirationTime() *time.Time {
 	return p.ExpireAt
 }
+func (p *dbPaste) setExpirationTime(time *time.Time) {
+	p.openTx()
+	p.ExpireAt = time
+	p.tx.ExecContext(context.TODO(), `UPDATE pastes SET expire_at = $1 WHERE id = $2`, p.ExpireAt, p.ID)
+}
 func (p *dbPaste) SetExpirationTime(time time.Time) {
-	p.ExpireAt = &time
+	p.setExpirationTime(&time)
 }
 func (p *dbPaste) ClearExpirationTime() {
-	p.ExpireAt = nil
+	p.setExpirationTime(nil)
 }
 
 func (p *dbPaste) GetTitle() string {
@@ -93,22 +96,32 @@ func (p *dbPaste) GetTitle() string {
 	return ""
 }
 func (p *dbPaste) SetTitle(title string) {
+	p.openTx()
 	p.Title.Valid = (title != "")
 	p.Title.String = title
+	p.tx.ExecContext(context.TODO(), `UPDATE pastes SET title = $1 WHERE id = $2`, p.Title, p.ID)
 }
 
 func (p *dbPaste) Commit() error {
-	return p.provider.DB.Save(p).Error
+	p.tx.ExecContext(context.TODO(), `UPDATE pastes SET updated_at = NOW() WHERE id = $1`, p.ID)
+
+	return p.commitTx()
 }
 
 func (p *dbPaste) Erase() error {
+	if p.tx != nil {
+		err := p.tx.Rollback()
+		if err != nil {
+			return err
+		}
+	}
 	return p.provider.DestroyPaste(model.PasteID(p.ID))
 }
 
 func (p *dbPaste) Reader() (io.ReadCloser, error) {
 	var b pasteBody
-	if err := p.provider.Model(p).Related(&b, "PasteID").Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+	if err := p.provider.DB.GetContext(context.TODO(), &b, `SELECT * FROM paste_bodies WHERE paste_id = $1 LIMIT 1`, p.ID); err != nil {
+		if err == sql.ErrNoRows {
 			return devZero, nil
 		}
 		return nil, err
@@ -127,43 +140,30 @@ type pasteWriter struct {
 	provider *provider
 }
 
-func newPasteWriter(pr *provider, p *dbPaste) (*pasteWriter, error) {
-	var b pasteBody
-	err := pr.FirstOrInit(&b, pasteBody{PasteID: p.ID}).Error
-	if err != nil {
-		return nil, err
-	}
+func newPasteWriter(p *dbPaste) (*pasteWriter, error) {
 	return &pasteWriter{
-		p:        p,
-		b:        &b,
-		provider: pr,
+		p: p,
 	}, nil
 }
 
 func (pw *pasteWriter) Close() error {
 	newData := pw.Buffer.Bytes()
-	tx := pw.provider.Begin()
 
-	_, err := tx.CommonDB().Exec(`
+	// TODO(DH) error
+	pw.p.openTx()
+	pw.p.tx.ExecContext(context.TODO(), `
 	INSERT INTO paste_bodies(paste_id, data)
 	VALUES($1, $2)
 	ON CONFLICT(paste_id)
 	DO
 		UPDATE SET data = EXCLUDED.data
-	`, pw.b.PasteID, newData)
+	`, pw.p.ID, newData)
 
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	tx.Save(pw.p)
-	err = tx.Commit().Error
-	return err
+	return pw.p.Commit()
 }
 
 func (p *dbPaste) Writer() (io.WriteCloser, error) {
-	w, err := newPasteWriter(p.provider, p)
+	w, err := newPasteWriter(p)
 	if err != nil {
 		return nil, err
 	}

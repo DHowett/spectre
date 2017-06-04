@@ -1,6 +1,11 @@
 package postgres
 
-import "github.com/DHowett/ghostbin/model"
+import (
+	"context"
+	"database/sql"
+
+	"github.com/DHowett/ghostbin/model"
+)
 
 type userPastePermissionScope struct {
 	pPerm *dbUserPastePermission
@@ -11,7 +16,15 @@ type userPastePermissionScope struct {
 
 func newUserPastePermissionScope(prov *provider, u *dbUser, id model.PasteID) *userPastePermissionScope {
 	var pPerm dbUserPastePermission
-	err := u.provider.FirstOrInit(&pPerm, dbUserPastePermission{UserID: u.ID, PasteID: id.String()}).Error
+	err := u.provider.DB.GetContext(context.TODO(), &pPerm, `SELECT * FROM user_paste_permissions WHERE user_id = $1 LIMIT 1`, u.ID)
+	if err == sql.ErrNoRows {
+		pPerm = dbUserPastePermission{
+			UserID:  u.ID,
+			PasteID: string(id),
+		}
+		err = nil
+	}
+
 	return &userPastePermissionScope{provider: prov, pPerm: &pPerm, err: err}
 }
 
@@ -28,7 +41,7 @@ func (s *userPastePermissionScope) Grant(p model.Permission) error {
 	}
 
 	db := s.provider.DB
-	row := db.CommonDB().QueryRow(`
+	row := db.QueryRowContext(context.TODO(), `
 	INSERT INTO user_paste_permissions(user_id, paste_id, permissions)
 	VALUES($1, $2, $3)
 	ON CONFLICT(user_id, paste_id)
@@ -65,9 +78,9 @@ func (s *userPastePermissionScope) Revoke(p model.Permission) error {
 	pPerm := s.pPerm
 	newPerms := pPerm.Permissions & (^p)
 	if newPerms == 0 {
-		s.err = s.provider.Delete(pPerm).Error
+		_, s.err = s.provider.DB.ExecContext(context.TODO(), `DELETE FROM user_paste_permissions WHERE user_id = $1 AND paste_id = $2`, pPerm.UserID, pPerm.PasteID)
 	} else {
-		s.err = s.provider.Model(pPerm).Update("Permissions", newPerms).Error
+		_, s.err = s.provider.DB.ExecContext(context.TODO(), `UPDATE user_paste_permissions SET permissions = $1 WHERE user_id = $2 AND paste_id = $3`, newPerms, pPerm.UserID, pPerm.PasteID)
 	}
 
 	if s.err == nil {

@@ -1,42 +1,34 @@
 package postgres
 
 import (
+	"context"
 	"crypto/subtle"
+	"database/sql"
 	"time"
 
 	"github.com/DHowett/ghostbin/model"
 )
 
 type dbUserPastePermission struct {
-	UserID      uint   `gorm:"unique_index:uix_user_paste_perm"`
-	PasteID     string `gorm:"unique_index:uix_user_paste_perm;type:varchar(256)"`
-	Permissions model.Permission
-}
-
-// gorm
-func (dbUserPastePermission) TableName() string {
-	return "user_paste_permissions"
+	UserID      uint             `db:"user_id"`
+	PasteID     string           `db:"paste_id"`
+	Permissions model.Permission `db:"permissions"`
 }
 
 type dbUser struct {
-	ID        uint `gorm:"primary_key"`
-	UpdatedAt time.Time
+	ID        uint
+	UpdatedAt time.Time `db:"updated_at"`
 
-	Name      string `gorm:"type:varchar(512);unique_index"`
+	Name      string
 	Salt      []byte
 	Challenge []byte
 
 	Source model.UserSource
 
-	UserPermissions  model.Permission `gorm:"column:permissions"`
+	UserPermissions  model.Permission `db:"permissions"`
 	PastePermissions []*dbUserPastePermission
 
 	provider *provider
-}
-
-// gorm
-func (dbUser) TableName() string {
-	return "users"
 }
 
 func (u *dbUser) GetID() uint {
@@ -52,15 +44,16 @@ func (u *dbUser) GetSource() model.UserSource {
 }
 
 func (u *dbUser) SetSource(source model.UserSource) {
-	tx := u.provider.Begin().Model(u)
-	if err := tx.Updates(map[string]interface{}{"Source": source}).Error; err != nil {
+	tx, _ := u.provider.DB.BeginTxx(context.TODO(), nil)
+	if _, err := tx.ExecContext(context.TODO(), `UPDATE users SET source = $1 WHERE id = $2`, source, u.ID); err != nil {
 		tx.Rollback()
 	}
+	u.Source = source
 	tx.Commit()
 }
 
 func (u *dbUser) UpdateChallenge(password string) {
-	tx := u.provider.Begin().Model(u)
+	tx, _ := u.provider.DB.BeginTxx(context.TODO(), nil)
 	challengeProvider := u.provider.ChallengeProvider
 
 	salt := challengeProvider.RandomSalt()
@@ -69,12 +62,13 @@ func (u *dbUser) UpdateChallenge(password string) {
 	challengeMessage := append(salt, []byte(u.Name)...)
 	challenge := challengeProvider.Challenge(challengeMessage, key)
 
-	if err := tx.Updates(map[string]interface{}{"Salt": salt, "Challenge": challenge}).Error; err != nil {
+	if _, err := tx.ExecContext(context.TODO(), `UPDATE users SET salt = $1, challenge = $2 WHERE id = $3`, salt, challenge, u.ID); err != nil {
 		tx.Rollback()
-		u.Salt = nil
-		u.Challenge = nil
 		return
 	}
+
+	u.Salt = salt
+	u.Challenge = challenge
 
 	tx.Commit()
 }
@@ -112,9 +106,13 @@ func (u *dbUser) Permissions(class model.PermissionClass, args ...interface{}) m
 
 func (u *dbUser) GetPastes() ([]model.PasteID, error) {
 	var ids []string
-	if err := u.provider.Model(&dbUserPastePermission{}).Where("user_id = ? AND permissions > 0", u.ID).Pluck("paste_id", &ids).Error; err != nil {
+	if err := u.provider.DB.SelectContext(context.TODO(), &ids, `SELECT paste_id FROM user_paste_permissions WHERE user_id = $1 AND permissions > 0`, u.ID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // A user having no pastes is no error
+		}
 		return nil, err
 	}
+
 	pids := make([]model.PasteID, len(ids))
 	for i, v := range ids {
 		pids[i] = model.PasteIDFromString(v)

@@ -18,7 +18,8 @@ func generateRandomBytes(nbytes int) ([]byte, error) {
 
 var base32Encoder = base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789")
 
-func generateRandomBase32String(nbytes, outlen int) (string, error) {
+func generateRandomBase32String(outlen int) (string, error) {
+	nbytes := (outlen * 5 / 8) + 1
 	uuid, err := generateRandomBytes(nbytes)
 	if err != nil {
 		return "", err
