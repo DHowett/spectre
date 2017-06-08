@@ -22,6 +22,7 @@ import (
 	"github.com/DHowett/gotimeout"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/dustin/go-humanize"
 	"github.com/golang/groupcache/lru"
 	"github.com/gorilla/mux"
 )
@@ -41,10 +42,12 @@ func (PasteAccessDeniedError) StatusCode() int {
 	return http.StatusUnauthorized
 }
 
-type PasteTooLargeError int
+type PasteTooLargeError struct {
+	Size, Max int
+}
 
 func (e PasteTooLargeError) Error() string {
-	return fmt.Sprintf("Your input (%v) exceeds the maximum paste length.", ByteSize(e))
+	return fmt.Sprintf("Your input (%v) exceeds the maximum paste length (%v).", humanize.IBytes(uint64(e.Size)), humanize.IBytes(uint64(e.Max)))
 }
 
 func (PasteTooLargeError) StatusCode() int {
@@ -209,13 +212,14 @@ func (pc *PasteController) pasteEditHandlerWrapper(handler http.Handler) http.Ha
 func (pc *PasteController) getPasteRawHandler(w http.ResponseWriter, r *http.Request) {
 	p, _, _ := pc.getPasteFromRequest(r)
 
-	w.Header().Set("Access-Control-Allow-Origin", "null")
-	w.Header().Set("Vary", "Origin")
+	header := w.Header()
+	header.Set("Access-Control-Allow-Origin", "null")
+	header.Set("Vary", "Origin")
 
-	w.Header().Set("Content-Security-Policy", "default-src 'none'")
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("X-XSS-Protection", "1; mode=block")
+	header.Set("Content-Security-Policy", "default-src 'none'")
+	header.Set("Content-Type", "text/plain; charset=utf-8")
+	header.Set("X-Content-Type-Options", "nosniff")
+	header.Set("X-XSS-Protection", "1; mode=block")
 
 	ext := "txt"
 	if mux.CurrentRoute(r).GetName() == "download" {
@@ -230,8 +234,8 @@ func (pc *PasteController) getPasteRawHandler(w http.ResponseWriter, r *http.Req
 		if p.GetTitle() != "" {
 			filename = p.GetTitle()
 		}
-		w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"."+ext+"\"")
-		w.Header().Set("Content-Transfer-Encoding", "binary")
+		header.Set("Content-Disposition", "attachment; filename=\""+filename+"."+ext+"\"")
+		header.Set("Content-Transfer-Encoding", "binary")
 	}
 
 	reader, _ := p.Reader()
@@ -335,7 +339,7 @@ func (pc *PasteController) pasteUpdateHandler(w http.ResponseWriter, r *http.Req
 
 	pasteLen := len(body)
 	if pasteLen > pc.Config.Application.Limits.PasteSize {
-		pc.App.RespondWithError(w, PasteTooLargeError(pasteLen))
+		pc.App.RespondWithError(w, PasteTooLargeError{pasteLen, pc.Config.Application.Limits.PasteSize})
 		return
 	}
 
@@ -361,7 +365,7 @@ func (pc *PasteController) pasteCreateHandler(w http.ResponseWriter, r *http.Req
 
 	pasteLen := len(body)
 	if pasteLen > pc.Config.Application.Limits.PasteSize {
-		pc.App.RespondWithError(w, PasteTooLargeError(pasteLen))
+		pc.App.RespondWithError(w, PasteTooLargeError{pasteLen, pc.Config.Application.Limits.PasteSize})
 		return
 	}
 

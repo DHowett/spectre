@@ -3,16 +3,12 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base32"
-	"fmt"
-	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/DHowett/ghostbin/views"
 	"github.com/gorilla/mux"
-	"gopkg.in/yaml.v2"
 )
 
 var base32Encoder = base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789")
@@ -40,28 +36,6 @@ func generateRandomBase32String(outlen int) (string, error) {
 	}
 
 	return s[0:outlen], nil
-}
-
-func YAMLUnmarshalFile(filename string, i interface{}) error {
-	yamlFile, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-
-	fi, err := yamlFile.Stat()
-	if err != nil {
-		return err
-	}
-
-	yml := make([]byte, fi.Size())
-	io.ReadFull(yamlFile, yml)
-	yamlFile.Close()
-	err = yaml.Unmarshal(yml, i)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func BaseURLForRequest(r *http.Request) *url.URL {
@@ -93,42 +67,6 @@ func HTTPSMuxMatcher(r *http.Request, rm *mux.RouteMatch) bool {
 
 func NonHTTPSMuxMatcher(r *http.Request, rm *mux.RouteMatch) bool {
 	return !RequestIsHTTPS(r)
-}
-
-type ByteSize float64
-
-const (
-	_           = iota // ignore first value by assigning to blank identifier
-	KB ByteSize = 1 << (10 * iota)
-	MB
-	GB
-	TB
-	PB
-	EB
-	ZB
-	YB
-)
-
-func (b ByteSize) String() string {
-	switch {
-	case b >= YB:
-		return fmt.Sprintf("%.2fYB", b/YB)
-	case b >= ZB:
-		return fmt.Sprintf("%.2fZB", b/ZB)
-	case b >= EB:
-		return fmt.Sprintf("%.2fEB", b/EB)
-	case b >= PB:
-		return fmt.Sprintf("%.2fPB", b/PB)
-	case b >= TB:
-		return fmt.Sprintf("%.2fTB", b/TB)
-	case b >= GB:
-		return fmt.Sprintf("%.2fGB", b/GB)
-	case b >= MB:
-		return fmt.Sprintf("%.2fMB", b/MB)
-	case b >= KB:
-		return fmt.Sprintf("%.2fKB", b/KB)
-	}
-	return fmt.Sprintf("%.2fB", b)
 }
 
 func bindViews(viewModel *views.Model, dataProvider views.DataProvider, bmap map[interface{}]**views.View) error {

@@ -24,7 +24,6 @@ func (sc *SessionController) getPasteIDs(r *http.Request) []model.PasteID {
 	// never have v3 perms and user perms.
 	user := GetLoggedInUser(r)
 	if user != nil {
-		// TODO(DH) Encrypted pastes are no longer visible...
 		uPastes, err := user.GetPastes()
 		if err == nil {
 			ids = uPastes

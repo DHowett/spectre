@@ -14,8 +14,6 @@ import (
 	"golang.org/x/crypto/scrypt"
 )
 
-const USER_CACHE_MAX_ENTRIES int = 1000
-
 type authReply struct {
 	Status        string            `json:"status,omitempty"`
 	Reason        string            `json:"reason,omitempty"`
