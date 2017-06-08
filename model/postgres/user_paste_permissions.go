@@ -17,7 +17,7 @@ type userPastePermissionScope struct {
 
 func newUserPastePermissionScope(ctx context.Context, prov *provider, u *dbUser, id model.PasteID) *userPastePermissionScope {
 	var pPerm dbUserPastePermission
-	err := u.provider.DB.GetContext(ctx, &pPerm, `SELECT * FROM user_paste_permissions WHERE user_id = $1 LIMIT 1`, u.ID)
+	err := u.provider.DB.GetContext(ctx, &pPerm, `SELECT * FROM user_paste_permissions WHERE user_id = $1 AND paste_id = $2 LIMIT 1`, u.ID, id)
 	if err == sql.ErrNoRows {
 		pPerm = dbUserPastePermission{
 			UserID:  u.ID,
