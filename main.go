@@ -401,11 +401,13 @@ func (a *ghostbinApplication) init() error {
 	logicHandler = permissionMigrationWrapperHandler{logicHandler}
 	logicHandler = UserLookupHandler(modelBroker, logicHandler)
 
-	// User depends on Session, so install that logicHandler last.
+	// User depends on Session, so install that handler last.
 	logicHandler = sessionBroker.Handler(logicHandler)
 
-	// midlevel (application logic only) error recovery logicHandler
+	// midlevel (application logic only) error recovery handler
 	logicHandler = a.errorRecoveryHandler(logicHandler)
+
+	logicHandler = rayTimingHandler(logicHandler)
 
 	logicHandler = rayman.LoggingHandler(logicHandler, a.Logger)
 
