@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"database/sql"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -270,14 +269,9 @@ func (a *ghostbinApplication) initSessionStore() (*SessionBroker, error) {
 
 func (a *ghostbinApplication) initModelProvider() (model.Provider, error) {
 	dbDialect := a.Configuration.Database.Dialect
-	sqlDb, err := sql.Open(dbDialect, a.Configuration.Database.Connection)
-	if err != nil {
-		return nil, err
-	}
-
 	broker, err := model.Open(
 		dbDialect,
-		sqlDb,
+		a.Configuration.Database.Connection,
 		&AuthChallengeProvider{},
 		model.FieldLoggingOption(a.Logger.WithField("facility", "model")),
 	)
