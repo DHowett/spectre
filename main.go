@@ -45,25 +45,6 @@ func isEditAllowed(p model.Paste, r *http.Request) bool {
 	return GetPastePermissionScope(p.GetID(), r).Has(model.PastePermissionEdit)
 }
 
-func pasteDestroyCallback(p model.Paste) {
-	tok := "P|H|" + p.GetID().String()
-	v, _ := ephStore.Get(tok)
-	if hash, ok := v.(string); ok {
-		ephStore.Delete(hash)
-		ephStore.Delete(tok)
-	}
-
-	//defer renderCache.mu.Unlock()
-	//renderCache.mu.Lock()
-	//if renderCache.c == nil {
-	//return
-	//}
-
-	//log.Info("RENDER CACHE: Removing ", p.GetID(), " due to destruction.")
-	// Clear the cached render when a paste is destroyed
-	//renderCache.c.Remove(p.GetID())
-}
-
 var sessionBroker *SessionBroker
 
 var ephStore *gotimeout.Map
@@ -275,9 +256,6 @@ func (a *ghostbinApplication) initModelProvider() (model.Provider, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO(DH): destruction callbacks
-	//pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 
 	ephStore = gotimeout.NewMap()
 
