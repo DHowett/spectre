@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -21,7 +22,6 @@ import (
 	// Ghostbin
 	"github.com/DHowett/ghostbin/lib/config"
 	"github.com/DHowett/ghostbin/lib/formatting"
-	"github.com/DHowett/ghostbin/lib/four"
 	"github.com/DHowett/ghostbin/lib/rayman"
 	"github.com/DHowett/ghostbin/views"
 	"github.com/DHowett/gotimeout"
@@ -392,26 +392,39 @@ func (a *ghostbinApplication) init() error {
 		controller.InitRoutes(r)
 	}
 
+	router.NotFoundHandler, _ = viewModel.Bind(views.PageID("404"), nil)
+
+	// Handlers are wrapped inside-out; dependencies flow upward through this chain.
+	var logicHandler http.Handler = router
+
 	// Permission handler for all routes that may require a user context.
-	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		route.Handler(permissionMigrationWrapperHandler{route.GetHandler()})
-		return nil
+	logicHandler = permissionMigrationWrapperHandler{logicHandler}
+	logicHandler = UserLookupHandler(modelBroker, logicHandler)
+
+	// User depends on Session, so install that logicHandler last.
+	logicHandler = sessionBroker.Handler(logicHandler)
+
+	// midlevel (application logic only) error recovery logicHandler
+	logicHandler = a.errorRecoveryHandler(logicHandler)
+
+	logicHandler = rayman.LoggingHandler(logicHandler, a.Logger)
+
+	// static file handler
+	a.rootHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		clean := path.Clean("/" + r.URL.Path)
+		if clean != "/" {
+			path := filepath.Join("public", clean)
+			if fi, err := os.Stat(path); err == nil && !fi.IsDir() {
+				http.ServeFile(w, r, path)
+				return
+			}
+		}
+		logicHandler.ServeHTTP(w, r)
 	})
 
-	// Static file routes.
-	router.PathPrefix("/").Handler(http.FileServer(http.Dir("public")))
+	// toplevel error recovery handler
+	a.rootHandler = a.errorRecoveryHandler(a.rootHandler)
 
-	var rootHandler http.Handler = router
-
-	fourOhFourTemplate, _ := viewModel.Bind(views.PageID("404"), nil)
-	rootHandler = four.WrapHandler(rootHandler, fourOhFourTemplate)
-	rootHandler = UserLookupHandler(modelBroker, rootHandler)
-	// User depends on Session, so install that handler last.
-	rootHandler = sessionBroker.Handler(rootHandler)
-
-	rootHandler = a.errorRecoveryHandler(rootHandler)
-
-	a.rootHandler = rootHandler
 	return nil
 }
 
@@ -442,7 +455,7 @@ func (a *ghostbinApplication) Run() error {
 	for i, webConfig := range a.Configuration.Web {
 		logger := a.Logger.WithField("listener", i)
 
-		var handler http.Handler = rayman.LoggingHandler(a.rootHandler, logger)
+		handler := a.rootHandler
 
 		// Now that we've captured the logger for every handled request, add some subsystem-specific fields
 		logger = logger.WithFields(logrus.Fields{
