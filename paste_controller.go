@@ -105,11 +105,6 @@ func (pc *pasteViewFacade) GetEditBody() (template.HTML, error) {
 	return template.HTML(buf), nil
 }
 
-func (pv *pasteViewFacade) ExpirationTime() time.Time {
-	// TODO(DH) lol
-	return time.Now()
-}
-
 func (pv *pasteViewFacade) Editable() bool {
 	return pv.editable
 }
@@ -300,19 +295,16 @@ func (pc *PasteController) updateOrCreatePaste(p model.Paste, w http.ResponseWri
 	}
 
 	expireIn := r.FormValue("expire")
-	ePid := ExpiringPasteID(p.GetID())
 	if expireIn != "" && expireIn != "-1" {
 		dur, _ := ghtime.ParseDuration(expireIn)
 		if dur > time.Duration(pc.Config.Application.Limits.PasteMaxExpiration) {
 			dur = time.Duration(pc.Config.Application.Limits.PasteMaxExpiration)
 		}
 		expireAt := time.Now().Add(dur)
-		pasteExpirator.ExpireObject(ePid, dur)
 		p.SetExpirationTime(expireAt)
 	} else {
 		// Empty expireIn means "keep current expiration."
-		if expireIn == "-1" && pasteExpirator.ObjectHasExpiration(ePid) {
-			pasteExpirator.CancelObjectExpiration(ePid)
+		if expireIn == "-1" {
 			p.ClearExpirationTime()
 		}
 	}

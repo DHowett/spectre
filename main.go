@@ -53,8 +53,6 @@ func pasteDestroyCallback(p model.Paste) {
 		ephStore.Delete(tok)
 	}
 
-	pasteExpirator.CancelObjectExpiration(ExpiringPasteID(p.GetID()))
-
 	//defer renderCache.mu.Unlock()
 	//renderCache.mu.Lock()
 	//if renderCache.c == nil {
@@ -68,7 +66,6 @@ func pasteDestroyCallback(p model.Paste) {
 
 var sessionBroker *SessionBroker
 
-var pasteExpirator *gotimeout.Expirator
 var ephStore *gotimeout.Map
 
 func loadOrGenerateSessionKey(path string, keyLength int) (data []byte, err error) {
@@ -283,16 +280,6 @@ func (a *ghostbinApplication) initModelProvider() (model.Provider, error) {
 	//pasteStore.PasteDestroyCallback = PasteCallback(pasteDestroyCallback)
 
 	ephStore = gotimeout.NewMap()
-	pasteExpirator = gotimeout.NewExpiratorWithStorage(gotimeout.NoopAdapter{}, &ExpiringPasteStore{broker})
-
-	go func() {
-		for {
-			select {
-			case err := <-pasteExpirator.ErrorChannel:
-				a.Logger.Error("Expirator Error: ", err.Error())
-			}
-		}
-	}()
 
 	return &PromoteFirstUserToAdminStore{
 		&ManglingUserStore{
