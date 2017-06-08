@@ -51,7 +51,7 @@ func TestMain(m *testing.M) {
 	if testing.Verbose() {
 		logger.Level = logrus.DebugLevel
 	}
-	gTestProvider, err = model.Open("postgres", sqlDb, &noopChallengeProvider{}, model.FieldLoggingOption(logger))
+	gTestProvider, err = model.Open("postgres", *db, &noopChallengeProvider{}, model.FieldLoggingOption(logger))
 	if err != nil {
 		panic(err)
 	}

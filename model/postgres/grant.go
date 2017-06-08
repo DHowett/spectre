@@ -11,6 +11,7 @@ type dbGrant struct {
 	PasteID string `db:"paste_id"`
 
 	provider *provider
+	ctx      context.Context
 }
 
 func (g *dbGrant) GetID() model.GrantID {
@@ -22,6 +23,6 @@ func (g *dbGrant) GetPasteID() model.PasteID {
 }
 
 func (g *dbGrant) Destroy() error {
-	_, err := g.provider.DB.ExecContext(context.TODO(), `DELETE FROM grants WHERE id = $1`, g.ID)
+	_, err := g.provider.DB.ExecContext(g.ctx, `DELETE FROM grants WHERE id = $1`, g.ID)
 	return err
 }

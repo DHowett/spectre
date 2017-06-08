@@ -37,7 +37,7 @@ func (ac *AdminController) notAllowedHandler(w http.ResponseWriter, r *http.Requ
 
 func (ac *AdminController) pasteDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	id := model.PasteIDFromString(mux.Vars(r)["id"])
-	paste, err := ac.Model.GetPaste(id, nil)
+	paste, err := ac.Model.GetPaste(r.Context(), id, nil)
 	if paste != nil && err == nil {
 		err = paste.Erase()
 	}
@@ -58,7 +58,7 @@ func (ac *AdminController) pasteDeleteHandler(w http.ResponseWriter, r *http.Req
 
 func (ac *AdminController) adminPromoteHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
-	user, _ := ac.Model.GetUserNamed(username)
+	user, _ := ac.Model.GetUserNamed(r.Context(), username)
 	if user != nil {
 		err := user.Permissions(model.PermissionClassUser).Grant(model.UserPermissionAdmin)
 		if err == nil {
@@ -75,7 +75,7 @@ func (ac *AdminController) adminPromoteHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (ac *AdminController) reportsHandler(w http.ResponseWriter, r *http.Request) {
-	reports, err := ac.Model.GetReports()
+	reports, err := ac.Model.GetReports(r.Context())
 	if err != nil {
 		panic(err)
 	}
@@ -84,7 +84,7 @@ func (ac *AdminController) reportsHandler(w http.ResponseWriter, r *http.Request
 
 func (ac *AdminController) reportClearHandler(w http.ResponseWriter, r *http.Request) {
 	pID := model.PasteIDFromString(mux.Vars(r)["id"])
-	report, err := ac.Model.GetReport(pID)
+	report, err := ac.Model.GetReport(r.Context(), pID)
 	if err == nil {
 		err = report.Destroy()
 	}

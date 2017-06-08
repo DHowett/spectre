@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -16,7 +17,7 @@ func TestPaste(t *testing.T) {
 	var pID model.PasteID
 
 	t.Run("Create", func(t *testing.T) {
-		p, err := gTestProvider.CreatePaste()
+		p, err := gTestProvider.CreatePaste(context.Background())
 		if err != nil {
 			t.Fatal(err)
 			return
@@ -25,14 +26,14 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("GetValues", func(t *testing.T) {
-		_, err := gTestProvider.GetPaste(pID, nil)
+		_, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
 	})
 
 	t.Run("ReadBody1", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -50,7 +51,7 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("CreateBody", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -69,7 +70,7 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("ReadBody2", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -87,7 +88,7 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("UpdateBody", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -106,7 +107,7 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("ReadBody3", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -124,7 +125,7 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("Destroy", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -135,7 +136,7 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("LookupAfterDestroy", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if p != nil || err == nil {
 			t.Fatal("got a paste back/no error?")
 		}
@@ -161,7 +162,7 @@ func TestPasteMutation(t *testing.T) {
 	var pID model.PasteID
 
 	t.Run("Create", func(t *testing.T) {
-		p, err := gTestProvider.CreatePaste()
+		p, err := gTestProvider.CreatePaste(context.Background())
 		if err != nil {
 			t.Fatal(err)
 			return
@@ -172,7 +173,7 @@ func TestPasteMutation(t *testing.T) {
 	expTime := time.Now().Add(1 * time.Hour)
 
 	t.Run("SetValues1", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -188,7 +189,7 @@ func TestPasteMutation(t *testing.T) {
 	})
 
 	t.Run("GetValues1", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -199,7 +200,7 @@ func TestPasteMutation(t *testing.T) {
 	})
 
 	t.Run("ClearValues", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -214,7 +215,7 @@ func TestPasteMutation(t *testing.T) {
 	})
 
 	t.Run("GetValues2", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -230,7 +231,7 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 	var pID model.PasteID
 
 	t.Run("Create", func(t *testing.T) {
-		p, err := gTestProvider.CreatePaste()
+		p, err := gTestProvider.CreatePaste(context.Background())
 		if err != nil {
 			t.Fatal(err)
 			return
@@ -241,7 +242,7 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 	expTime := time.Now().Add(1 * time.Hour)
 
 	t.Run("SetValues1", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -262,7 +263,7 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 	})
 
 	t.Run("GetValues1", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -273,7 +274,7 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 	})
 
 	t.Run("ClearValues", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -293,7 +294,7 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 	})
 
 	t.Run("GetValues2", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(pID, nil)
+		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -305,7 +306,7 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 }
 
 func TestPasteReadAfterDestroy(t *testing.T) {
-	p, err := gTestProvider.CreatePaste()
+	p, err := gTestProvider.CreatePaste(context.Background())
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -328,7 +329,7 @@ func TestPasteReadAfterDestroy(t *testing.T) {
 }
 
 func TestPasteEncryption(t *testing.T) {
-	p, err := gTestProvider.CreateEncryptedPaste(model.PasteEncryptionMethodAES_CTR, []byte("passphrase"))
+	p, err := gTestProvider.CreateEncryptedPaste(context.Background(), model.PasteEncryptionMethodAES_CTR, []byte("passphrase"))
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -352,12 +353,12 @@ func TestPasteEncryption(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pBad, err := gTestProvider.GetPaste(p.GetID(), []byte("bad!"))
+	pBad, err := gTestProvider.GetPaste(context.Background(), p.GetID(), []byte("bad!"))
 	if pBad != nil || err == nil {
 		t.Fatal("got back a paste with a bad passphrase!")
 	}
 
-	pFacade, err := gTestProvider.GetPaste(p.GetID(), nil)
+	pFacade, err := gTestProvider.GetPaste(context.Background(), p.GetID(), nil)
 	if err != model.ErrPasteEncrypted {
 		t.Fatal("didn't get an error reading an encrypted paste")
 	}
@@ -379,7 +380,7 @@ func TestPasteEncryption(t *testing.T) {
 		t.Fatal("encrypted paste retrieved without password readable?")
 	}
 
-	pReal, err := gTestProvider.GetPaste(p.GetID(), []byte("passphrase"))
+	pReal, err := gTestProvider.GetPaste(context.Background(), p.GetID(), []byte("passphrase"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -429,7 +430,7 @@ func TestPasteCollision(t *testing.T) {
 		pgProvider.GenerateNewPasteID = old
 	}()
 
-	p1, err := gTestProvider.CreatePaste()
+	p1, err := gTestProvider.CreatePaste(context.Background())
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -438,7 +439,7 @@ func TestPasteCollision(t *testing.T) {
 		t.Fatalf("expected first paste ID to be `first_collision`; got %v", p1.GetID())
 	}
 
-	p2, err := gTestProvider.CreatePaste()
+	p2, err := gTestProvider.CreatePaste(context.Background())
 	if err != nil {
 		t.Fatal(err)
 		return

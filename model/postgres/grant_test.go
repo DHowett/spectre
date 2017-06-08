@@ -1,13 +1,14 @@
 package postgres
 
 import (
+	"context"
 	"testing"
 
 	"github.com/DHowett/ghostbin/model"
 )
 
 func TestGrant(t *testing.T) {
-	p, err := gTestProvider.CreatePaste()
+	p, err := gTestProvider.CreatePaste(context.Background())
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -16,7 +17,7 @@ func TestGrant(t *testing.T) {
 
 	var g model.Grant
 	t.Run("Create", func(t *testing.T) {
-		g, err = gTestProvider.CreateGrant(p)
+		g, err = gTestProvider.CreateGrant(context.Background(), p)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -32,7 +33,7 @@ func TestGrant(t *testing.T) {
 
 	var g2 model.Grant
 	t.Run("Lookup", func(t *testing.T) {
-		g2, err = gTestProvider.GetGrant(g.GetID())
+		g2, err = gTestProvider.GetGrant(context.Background(), g.GetID())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -54,7 +55,7 @@ func TestGrant(t *testing.T) {
 	})
 
 	t.Run("LookupAfterDestroy", func(t *testing.T) {
-		_, err := gTestProvider.GetGrant(g2.GetID())
+		_, err := gTestProvider.GetGrant(context.Background(), g2.GetID())
 		if err != model.ErrNotFound {
 			t.Fatal("Expected ErrNotFound; got `%v`", err)
 		}

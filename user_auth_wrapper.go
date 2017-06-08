@@ -14,6 +14,7 @@ type lateUser struct {
 	s    *Session
 	b    model.Provider
 	u    model.User
+	r    *http.Request
 	done bool
 }
 
@@ -33,7 +34,7 @@ func (l *lateUser) GetUser() model.User {
 			l.done = true
 			if uID, ok := l.s.Get(SessionScopeClient, "acct_id").(uint); ok {
 				// ignoring error: l.u will be nil if this lookup fails.
-				user, _ = l.b.GetUserByID(uID)
+				user, _ = l.b.GetUserByID(l.r.Context(), uID)
 				l.u = user
 			}
 		}
@@ -67,6 +68,7 @@ func UserLookupHandler(broker model.Provider, h http.Handler) http.Handler {
 			b: broker,
 		}
 		r = r.WithContext(context.WithValue(r.Context(), &userContextKey, lu))
+		lu.r = r
 		h.ServeHTTP(w, r)
 	})
 }

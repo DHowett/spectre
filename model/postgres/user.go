@@ -29,6 +29,7 @@ type dbUser struct {
 	PastePermissions []*dbUserPastePermission
 
 	provider *provider
+	ctx      context.Context
 }
 
 func (u *dbUser) GetID() uint {
@@ -44,8 +45,8 @@ func (u *dbUser) GetSource() model.UserSource {
 }
 
 func (u *dbUser) SetSource(source model.UserSource) {
-	tx, _ := u.provider.DB.BeginTxx(context.TODO(), nil)
-	if _, err := tx.ExecContext(context.TODO(), `UPDATE users SET source = $1 WHERE id = $2`, source, u.ID); err != nil {
+	tx, _ := u.provider.DB.BeginTxx(u.ctx, nil)
+	if _, err := tx.ExecContext(u.ctx, `UPDATE users SET source = $1 WHERE id = $2`, source, u.ID); err != nil {
 		tx.Rollback()
 	}
 	u.Source = source
@@ -53,7 +54,7 @@ func (u *dbUser) SetSource(source model.UserSource) {
 }
 
 func (u *dbUser) UpdateChallenge(password string) {
-	tx, _ := u.provider.DB.BeginTxx(context.TODO(), nil)
+	tx, _ := u.provider.DB.BeginTxx(u.ctx, nil)
 	challengeProvider := u.provider.ChallengeProvider
 
 	salt := challengeProvider.RandomSalt()
@@ -62,7 +63,7 @@ func (u *dbUser) UpdateChallenge(password string) {
 	challengeMessage := append(salt, []byte(u.Name)...)
 	challenge := challengeProvider.Challenge(challengeMessage, key)
 
-	if _, err := tx.ExecContext(context.TODO(), `UPDATE users SET salt = $1, challenge = $2 WHERE id = $3`, salt, challenge, u.ID); err != nil {
+	if _, err := tx.ExecContext(u.ctx, `UPDATE users SET salt = $1, challenge = $2 WHERE id = $3`, salt, challenge, u.ID); err != nil {
 		tx.Rollback()
 		return
 	}
@@ -99,14 +100,14 @@ func (u *dbUser) Permissions(class model.PermissionClass, args ...interface{}) m
 		default:
 			return nil
 		}
-		return newUserPastePermissionScope(u.provider, u, pid)
+		return newUserPastePermissionScope(u.ctx, u.provider, u, pid)
 	}
 	return nil
 }
 
 func (u *dbUser) GetPastes() ([]model.PasteID, error) {
 	var ids []string
-	if err := u.provider.DB.SelectContext(context.TODO(), &ids, `SELECT paste_id FROM user_paste_permissions WHERE user_id = $1 AND permissions > 0`, u.ID); err != nil {
+	if err := u.provider.DB.SelectContext(u.ctx, &ids, `SELECT paste_id FROM user_paste_permissions WHERE user_id = $1 AND permissions > 0`, u.ID); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // A user having no pastes is no error
 		}

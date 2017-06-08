@@ -26,32 +26,35 @@ type provider struct {
 }
 
 // User
-func (p *provider) getUserWithQuery(query string, args ...interface{}) (model.User, error) {
-	var u dbUser
-	if err := p.DB.GetContext(context.TODO(), &u, `SELECT * FROM users WHERE `+query+` LIMIT 1`, args...); err != nil {
+func (p *provider) getUserWithQuery(ctx context.Context, query string, args ...interface{}) (model.User, error) {
+	u := dbUser{
+		provider: p,
+		ctx:      ctx,
+	}
+
+	if err := p.DB.GetContext(ctx, &u, `SELECT * FROM users WHERE `+query+` LIMIT 1`, args...); err != nil {
 		return nil, err
 	}
 
-	u.provider = p
 	return &u, nil
 }
 
-func (p *provider) GetUserNamed(name string) (model.User, error) {
-	u, err := p.getUserWithQuery("name = $1", name)
-	return u, err
+func (p *provider) GetUserNamed(ctx context.Context, name string) (model.User, error) {
+	return p.getUserWithQuery(ctx, "name = $1", name)
 }
 
-func (p *provider) GetUserByID(id uint) (model.User, error) {
-	return p.getUserWithQuery("id = $1", id)
+func (p *provider) GetUserByID(ctx context.Context, id uint) (model.User, error) {
+	return p.getUserWithQuery(ctx, "id = $1", id)
 }
 
-func (p *provider) CreateUser(name string) (model.User, error) {
+func (p *provider) CreateUser(ctx context.Context, name string) (model.User, error) {
 	u := &dbUser{
 		Name:     name,
 		provider: p,
+		ctx:      ctx,
 	}
 
-	if _, err := p.DB.ExecContext(context.TODO(), "INSERT INTO users(name, updated_at) VALUES($1, NOW())", name); err != nil {
+	if _, err := p.DB.ExecContext(ctx, "INSERT INTO users(name, updated_at) VALUES($1, NOW())", name); err != nil {
 		return nil, err
 	}
 
@@ -76,7 +79,7 @@ func isUniquenessError(err error) bool {
 	return ok && pqe.Code == pq.ErrorCode("23505")
 }
 
-func (p *provider) createPaste(method model.PasteEncryptionMethod, passphraseMaterial []byte) (model.Paste, error) {
+func (p *provider) createPaste(ctx context.Context, method model.PasteEncryptionMethod, passphraseMaterial []byte) (model.Paste, error) {
 	var salt []byte
 	var key []byte
 	var hmac []byte
@@ -97,7 +100,7 @@ func (p *provider) createPaste(method model.PasteEncryptionMethod, passphraseMat
 			hmac = codec.GenerateHMAC(id, salt, key)
 		}
 
-		_, err = p.DB.ExecContext(context.TODO(),
+		_, err = p.DB.ExecContext(ctx,
 			`INSERT INTO pastes(
 				id,
 				created_at,
@@ -115,6 +118,7 @@ func (p *provider) createPaste(method model.PasteEncryptionMethod, passphraseMat
 
 		return &dbPaste{
 			provider:         p,
+			ctx:              ctx,
 			ID:               string(id),
 			EncryptionSalt:   salt,
 			EncryptionMethod: method,
@@ -124,24 +128,26 @@ func (p *provider) createPaste(method model.PasteEncryptionMethod, passphraseMat
 	}
 }
 
-func (p *provider) CreatePaste() (model.Paste, error) {
-	return p.createPaste(model.PasteEncryptionMethodNone, nil)
+func (p *provider) CreatePaste(ctx context.Context) (model.Paste, error) {
+	return p.createPaste(ctx, model.PasteEncryptionMethodNone, nil)
 }
 
-func (p *provider) CreateEncryptedPaste(method model.PasteEncryptionMethod, passphraseMaterial []byte) (model.Paste, error) {
-	return p.createPaste(method, passphraseMaterial)
+func (p *provider) CreateEncryptedPaste(ctx context.Context, method model.PasteEncryptionMethod, passphraseMaterial []byte) (model.Paste, error) {
+	return p.createPaste(ctx, method, passphraseMaterial)
 }
 
-func (p *provider) GetPaste(id model.PasteID, passphraseMaterial []byte) (model.Paste, error) {
-	var paste dbPaste
-	if err := p.DB.GetContext(context.TODO(), &paste, `SELECT * FROM view_active_pastes WHERE id = $1 LIMIT 1`, id); err != nil {
+func (p *provider) GetPaste(ctx context.Context, id model.PasteID, passphraseMaterial []byte) (model.Paste, error) {
+	paste := dbPaste{
+		provider: p,
+		ctx:      ctx,
+	}
+
+	if err := p.DB.GetContext(ctx, &paste, `SELECT * FROM view_active_pastes WHERE id = $1 LIMIT 1`, id); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, model.ErrNotFound
 		}
 		return nil, err
 	}
-
-	paste.provider = p
 
 	// This paste is encrypted
 	if paste.IsEncrypted() {
@@ -170,7 +176,7 @@ func (p *provider) GetPaste(id model.PasteID, passphraseMaterial []byte) (model.
 	return &paste, nil
 }
 
-func (p *provider) GetPastes(ids []model.PasteID) ([]model.Paste, error) {
+func (p *provider) GetPastes(ctx context.Context, ids []model.PasteID) ([]model.Paste, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -186,7 +192,7 @@ func (p *provider) GetPastes(ids []model.PasteID) ([]model.Paste, error) {
 	}
 
 	query = p.DB.Rebind(query)
-	rows, err := p.DB.QueryxContext(context.TODO(), query, args...)
+	rows, err := p.DB.QueryxContext(ctx, query, args...)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, model.ErrNotFound
@@ -197,7 +203,10 @@ func (p *provider) GetPastes(ids []model.PasteID) ([]model.Paste, error) {
 	iPastes := make([]model.Paste, len(ids))
 	i := 0
 	for rows.Next() {
-		paste := &dbPaste{provider: p}
+		paste := &dbPaste{
+			provider: p,
+			ctx:      ctx,
+		}
 		rows.StructScan(&paste)
 		if paste.IsEncrypted() {
 			iPastes[i] = &encryptedPastePlaceholder{
@@ -212,13 +221,13 @@ func (p *provider) GetPastes(ids []model.PasteID) ([]model.Paste, error) {
 	return iPastes[:i], nil
 }
 
-func (p *provider) DestroyPaste(id model.PasteID) error {
-	tx, err := p.DB.BeginTxx(context.TODO(), nil)
+func (p *provider) DestroyPaste(ctx context.Context, id model.PasteID) error {
+	tx, err := p.DB.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.ExecContext(context.TODO(), `DELETE FROM pastes WHERE id = $1`, id)
+	_, err = tx.ExecContext(ctx, `DELETE FROM pastes WHERE id = $1`, id)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -232,14 +241,14 @@ func (p *provider) DestroyPaste(id model.PasteID) error {
 	return nil
 }
 
-func (p *provider) CreateGrant(paste model.Paste) (model.Grant, error) {
+func (p *provider) CreateGrant(ctx context.Context, paste model.Paste) (model.Grant, error) {
 	for {
 		id, err := generateRandomBase32String(32)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = p.DB.ExecContext(context.TODO(),
+		_, err = p.DB.ExecContext(ctx,
 			`INSERT INTO grants(
 				id,
 				paste_id
@@ -253,28 +262,32 @@ func (p *provider) CreateGrant(paste model.Paste) (model.Grant, error) {
 
 		return &dbGrant{
 			provider: p,
+			ctx:      ctx,
 			ID:       id,
 			PasteID:  paste.GetID().String(),
 		}, nil
 	}
 }
 
-func (p *provider) GetGrant(id model.GrantID) (model.Grant, error) {
-	var g dbGrant
-	if err := p.DB.GetContext(context.TODO(), &g, `SELECT * FROM grants WHERE id = $1 LIMIT 1`, id); err != nil {
+func (p *provider) GetGrant(ctx context.Context, id model.GrantID) (model.Grant, error) {
+	g := dbGrant{
+		provider: p,
+		ctx:      ctx,
+	}
+
+	if err := p.DB.GetContext(ctx, &g, `SELECT * FROM grants WHERE id = $1 LIMIT 1`, id); err != nil {
 		if err == sql.ErrNoRows {
 			err = model.ErrNotFound
 		}
 		return nil, err
 	}
 
-	g.provider = p
 	return &g, nil
 }
 
-func (p *provider) ReportPaste(paste model.Paste) error {
+func (p *provider) ReportPaste(ctx context.Context, paste model.Paste) error {
 	pID := paste.GetID()
-	_, err := p.DB.ExecContext(context.TODO(), `
+	_, err := p.DB.ExecContext(ctx, `
 		INSERT INTO paste_reports(paste_id, count)
 		VALUES($1, $2)
 		ON CONFLICT(paste_id)
@@ -284,23 +297,26 @@ func (p *provider) ReportPaste(paste model.Paste) error {
 	return err
 }
 
-func (p *provider) GetReport(pID model.PasteID) (model.Report, error) {
-	var r dbReport
-	if err := p.DB.GetContext(context.TODO(), &r, `SELECT paste_id, count FROM paste_reports WHERE paste_id = ?`, pID); err != nil {
+func (p *provider) GetReport(ctx context.Context, pID model.PasteID) (model.Report, error) {
+	r := dbReport{
+		provider: p,
+		ctx:      ctx,
+	}
+
+	if err := p.DB.GetContext(ctx, &r, `SELECT paste_id, count FROM paste_reports WHERE paste_id = ?`, pID); err != nil {
 		if err == sql.ErrNoRows {
 			err = model.ErrNotFound
 		}
 		return nil, err
 	}
 
-	r.provider = p
 	return &r, nil
 }
 
-func (p *provider) GetReports() ([]model.Report, error) {
+func (p *provider) GetReports(ctx context.Context) ([]model.Report, error) {
 	reports := make([]model.Report, 0, 16)
 
-	rows, err := p.DB.QueryxContext(context.TODO(), `SELECT paste_id, count FROM paste_reports`)
+	rows, err := p.DB.QueryxContext(ctx, `SELECT paste_id, count FROM paste_reports`)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			err = model.ErrNotFound
@@ -310,7 +326,10 @@ func (p *provider) GetReports() ([]model.Report, error) {
 
 	defer rows.Close()
 	for rows.Next() {
-		r := &dbReport{provider: p}
+		r := &dbReport{
+			provider: p,
+			ctx:      ctx,
+		}
 		rows.Scan(&r.PasteID, &r.Count)
 		reports = append(reports, r)
 	}
@@ -353,7 +372,7 @@ func (p *provider) migrateDb() error {
 		var desc string
 		n, _ := fmt.Sscanf(path, "%d_%s", &ver, &desc)
 		if n != 2 {
-			return fmt.Errorf("model.postgres: invalid schema migration filename %s", path)
+			return fmt.Errorf("model/postgres: invalid schema migration filename %s", path)
 		}
 		schemas[ver] = path
 		if ver > maxVersion {
@@ -378,7 +397,7 @@ func (p *provider) migrateDb() error {
 	}
 
 	if schemaVersion > maxVersion {
-		return fmt.Errorf("model.postgres: database is newer than we can support! (%d > %d)", schemaVersion, maxVersion)
+		return fmt.Errorf("model/postgres: database is newer than we can support! (%d > %d)", schemaVersion, maxVersion)
 	}
 
 	for ; schemaVersion < maxVersion; schemaVersion++ {
@@ -427,16 +446,16 @@ func (pqDriver) Open(arguments ...interface{}) (model.Provider, error) {
 		case model.Option:
 			a(p)
 		default:
-			return nil, fmt.Errorf("model.postgres: unknown option type %T (%v)", a, a)
+			return nil, fmt.Errorf("model/postgres: unknown option type %T (%v)", a, a)
 		}
 	}
 
 	if connection == nil {
-		return nil, errors.New("model.postgres: no connection string provided")
+		return nil, errors.New("model/postgres: no connection string provided")
 	}
 
 	if p.ChallengeProvider == nil {
-		return nil, errors.New("model.postgres: no ChallengeProvider provided")
+		return nil, errors.New("model/postgres: no ChallengeProvider provided")
 	}
 
 	sqlDb, err := sqlx.Open("postgres", *connection)

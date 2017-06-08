@@ -11,6 +11,7 @@ type dbReport struct {
 	Count   int
 
 	provider *provider
+	ctx      context.Context
 }
 
 func (r *dbReport) GetPasteID() model.PasteID {
@@ -22,6 +23,6 @@ func (r *dbReport) GetCount() int {
 }
 
 func (r *dbReport) Destroy() error {
-	_, err := r.provider.DB.ExecContext(context.TODO(), `DELETE FROM paste_reports WHERE paste_id = $1`, r.PasteID)
+	_, err := r.provider.DB.ExecContext(r.ctx, `DELETE FROM paste_reports WHERE paste_id = $1`, r.PasteID)
 	return err
 }

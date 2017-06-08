@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
@@ -55,7 +56,7 @@ func (ac *AuthController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 		}
 
 		// errors here are non-fatal.
-		newuser, _ := ac.Model.GetUserNamed(username)
+		newuser, _ := ac.Model.GetUserNamed(r.Context(), username)
 		if newuser == nil {
 			if confirm == "" {
 				reply.Status = "moreinfo"
@@ -67,7 +68,7 @@ func (ac *AuthController) loginPostHandler(w http.ResponseWriter, r *http.Reques
 				reply.InvalidFields = []string{"password", "confirm_password"}
 				return
 			}
-			newuser, err := ac.Model.CreateUser(username)
+			newuser, err := ac.Model.CreateUser(r.Context(), username)
 			if err != nil {
 				// TODO(DH): propagate.
 				rayman.RequestLogger(r).Error(err)
@@ -208,12 +209,12 @@ func (m *ManglingUserStore) mangle(name string) string {
 	return "1$" + base32Encoder.EncodeToString(sum[:])
 }
 
-func (m *ManglingUserStore) GetUserNamed(name string) (model.User, error) {
-	return m.Provider.GetUserNamed(m.mangle(name))
+func (m *ManglingUserStore) GetUserNamed(ctx context.Context, name string) (model.User, error) {
+	return m.Provider.GetUserNamed(ctx, m.mangle(name))
 }
 
-func (m *ManglingUserStore) CreateUser(name string) (model.User, error) {
-	return m.Provider.CreateUser(m.mangle(name))
+func (m *ManglingUserStore) CreateUser(ctx context.Context, name string) (model.User, error) {
+	return m.Provider.CreateUser(ctx, m.mangle(name))
 }
 
 /*
@@ -273,8 +274,8 @@ type PromoteFirstUserToAdminStore struct {
 	model.Provider
 }
 
-func (c *PromoteFirstUserToAdminStore) CreateUser(name string) (model.User, error) {
-	u, err := c.Provider.CreateUser(name)
+func (c *PromoteFirstUserToAdminStore) CreateUser(ctx context.Context, name string) (model.User, error) {
+	u, err := c.Provider.CreateUser(ctx, name)
 	if err != nil {
 		return u, err
 	}

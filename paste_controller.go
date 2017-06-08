@@ -129,7 +129,7 @@ func (pc *PasteController) getPasteFromRequest(r *http.Request) (model.Paste, *h
 			}
 		}
 
-		p, err := pc.Model.GetPaste(id, passphrase)
+		p, err := pc.Model.GetPaste(r.Context(), id, passphrase)
 		if p != nil {
 			p = &pasteViewFacade{
 				Paste:    p,
@@ -246,7 +246,7 @@ func (pc *PasteController) getPasteRawHandler(w http.ResponseWriter, r *http.Req
 func (pc *PasteController) pasteGrantHandler(w http.ResponseWriter, r *http.Request) {
 	p, _, _ := pc.getPasteFromRequest(r)
 
-	grant, _ := pc.Model.CreateGrant(p)
+	grant, _ := pc.Model.CreateGrant(r.Context(), p)
 
 	acceptURL := pc.App.GenerateURL(URLTypePasteGrantAccept, "grantkey", string(grant.GetID()))
 
@@ -273,7 +273,7 @@ func (pc *PasteController) pasteUngrantHandler(w http.ResponseWriter, r *http.Re
 func (pc *PasteController) grantAcceptHandler(w http.ResponseWriter, r *http.Request) {
 	v := mux.Vars(r)
 	grantKey := model.GrantID(v["grantkey"])
-	grant, err := pc.Model.GetGrant(grantKey)
+	grant, err := pc.Model.GetGrant(r.Context(), grantKey)
 	if err != nil {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -392,7 +392,7 @@ func (pc *PasteController) pasteCreateHandler(w http.ResponseWriter, r *http.Req
 			// only do so if the user is already the de-facto owner
 			if GetPastePermissionScope(hPid, r).Has(model.PastePermissionAll) {
 				var err error
-				p, err = pc.Model.GetPaste(hPid, nil)
+				p, err = pc.Model.GetPaste(r.Context(), hPid, nil)
 				if err != nil {
 					panic(err)
 				}
@@ -400,7 +400,7 @@ func (pc *PasteController) pasteCreateHandler(w http.ResponseWriter, r *http.Req
 		}
 
 		if p == nil {
-			p, err = pc.Model.CreatePaste()
+			p, err = pc.Model.CreatePaste(r.Context())
 			if err != nil {
 				panic(err)
 			}
@@ -410,7 +410,7 @@ func (pc *PasteController) pasteCreateHandler(w http.ResponseWriter, r *http.Req
 		pc.tempHashes.Put(hashToken, p.GetID(), 5*time.Minute)
 		pc.tempHashes.Put(p.GetID().String(), hashToken, 5*time.Minute)
 	} else {
-		p, err = pc.Model.CreateEncryptedPaste(CURRENT_ENCRYPTION_METHOD, []byte(password))
+		p, err = pc.Model.CreateEncryptedPaste(r.Context(), CURRENT_ENCRYPTION_METHOD, []byte(password))
 		if err != nil {
 			panic(err)
 		}
@@ -483,7 +483,7 @@ func (pc *PasteController) pasteReportHandler(w http.ResponseWriter, r *http.Req
 
 	p, _, _ := pc.getPasteFromRequest(r)
 
-	err := pc.Model.ReportPaste(p)
+	err := pc.Model.ReportPaste(r.Context(), p)
 	if err != nil {
 		SetFlash(w, "error", fmt.Sprintf("Paste %v could not be reported.", p.GetID()))
 	} else {

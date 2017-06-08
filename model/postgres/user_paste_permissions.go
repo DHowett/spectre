@@ -12,11 +12,12 @@ type userPastePermissionScope struct {
 	err   error
 
 	provider *provider
+	ctx      context.Context
 }
 
-func newUserPastePermissionScope(prov *provider, u *dbUser, id model.PasteID) *userPastePermissionScope {
+func newUserPastePermissionScope(ctx context.Context, prov *provider, u *dbUser, id model.PasteID) *userPastePermissionScope {
 	var pPerm dbUserPastePermission
-	err := u.provider.DB.GetContext(context.TODO(), &pPerm, `SELECT * FROM user_paste_permissions WHERE user_id = $1 LIMIT 1`, u.ID)
+	err := u.provider.DB.GetContext(ctx, &pPerm, `SELECT * FROM user_paste_permissions WHERE user_id = $1 LIMIT 1`, u.ID)
 	if err == sql.ErrNoRows {
 		pPerm = dbUserPastePermission{
 			UserID:  u.ID,
@@ -25,7 +26,7 @@ func newUserPastePermissionScope(prov *provider, u *dbUser, id model.PasteID) *u
 		err = nil
 	}
 
-	return &userPastePermissionScope{provider: prov, pPerm: &pPerm, err: err}
+	return &userPastePermissionScope{provider: prov, ctx: ctx, pPerm: &pPerm, err: err}
 }
 
 func (s *userPastePermissionScope) Has(p model.Permission) bool {
@@ -41,7 +42,7 @@ func (s *userPastePermissionScope) Grant(p model.Permission) error {
 	}
 
 	db := s.provider.DB
-	row := db.QueryRowContext(context.TODO(), `
+	row := db.QueryRowContext(s.ctx, `
 	INSERT INTO user_paste_permissions(user_id, paste_id, permissions)
 	VALUES($1, $2, $3)
 	ON CONFLICT(user_id, paste_id)
@@ -78,9 +79,9 @@ func (s *userPastePermissionScope) Revoke(p model.Permission) error {
 	pPerm := s.pPerm
 	newPerms := pPerm.Permissions & (^p)
 	if newPerms == 0 {
-		_, s.err = s.provider.DB.ExecContext(context.TODO(), `DELETE FROM user_paste_permissions WHERE user_id = $1 AND paste_id = $2`, pPerm.UserID, pPerm.PasteID)
+		_, s.err = s.provider.DB.ExecContext(s.ctx, `DELETE FROM user_paste_permissions WHERE user_id = $1 AND paste_id = $2`, pPerm.UserID, pPerm.PasteID)
 	} else {
-		_, s.err = s.provider.DB.ExecContext(context.TODO(), `UPDATE user_paste_permissions SET permissions = $1 WHERE user_id = $2 AND paste_id = $3`, newPerms, pPerm.UserID, pPerm.PasteID)
+		_, s.err = s.provider.DB.ExecContext(s.ctx, `UPDATE user_paste_permissions SET permissions = $1 WHERE user_id = $2 AND paste_id = $3`, newPerms, pPerm.UserID, pPerm.PasteID)
 	}
 
 	if s.err == nil {

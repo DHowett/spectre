@@ -1,8 +1,6 @@
 package postgres
 
 import (
-	"context"
-
 	"github.com/DHowett/ghostbin/model"
 )
 
@@ -19,7 +17,7 @@ func (u *dbUserPermissionScope) set(newPerms model.Permission) error {
 	if u.err != nil {
 		return u.err
 	}
-	if _, err := u.u.provider.DB.ExecContext(context.TODO(), `UPDATE users SET permissions = $1 WHERE id = $2`, newPerms, u.u.ID); err != nil {
+	if _, err := u.u.provider.DB.ExecContext(u.u.ctx, `UPDATE users SET permissions = $1 WHERE id = $2`, newPerms, u.u.ID); err != nil {
 		return err
 	}
 

@@ -51,7 +51,7 @@ const sessionPastesContextKey sessionPastesContextKeyType = 0
 func (sc *SessionController) sessionHandlerWrapper(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ids := sc.getPasteIDs(r)
-		sessionPastes, err := sc.Model.GetPastes(ids)
+		sessionPastes, err := sc.Model.GetPastes(r.Context(), ids)
 		if err != nil {
 			// TODO(DH) no panic
 			panic(err)

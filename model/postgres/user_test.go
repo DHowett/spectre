@@ -1,20 +1,21 @@
 package postgres
 
 import (
+	"context"
 	"testing"
 
 	"github.com/DHowett/ghostbin/model"
 )
 
 func TestUserCreate(t *testing.T) {
-	u, err := gTestProvider.CreateUser("DHowett")
+	u, err := gTestProvider.CreateUser(context.Background(), "DHowett")
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
 	u.SetSource(model.UserSourceMozillaPersona)
 
-	u, err = gTestProvider.CreateUser("Timward")
+	u, err = gTestProvider.CreateUser(context.Background(), "Timward")
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -22,7 +23,7 @@ func TestUserCreate(t *testing.T) {
 }
 
 func TestUserGetByName(t *testing.T) {
-	u, err := gTestProvider.GetUserNamed("DHowett")
+	u, err := gTestProvider.GetUserNamed(context.Background(), "DHowett")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +33,7 @@ func TestUserGetByName(t *testing.T) {
 }
 
 func TestUserGetByID(t *testing.T) {
-	u, err := gTestProvider.GetUserByID(1)
+	u, err := gTestProvider.GetUserByID(context.Background(), 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +43,7 @@ func TestUserGetByID(t *testing.T) {
 }
 
 func TestUserGrantUserPermission(t *testing.T) {
-	u, err := gTestProvider.GetUserByID(1)
+	u, err := gTestProvider.GetUserByID(context.Background(), 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +61,7 @@ func TestUserGrantUserPermission(t *testing.T) {
 
 func TestUserRevokeUserPermission(t *testing.T) {
 	// permission was granted in the previous test.
-	u, err := gTestProvider.GetUserNamed("DHowett")
+	u, err := gTestProvider.GetUserNamed(context.Background(), "DHowett")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +79,7 @@ func TestUserRevokeUserPermission(t *testing.T) {
 		t.Error("user still has admin permissions")
 	}
 
-	u, err = gTestProvider.GetUserNamed("DHowett")
+	u, err = gTestProvider.GetUserNamed(context.Background(), "DHowett")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +90,7 @@ func TestUserRevokeUserPermission(t *testing.T) {
 }
 
 func TestUserUpdateChallenge(t *testing.T) {
-	u, err := gTestProvider.GetUserNamed("DHowett")
+	u, err := gTestProvider.GetUserNamed(context.Background(), "DHowett")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,12 +103,12 @@ func TestUserUpdateChallenge(t *testing.T) {
 
 func TestUserGrantPastePermissions(t *testing.T) {
 	// we must assume that the provider can create a paste safely.
-	paste, err := gTestProvider.CreatePaste()
+	paste, err := gTestProvider.CreatePaste(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	u, err := gTestProvider.GetUserNamed("DHowett")
+	u, err := gTestProvider.GetUserNamed(context.Background(), "DHowett")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,12 +140,12 @@ func TestUserGrantPastePermissions(t *testing.T) {
 
 func TestUserRevokePastePermissions(t *testing.T) {
 	// we must assume that the provider can create a paste safely.
-	paste, err := gTestProvider.CreatePaste()
+	paste, err := gTestProvider.CreatePaste(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	u, err := gTestProvider.GetUserNamed("DHowett")
+	u, err := gTestProvider.GetUserNamed(context.Background(), "DHowett")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +166,7 @@ func TestUserRevokePastePermissions(t *testing.T) {
 	}
 
 	// lookup anew
-	u, err = gTestProvider.GetUserNamed("DHowett")
+	u, err = gTestProvider.GetUserNamed(context.Background(), "DHowett")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,12 +181,12 @@ func TestUserRevokePastePermissions(t *testing.T) {
 
 func TestUserGrantRevokeGrant(t *testing.T) {
 	// we must assume that the provider can create a paste safely.
-	paste, err := gTestProvider.CreatePaste()
+	paste, err := gTestProvider.CreatePaste(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	u, err := gTestProvider.GetUserNamed("DHowett")
+	u, err := gTestProvider.GetUserNamed(context.Background(), "DHowett")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,17 +221,17 @@ func TestUserGrantRevokeGrant(t *testing.T) {
 
 func TestUserGetPastes(t *testing.T) {
 	// we must assume that the provider can create a paste safely.
-	paste1, err := gTestProvider.CreatePaste()
+	paste1, err := gTestProvider.CreatePaste(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	paste2, err := gTestProvider.CreatePaste()
+	paste2, err := gTestProvider.CreatePaste(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	u, err := gTestProvider.GetUserNamed("DHowett")
+	u, err := gTestProvider.GetUserNamed(context.Background(), "DHowett")
 	if err != nil {
 		t.Fatal(err)
 	}

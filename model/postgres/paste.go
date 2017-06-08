@@ -33,15 +33,16 @@ type dbPaste struct {
 	EncryptionMethod model.PasteEncryptionMethod `db:"encryption_method"`
 
 	encryptionKey []byte
-	provider      *provider
 
-	tx *sqlx.Tx
+	provider *provider
+	ctx      context.Context
+	tx       *sqlx.Tx
 }
 
 func (p *dbPaste) openTx() error {
 	if p.tx == nil {
 		var err error
-		p.tx, err = p.provider.DB.BeginTxx(context.TODO(), nil)
+		p.tx, err = p.provider.DB.BeginTxx(p.ctx, nil)
 		return err
 	}
 	return nil
@@ -69,7 +70,7 @@ func (p *dbPaste) SetLanguageName(language string) {
 	p.openTx()
 	p.LanguageName.Valid = language != ""
 	p.LanguageName.String = language
-	p.tx.ExecContext(context.TODO(), `UPDATE pastes SET language_name = $1 WHERE id = $2`, p.LanguageName, p.ID)
+	p.tx.ExecContext(p.ctx, `UPDATE pastes SET language_name = $1 WHERE id = $2`, p.LanguageName, p.ID)
 }
 func (p *dbPaste) IsEncrypted() bool {
 	return p.EncryptionMethod != model.PasteEncryptionMethodNone
@@ -80,7 +81,7 @@ func (p *dbPaste) GetExpirationTime() *time.Time {
 func (p *dbPaste) setExpirationTime(time *time.Time) {
 	p.openTx()
 	p.ExpireAt = time
-	p.tx.ExecContext(context.TODO(), `UPDATE pastes SET expire_at = $1 WHERE id = $2`, p.ExpireAt, p.ID)
+	p.tx.ExecContext(p.ctx, `UPDATE pastes SET expire_at = $1 WHERE id = $2`, p.ExpireAt, p.ID)
 }
 func (p *dbPaste) SetExpirationTime(time time.Time) {
 	p.setExpirationTime(&time)
@@ -99,11 +100,11 @@ func (p *dbPaste) SetTitle(title string) {
 	p.openTx()
 	p.Title.Valid = (title != "")
 	p.Title.String = title
-	p.tx.ExecContext(context.TODO(), `UPDATE pastes SET title = $1 WHERE id = $2`, p.Title, p.ID)
+	p.tx.ExecContext(p.ctx, `UPDATE pastes SET title = $1 WHERE id = $2`, p.Title, p.ID)
 }
 
 func (p *dbPaste) Commit() error {
-	p.tx.ExecContext(context.TODO(), `UPDATE pastes SET updated_at = NOW() WHERE id = $1`, p.ID)
+	p.tx.ExecContext(p.ctx, `UPDATE pastes SET updated_at = NOW() WHERE id = $1`, p.ID)
 
 	return p.commitTx()
 }
@@ -115,12 +116,12 @@ func (p *dbPaste) Erase() error {
 			return err
 		}
 	}
-	return p.provider.DestroyPaste(model.PasteID(p.ID))
+	return p.provider.DestroyPaste(p.ctx, model.PasteID(p.ID))
 }
 
 func (p *dbPaste) Reader() (io.ReadCloser, error) {
 	var b pasteBody
-	if err := p.provider.DB.GetContext(context.TODO(), &b, `SELECT * FROM paste_bodies WHERE paste_id = $1 LIMIT 1`, p.ID); err != nil {
+	if err := p.provider.DB.GetContext(p.ctx, &b, `SELECT * FROM paste_bodies WHERE paste_id = $1 LIMIT 1`, p.ID); err != nil {
 		if err == sql.ErrNoRows {
 			return devZero, nil
 		}
@@ -151,7 +152,7 @@ func (pw *pasteWriter) Close() error {
 
 	// TODO(DH) error
 	pw.p.openTx()
-	pw.p.tx.ExecContext(context.TODO(), `
+	pw.p.tx.ExecContext(pw.p.ctx, `
 	INSERT INTO paste_bodies(paste_id, data)
 	VALUES($1, $2)
 	ON CONFLICT(paste_id)
