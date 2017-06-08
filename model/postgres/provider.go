@@ -417,11 +417,11 @@ func (pqDriver) Open(arguments ...interface{}) (model.Provider, error) {
 		GenerateNewPasteID: defaultPasteIDGenerator,
 	}
 
-	var sqlDb *sql.DB
+	var connection *string
 	for _, arg := range arguments {
 		switch a := arg.(type) {
-		case *sql.DB:
-			sqlDb = a
+		case string:
+			connection = &a
 		case crypto.ChallengeProvider:
 			p.ChallengeProvider = a
 		case model.Option:
@@ -431,17 +431,22 @@ func (pqDriver) Open(arguments ...interface{}) (model.Provider, error) {
 		}
 	}
 
-	if sqlDb == nil {
-		return nil, errors.New("model.postgres: no *sql.DB provided")
+	if connection == nil {
+		return nil, errors.New("model.postgres: no connection string provided")
 	}
 
 	if p.ChallengeProvider == nil {
 		return nil, errors.New("model.postgres: no ChallengeProvider provided")
 	}
 
-	p.DB = sqlx.NewDb(sqlDb, "postgres")
+	sqlDb, err := sqlx.Open("postgres", *connection)
+	if err != nil {
+		return nil, err
+	}
 
-	err := p.migrateDb()
+	p.DB = sqlDb
+
+	err = p.migrateDb()
 	if err != nil {
 		return nil, err
 	}
