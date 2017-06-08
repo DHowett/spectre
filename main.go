@@ -455,12 +455,11 @@ func (a *ghostbinApplication) Run() error {
 
 	var wg sync.WaitGroup
 	for i, webConfig := range a.Configuration.Web {
-		logger := a.Logger.WithField("listener", i)
-
 		handler := a.rootHandler
 
 		// Now that we've captured the logger for every handled request, add some subsystem-specific fields
-		logger = logger.WithFields(logrus.Fields{
+		logger := a.Logger.WithFields(logrus.Fields{
+			"listener": i,
 			"facility": "http",
 			"addr":     webConfig.Bind,
 		})
