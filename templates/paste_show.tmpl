@@ -1,11 +1,11 @@
 {{define "paste_show_title" -}}
-{{- with (local . "paste") -}}
+{{- with .Obj -}}
 	{{.GetID}}
 {{- end -}}
 {{- end}}
 
 {{define "paste_show_body" -}}
-{{- $paste := (local . "paste") -}}
+{{- $paste := .Obj -}}
 {{- $language := (getLanguageNamed $paste.GetLanguageName) -}}
 <div class="paste-toolbox unselectable">
 	{{template "home-button"}}
@@ -62,7 +62,7 @@
 	<div class="code code-line-numbers unselectable" id="line-numbers" aria-hidden="true"></div>
 {{- end}}
 <div class="code{{if $language.DisplayStyle}} code-{{$language.DisplayStyle}}{{end}}" id="code">
-	{{- $paste.GetRenderedBody -}}
+	{{- $paste.RenderedBody -}}
 </div>
 <div class="well visible-phone unselectable" id="phone-paste-control-container"></div>
 <div id="reportModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">

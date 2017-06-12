@@ -24,4 +24,5 @@ var (
 	webErrThrottled        = webError{"Cool it.", 420}
 	webErrEmptyPaste       = webError{"Hey, put some text in that paste!", http.StatusBadRequest}
 	webErrInsecurePassword = webError{"I refuse to accept passwords over http.", http.StatusBadRequest}
+	webErrFailedToRender   = webError{"Failed to render in time.", 500}
 )

@@ -1,11 +1,11 @@
 {{define "paste_edit_title" -}}
-{{- with local . "paste" -}}
+{{- with .Obj -}}
 	{{.GetID}}
 {{- end -}}
 {{- end}}
 
 {{define "paste_edit_body"}}
-{{- $paste := local . "paste" -}}
+{{- $paste := .Obj -}}
 {{template "paste_edit_partial" .}}
 <div id="deleteModal" class="modal hide fade" tabindex="-1" role="dialog" aria-hidden="true">
 	<form name="deleteForm" action="{{generatePasteURL "delete" $paste}}" method="post">
@@ -25,7 +25,7 @@
 {{- end}}
 
 {{define "paste_edit_partial" -}}
-{{- $paste := local . "paste" -}}
+{{- $paste := .Obj -}}
 <form id="pasteForm" action="{{if $paste}}{{generatePasteURL "edit" $paste}}{{else}}/paste/new{{end}}" method="post" data-context="{{if $paste}}edit{{else}}new{{end}}">
 <div class="sizefix clearfix">
 <div class="paste-toolbox">
@@ -70,7 +70,7 @@
 <div class="textarea-height-wrapper">
 <textarea id="code-editor" autofocus="autofocus" tabindex="1" class="code" name="text" rows="20" wrap="off">
 	{{- with $paste -}}
-		{{- .GetEditBody -}}
+		{{- .Body -}}
 	{{- end -}}
 </textarea>
 </div>

@@ -29,13 +29,23 @@ import (
 
 const CURRENT_ENCRYPTION_METHOD model.PasteEncryptionMethod = model.PasteEncryptionMethodAES_CTR
 
+type pasteHandler interface {
+	ServeHTTPForPaste(model.Paste, http.ResponseWriter, *http.Request)
+}
+
+type pasteHandlerFunc func(model.Paste, http.ResponseWriter, *http.Request)
+
+func (h pasteHandlerFunc) ServeHTTPForPaste(p model.Paste, w http.ResponseWriter, r *http.Request) {
+	h(p, w, r)
+}
+
 type PasteAccessDeniedError struct {
 	action string
 	ID     model.PasteID
 }
 
 func (e PasteAccessDeniedError) Error() string {
-	return "You're not allowed to " + e.action + " paste " + e.ID.String() + "."
+	return fmt.Sprintf("You're not allowed to %s paste %v.", e.action, e.ID)
 }
 
 func (PasteAccessDeniedError) StatusCode() int {
@@ -84,84 +94,30 @@ type PasteController struct {
 
 type pasteViewFacade struct {
 	model.Paste
-	c        *PasteController
-	editable bool
-	ctx      context.Context
+	Body         template.HTML
+	RenderedBody template.HTML
+	Editable     bool
 }
 
-func (pv *pasteViewFacade) GetRenderedBody() template.HTML {
-	return pv.c.renderPaste(pv.ctx, pv.Paste)
-}
+func (pc *PasteController) getPasteFromRequest(r *http.Request) (model.Paste, error) {
+	id := model.PasteIDFromString(mux.Vars(r)["id"])
+	var passphrase []byte
 
-func (pc *pasteViewFacade) GetEditBody() (template.HTML, error) {
-	// raw paste body for editing
-	reader, err := pc.Reader()
-	if err != nil {
-		return "", err
-	}
-
-	buf, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return "", err
-	}
-
-	return template.HTML(buf), nil
-}
-
-func (pv *pasteViewFacade) Editable() bool {
-	return pv.editable
-}
-
-type pasteSessionKeyType int
-
-const pasteSessionKey pasteSessionKeyType = 0
-
-func (pc *PasteController) getPasteFromRequest(r *http.Request) (model.Paste, *http.Request, error) {
-	p, ok := r.Context().Value(pasteSessionKey).(model.Paste)
-	if !ok {
-		id := model.PasteIDFromString(mux.Vars(r)["id"])
-		var passphrase []byte
-
-		session := sessionBroker.Get(r)
-		if pasteKeys, ok := session.Get(SessionScopeSensitive, "paste_passphrases").(map[model.PasteID][]byte); ok {
-			if _key, ok := pasteKeys[id]; ok {
-				passphrase = _key
-			}
+	session := sessionBroker.Get(r)
+	if pasteKeys, ok := session.Get(SessionScopeSensitive, "paste_passphrases").(map[model.PasteID][]byte); ok {
+		if _key, ok := pasteKeys[id]; ok {
+			passphrase = _key
 		}
-
-		p, err := pc.Model.GetPaste(r.Context(), id, passphrase)
-		if p != nil {
-			p = &pasteViewFacade{
-				Paste:    p,
-				c:        pc,
-				editable: isEditAllowed(p, r),
-				ctx:      r.Context(),
-			}
-		}
-		r = r.WithContext(context.WithValue(r.Context(), pasteSessionKey, p))
-		return p, r, err
 	}
-	return p, r, nil
+
+	p, err := pc.Model.GetPaste(r.Context(), id, passphrase)
+	return p, err
 }
 
-func (pc *PasteController) ViewValue(r *http.Request, name string) interface{} {
-	if r == nil {
-		return nil
-	}
-
-	switch name {
-	case "paste":
-		// explicitly ignoring request as it's immutable and err as we can't propagate it.
-		p, _, _ := pc.getPasteFromRequest(r)
-		return p
-	}
-	return nil
-}
-
-func (pc *PasteController) pasteHandlerWrapper(handler http.Handler) http.Handler {
+func (pc *PasteController) wrapPasteHandler(handler pasteHandler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := model.PasteIDFromString(mux.Vars(r)["id"])
-		_, r, err := pc.getPasteFromRequest(r)
+		p, err := pc.getPasteFromRequest(r)
 
 		if err == model.ErrPasteEncrypted || err == model.ErrInvalidKey {
 			url := pc.App.GenerateURL(URLTypePasteAuthenticate, "id", id.String())
@@ -187,31 +143,24 @@ func (pc *PasteController) pasteHandlerWrapper(handler http.Handler) http.Handle
 				return
 			}
 
-			handler.ServeHTTP(w, r)
+			handler.ServeHTTPForPaste(p, w, r)
 		}
 	})
 }
 
-func (pc *PasteController) pasteEditHandlerWrapper(handler http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Ignoring err; it was handled above us.
-		p, r, _ := pc.getPasteFromRequest(r)
-		editable := false
-		if pfacade, ok := p.(*pasteViewFacade); ok {
-			editable = pfacade.editable
-		}
+func (pc *PasteController) wrapPasteEditHandler(handler pasteHandler) pasteHandler {
+	return pasteHandlerFunc(func(p model.Paste, w http.ResponseWriter, r *http.Request) {
+		editable := isEditAllowed(p, r)
 		if !editable {
 			accerr := PasteAccessDeniedError{"modify", p.GetID()}
 			pc.App.RespondWithError(w, accerr)
 			return
 		}
-		handler.ServeHTTP(w, r)
+		handler.ServeHTTPForPaste(p, w, r)
 	})
 }
 
-func (pc *PasteController) getPasteRawHandler(w http.ResponseWriter, r *http.Request) {
-	p, _, _ := pc.getPasteFromRequest(r)
-
+func (pc *PasteController) pasteRawGetHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
 	header := w.Header()
 	header.Set("Access-Control-Allow-Origin", "null")
 	header.Set("Vary", "Origin")
@@ -243,9 +192,7 @@ func (pc *PasteController) getPasteRawHandler(w http.ResponseWriter, r *http.Req
 	io.Copy(w, reader)
 }
 
-func (pc *PasteController) pasteGrantHandler(w http.ResponseWriter, r *http.Request) {
-	p, _, _ := pc.getPasteFromRequest(r)
-
+func (pc *PasteController) pasteGrantHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
 	grant, _ := pc.Model.CreateGrant(r.Context(), p)
 
 	acceptURL := pc.App.GenerateURL(URLTypePasteGrantAccept, "grantkey", string(grant.GetID()))
@@ -259,9 +206,7 @@ func (pc *PasteController) pasteGrantHandler(w http.ResponseWriter, r *http.Requ
 	})
 }
 
-func (pc *PasteController) pasteUngrantHandler(w http.ResponseWriter, r *http.Request) {
-	p, _, _ := pc.getPasteFromRequest(r)
-
+func (pc *PasteController) pasteUngrantHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
 	GetPastePermissionScope(p.GetID(), r).Revoke(model.PastePermissionAll)
 	SavePastePermissionScope(w, r)
 
@@ -292,7 +237,7 @@ func (pc *PasteController) grantAcceptHandler(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func (pc *PasteController) updateOrCreatePaste(p model.Paste, w http.ResponseWriter, r *http.Request, body string) {
+func (pc *PasteController) pasteUpdateImpl(p model.Paste, w http.ResponseWriter, r *http.Request, body string) {
 	lang := formatting.LanguageNamed(p.GetLanguageName())
 	if r.FormValue("lang") != "" {
 		lang = formatting.LanguageNamed(r.FormValue("lang"))
@@ -327,9 +272,7 @@ func (pc *PasteController) updateOrCreatePaste(p model.Paste, w http.ResponseWri
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func (pc *PasteController) pasteUpdateHandler(w http.ResponseWriter, r *http.Request) {
-	p, _, _ := pc.getPasteFromRequest(r)
-
+func (pc *PasteController) pasteUpdateHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
 	body := r.FormValue("text")
 	if len(strings.TrimSpace(body)) == 0 {
 		w.Header().Set("Location", pc.App.GenerateURL(URLTypePasteDelete, "id", p.GetID().String()).String())
@@ -343,7 +286,7 @@ func (pc *PasteController) pasteUpdateHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	pc.updateOrCreatePaste(p, w, r, body)
+	pc.pasteUpdateImpl(p, w, r, body)
 
 	// Blow away the hashcache.
 	pid := p.GetID().String()
@@ -430,12 +373,10 @@ func (pc *PasteController) pasteCreateHandler(w http.ResponseWriter, r *http.Req
 
 	session.Save()
 
-	pc.updateOrCreatePaste(p, w, r, body)
+	pc.pasteUpdateImpl(p, w, r, body)
 }
 
-func (pc *PasteController) pasteDelete(w http.ResponseWriter, r *http.Request) {
-	p, _, _ := pc.getPasteFromRequest(r)
-
+func (pc *PasteController) pasteDeletePOSTHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
 	oldId := p.GetID()
 	p.Erase()
 
@@ -448,7 +389,7 @@ func (pc *PasteController) pasteDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusFound)
 }
 
-func (pc *PasteController) authenticatePastePOSTHandler(w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) authenticatePOSTHandler(w http.ResponseWriter, r *http.Request) {
 	if throttleAuthForRequest(r) {
 		pc.App.RespondWithError(w, webErrThrottled)
 		return
@@ -475,13 +416,11 @@ func (pc *PasteController) authenticatePastePOSTHandler(w http.ResponseWriter, r
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-func (pc *PasteController) pasteReportHandler(w http.ResponseWriter, r *http.Request) {
+func (pc *PasteController) pasteReportHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
 	if throttleAuthForRequest(r) {
 		pc.App.RespondWithError(w, webErrThrottled)
 		return
 	}
-
-	p, _, _ := pc.getPasteFromRequest(r)
 
 	err := pc.Model.ReportPaste(r.Context(), p)
 	if err != nil {
@@ -492,6 +431,38 @@ func (pc *PasteController) pasteReportHandler(w http.ResponseWriter, r *http.Req
 
 	w.Header().Set("Location", pc.App.GenerateURL(URLTypePasteShow, "id", p.GetID().String()).String())
 	w.WriteHeader(http.StatusFound)
+}
+
+func (pc *PasteController) pasteEditHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
+	reader, err := p.Reader()
+	if err != nil {
+		panic(err)
+	}
+
+	buf, err := ioutil.ReadAll(reader)
+	if err != nil {
+		panic(err)
+	}
+
+	pc.pasteEditView.Exec(w, r, &pasteViewFacade{
+		Paste:    p,
+		Editable: true,
+		Body:     template.HTML(buf),
+	})
+}
+
+func (pc *PasteController) pasteShowHandler(p model.Paste, w http.ResponseWriter, r *http.Request) {
+	body, err := pc.renderPaste(r.Context(), p)
+	if err != nil {
+		pc.App.RespondWithError(w, webErrFailedToRender)
+		return
+	}
+
+	pc.pasteShowView.Exec(w, r, &pasteViewFacade{
+		Paste:        p,
+		Editable:     isEditAllowed(p, r),
+		RenderedBody: body,
+	})
 }
 
 // TODO(DH) MOVE
@@ -526,7 +497,7 @@ func throttleAuthForRequest(r *http.Request) bool {
 }
 
 // TODO(DH) MOVE
-func (pc *PasteController) renderPaste(ctx context.Context, p model.Paste) template.HTML {
+func (pc *PasteController) renderPaste(ctx context.Context, p model.Paste) (template.HTML, error) {
 	logger := rayman.ContextLogger(ctx).WithFields(logrus.Fields{
 		"facility": "cache",
 		"paste":    p.GetID(),
@@ -548,12 +519,13 @@ func (pc *PasteController) renderPaste(ctx context.Context, p model.Paste) templ
 	if !ok || cached.renderTime.Before(p.GetModificationTime()) {
 		defer pc.renderCacheMu.Unlock()
 		pc.renderCacheMu.Lock()
-		ctx, _ = context.WithTimeout(ctx, 5*time.Second)
-		out, err := FormatPaste(ctx, p)
+		timedCtx, cancelContext := context.WithTimeout(ctx, 5*time.Second)
+		defer cancelContext()
+		out, err := FormatPaste(timedCtx, p)
 
 		if err != nil {
 			logger.WithField("err", err).Errorf("render failed: %s", out)
-			return template.HTML("There was an error rendering this paste.")
+			return template.HTML(""), err
 		}
 
 		rendered := template.HTML(out)
@@ -573,9 +545,9 @@ func (pc *PasteController) renderPaste(ctx context.Context, p model.Paste) templ
 			logger.Info("cached")
 		}
 
-		return rendered
+		return rendered, nil
 	} else {
-		return cached.body
+		return cached.body, nil
 	}
 }
 
@@ -591,12 +563,12 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 	pasteShowRoute :=
 		router.Methods("GET").
 			Path("/{id}").
-			Handler(pc.pasteHandlerWrapper(pc.pasteShowView))
+			Handler(pc.wrapPasteHandler(pasteHandlerFunc(pc.pasteShowHandler)))
 
 	pasteGrantRoute :=
 		router.Methods("POST").
 			Path("/{id}/grant/new").
-			Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(http.HandlerFunc(pc.pasteGrantHandler))))
+			Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pasteHandlerFunc(pc.pasteGrantHandler))))
 
 	pasteGrantAcceptRoute :=
 		router.Methods("GET").
@@ -605,39 +577,41 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 
 	router.Methods("GET").
 		Path("/{id}/disavow").
-		Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(http.HandlerFunc(pc.pasteUngrantHandler))))
+		Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pasteHandlerFunc(pc.pasteUngrantHandler))))
 
 	pasteRawRoute :=
 		router.Methods("GET").
 			Path("/{id}/raw").
-			Handler(pc.pasteHandlerWrapper(http.HandlerFunc(pc.getPasteRawHandler)))
+			Handler(pc.wrapPasteHandler(pasteHandlerFunc(pc.pasteRawGetHandler)))
 
 	pasteDownloadRoute :=
 		router.Methods("GET").
 			Path("/{id}/download").
-			Handler(pc.pasteHandlerWrapper(http.HandlerFunc(pc.getPasteRawHandler)))
+			Handler(pc.wrapPasteHandler(pasteHandlerFunc(pc.pasteRawGetHandler)))
 
 	pasteEditRoute :=
 		router.Methods("GET").
 			Path("/{id}/edit").
-			Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(pc.pasteEditView)))
+			Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pasteHandlerFunc(pc.pasteEditHandler))))
 	router.Methods("POST").
 		Path("/{id}/edit").
-		Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(http.HandlerFunc(pc.pasteUpdateHandler))))
+		Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pasteHandlerFunc(pc.pasteUpdateHandler))))
 
-	pasteDeleteRoute :=
-		router.Methods("GET").
-			Path("/{id}/delete").
-			Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(pc.pasteDeleteView)))
+		/*
+			pasteDeleteRoute :=
+				router.Methods("GET").
+					Path("/{id}/delete").
+					Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(pc.pasteDeleteView)))
+		*/
 
 	router.Methods("POST").
 		Path("/{id}/delete").
-		Handler(pc.pasteHandlerWrapper(pc.pasteEditHandlerWrapper(http.HandlerFunc(pc.pasteDelete))))
+		Handler(pc.wrapPasteHandler(pc.wrapPasteEditHandler(pasteHandlerFunc(pc.pasteDeletePOSTHandler))))
 
 	pasteReportRoute :=
 		router.Methods("POST").
 			Path("/{id}/report").
-			Handler(pc.pasteHandlerWrapper(http.HandlerFunc(pc.pasteReportHandler)))
+			Handler(pc.wrapPasteHandler(pasteHandlerFunc(pc.pasteReportHandler)))
 
 	var pasteAuthenticateRoute *mux.Route
 	if pc.Config.Application.ForceInsecureEncryption {
@@ -650,7 +624,7 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 
 		router.Methods("POST").
 			Path("/{id}/authenticate").
-			HandlerFunc(pc.authenticatePastePOSTHandler)
+			HandlerFunc(pc.authenticatePOSTHandler)
 	} else {
 		pasteAuthenticateRoute =
 			router.Methods("GET").
@@ -661,7 +635,7 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 		router.Methods("POST").
 			MatcherFunc(HTTPSMuxMatcher).
 			Path("/{id}/authenticate").
-			HandlerFunc(pc.authenticatePastePOSTHandler)
+			HandlerFunc(pc.authenticatePOSTHandler)
 
 		router.Methods("GET").
 			MatcherFunc(NonHTTPSMuxMatcher).
@@ -678,13 +652,13 @@ func (pc *PasteController) InitRoutes(router *mux.Router) {
 	pc.App.RegisterRouteForURLType(URLTypePasteRaw, pasteRawRoute)
 	pc.App.RegisterRouteForURLType(URLTypePasteDownload, pasteDownloadRoute)
 	pc.App.RegisterRouteForURLType(URLTypePasteEdit, pasteEditRoute)
-	pc.App.RegisterRouteForURLType(URLTypePasteDelete, pasteDeleteRoute)
+	//pc.App.RegisterRouteForURLType(URLTypePasteDelete, pasteDeleteRoute)
 	pc.App.RegisterRouteForURLType(URLTypePasteReport, pasteReportRoute)
 	pc.App.RegisterRouteForURLType(URLTypePasteAuthenticate, pasteAuthenticateRoute)
 }
 
 func (pc *PasteController) BindViews(viewModel *views.Model) error {
-	return bindViews(viewModel, pc, map[interface{}]**views.View{
+	return bindViews(viewModel, nil, map[interface{}]**views.View{
 		views.PageID("paste_show"):                    &pc.pasteShowView,
 		views.PageID("paste_edit"):                    &pc.pasteEditView,
 		views.PageID("paste_delete_confirm"):          &pc.pasteDeleteView,
