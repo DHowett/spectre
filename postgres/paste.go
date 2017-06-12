@@ -33,16 +33,16 @@ type dbPaste struct {
 	EncryptionSalt   []byte `db:"encryption_salt"`
 	EncryptionMethod int    `db:"encryption_method"`
 
-	provider *provider
-	cryptor  spectre.Cryptor
-	ctx      context.Context
-	tx       *sqlx.Tx
+	conn    *conn
+	cryptor spectre.Cryptor
+	ctx     context.Context
+	tx      *sqlx.Tx
 }
 
 func (p *dbPaste) openTx() error {
 	if p.tx == nil {
 		var err error
-		p.tx, err = p.provider.DB.BeginTxx(p.ctx, nil)
+		p.tx, err = p.conn.db.BeginTxx(p.ctx, nil)
 		return err
 	}
 	return nil
@@ -116,13 +116,13 @@ func (p *dbPaste) Erase() error {
 			return err
 		}
 	}
-	_, err := p.provider.DestroyPaste(p.ctx, spectre.PasteID(p.ID))
+	_, err := p.conn.DestroyPaste(p.ctx, spectre.PasteID(p.ID))
 	return err
 }
 
 func (p *dbPaste) Reader() (io.ReadCloser, error) {
 	var b pasteBody
-	if err := p.provider.DB.GetContext(p.ctx, &b, `SELECT * FROM paste_bodies WHERE paste_id = $1 LIMIT 1`, p.ID); err != nil {
+	if err := p.conn.db.GetContext(p.ctx, &b, `SELECT * FROM paste_bodies WHERE paste_id = $1 LIMIT 1`, p.ID); err != nil {
 		if err == sql.ErrNoRows {
 			return devZero, nil
 		}
@@ -138,9 +138,9 @@ func (p *dbPaste) Reader() (io.ReadCloser, error) {
 
 type pasteWriter struct {
 	bytes.Buffer
-	p        *dbPaste // for UpdatedAt
-	b        *pasteBody
-	provider *provider
+	p    *dbPaste // for UpdatedAt
+	b    *pasteBody
+	conn *conn
 }
 
 func newPasteWriter(p *dbPaste) (*pasteWriter, error) {

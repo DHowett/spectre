@@ -17,48 +17,48 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-var _ spectre.PasteService = &provider{}
-var _ spectre.UserService = &provider{}
-var _ spectre.GrantService = &provider{}
-var _ spectre.ReportService = &provider{}
+var _ spectre.PasteService = &conn{}
+var _ spectre.UserService = &conn{}
+var _ spectre.GrantService = &conn{}
+var _ spectre.ReportService = &conn{}
 
-type provider struct {
-	DB     *sqlx.DB
-	Logger logrus.FieldLogger
+type conn struct {
+	db     *sqlx.DB
+	logger logrus.FieldLogger
 
-	GenerateNewPasteID func(bool) spectre.PasteID
+	generateNewPasteID func(bool) spectre.PasteID
 }
 
 // User
-func (p *provider) getUserWithQuery(ctx context.Context, query string, args ...interface{}) (spectre.User, error) {
+func (c *conn) getUserWithQuery(ctx context.Context, query string, args ...interface{}) (spectre.User, error) {
 	u := dbUser{
-		provider: p,
-		ctx:      ctx,
+		conn: c,
+		ctx:  ctx,
 	}
 
-	if err := p.DB.GetContext(ctx, &u, `SELECT * FROM users WHERE `+query+` LIMIT 1`, args...); err != nil {
+	if err := c.db.GetContext(ctx, &u, `SELECT * FROM users WHERE `+query+` LIMIT 1`, args...); err != nil {
 		return nil, err
 	}
 
 	return &u, nil
 }
 
-func (p *provider) GetUserNamed(ctx context.Context, name string) (spectre.User, error) {
-	return p.getUserWithQuery(ctx, "name = $1", name)
+func (c *conn) GetUserNamed(ctx context.Context, name string) (spectre.User, error) {
+	return c.getUserWithQuery(ctx, "name = $1", name)
 }
 
-func (p *provider) GetUserByID(ctx context.Context, id uint) (spectre.User, error) {
-	return p.getUserWithQuery(ctx, "id = $1", id)
+func (c *conn) GetUserByID(ctx context.Context, id uint) (spectre.User, error) {
+	return c.getUserWithQuery(ctx, "id = $1", id)
 }
 
-func (p *provider) CreateUser(ctx context.Context, name string) (spectre.User, error) {
+func (c *conn) CreateUser(ctx context.Context, name string) (spectre.User, error) {
 	u := &dbUser{
-		Name:     name,
-		provider: p,
-		ctx:      ctx,
+		Name: name,
+		conn: c,
+		ctx:  ctx,
 	}
 
-	if _, err := p.DB.ExecContext(ctx, "INSERT INTO users(name, updated_at) VALUES($1, NOW())", name); err != nil {
+	if _, err := c.db.ExecContext(ctx, "INSERT INTO users(name, updated_at) VALUES($1, NOW())", name); err != nil {
 		return nil, err
 	}
 
@@ -83,12 +83,12 @@ func isUniquenessError(err error) bool {
 	return ok && pqe.Code == pq.ErrorCode("23505")
 }
 
-func (p *provider) CreatePaste(ctx context.Context, cryptor spectre.Cryptor) (spectre.Paste, error) {
+func (c *conn) CreatePaste(ctx context.Context, cryptor spectre.Cryptor) (spectre.Paste, error) {
 	var salt []byte
 	var hmac []byte
 
 	for {
-		id := p.GenerateNewPasteID(cryptor != nil) //method != spectre.PasteEncryptionMethodNone)
+		id := c.generateNewPasteID(cryptor != nil) //method != spectre.PasteEncryptionMethodNone)
 		var err error
 		if cryptor != nil {
 			//TODO(DH) if passphraseMaterial == nil {
@@ -101,7 +101,7 @@ func (p *provider) CreatePaste(ctx context.Context, cryptor spectre.Cryptor) (sp
 			}
 		}
 
-		_, err = p.DB.ExecContext(ctx,
+		_, err = c.db.ExecContext(ctx,
 			`INSERT INTO pastes(
 				id,
 				created_at,
@@ -118,7 +118,7 @@ func (p *provider) CreatePaste(ctx context.Context, cryptor spectre.Cryptor) (sp
 		}
 
 		return &dbPaste{
-			provider:         p,
+			conn:             c,
 			ctx:              ctx,
 			cryptor:          cryptor,
 			ID:               string(id),
@@ -129,13 +129,13 @@ func (p *provider) CreatePaste(ctx context.Context, cryptor spectre.Cryptor) (sp
 	}
 }
 
-func (p *provider) GetPaste(ctx context.Context, cryptor spectre.Cryptor, id spectre.PasteID) (spectre.Paste, error) {
+func (c *conn) GetPaste(ctx context.Context, cryptor spectre.Cryptor, id spectre.PasteID) (spectre.Paste, error) {
 	paste := dbPaste{
-		provider: p,
-		ctx:      ctx,
+		conn: c,
+		ctx:  ctx,
 	}
 
-	if err := p.DB.GetContext(ctx, &paste, `SELECT * FROM view_active_pastes WHERE id = $1 LIMIT 1`, id); err != nil {
+	if err := c.db.GetContext(ctx, &paste, `SELECT * FROM view_active_pastes WHERE id = $1 LIMIT 1`, id); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, spectre.ErrNotFound
 		}
@@ -164,7 +164,7 @@ func (p *provider) GetPaste(ctx context.Context, cryptor spectre.Cryptor, id spe
 	return &paste, nil
 }
 
-func (p *provider) GetPastes(ctx context.Context, ids []spectre.PasteID) ([]spectre.Paste, error) {
+func (c *conn) GetPastes(ctx context.Context, ids []spectre.PasteID) ([]spectre.Paste, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -179,8 +179,8 @@ func (p *provider) GetPastes(ctx context.Context, ids []spectre.PasteID) ([]spec
 		return nil, err
 	}
 
-	query = p.DB.Rebind(query)
-	rows, err := p.DB.QueryxContext(ctx, query, args...)
+	query = c.db.Rebind(query)
+	rows, err := c.db.QueryxContext(ctx, query, args...)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, spectre.ErrNotFound
@@ -192,8 +192,8 @@ func (p *provider) GetPastes(ctx context.Context, ids []spectre.PasteID) ([]spec
 	i := 0
 	for rows.Next() {
 		paste := &dbPaste{
-			provider: p,
-			ctx:      ctx,
+			conn: c,
+			ctx:  ctx,
 		}
 		rows.StructScan(&paste)
 		if paste.IsEncrypted() {
@@ -209,8 +209,8 @@ func (p *provider) GetPastes(ctx context.Context, ids []spectre.PasteID) ([]spec
 	return iPastes[:i], nil
 }
 
-func (p *provider) DestroyPaste(ctx context.Context, id spectre.PasteID) (bool, error) {
-	tx, err := p.DB.BeginTxx(ctx, nil)
+func (c *conn) DestroyPaste(ctx context.Context, id spectre.PasteID) (bool, error) {
+	tx, err := c.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return false, err
 	}
@@ -229,14 +229,14 @@ func (p *provider) DestroyPaste(ctx context.Context, id spectre.PasteID) (bool, 
 	return err != sql.ErrNoRows, nil
 }
 
-func (p *provider) CreateGrant(ctx context.Context, paste spectre.Paste) (spectre.Grant, error) {
+func (c *conn) CreateGrant(ctx context.Context, paste spectre.Paste) (spectre.Grant, error) {
 	for {
 		id, err := generateRandomBase32String(32)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = p.DB.ExecContext(ctx,
+		_, err = c.db.ExecContext(ctx,
 			`INSERT INTO grants(
 				id,
 				paste_id
@@ -249,21 +249,21 @@ func (p *provider) CreateGrant(ctx context.Context, paste spectre.Paste) (spectr
 		}
 
 		return &dbGrant{
-			provider: p,
-			ctx:      ctx,
-			ID:       id,
-			PasteID:  paste.GetID().String(),
+			conn:    c,
+			ctx:     ctx,
+			ID:      id,
+			PasteID: paste.GetID().String(),
 		}, nil
 	}
 }
 
-func (p *provider) GetGrant(ctx context.Context, id spectre.GrantID) (spectre.Grant, error) {
+func (c *conn) GetGrant(ctx context.Context, id spectre.GrantID) (spectre.Grant, error) {
 	g := dbGrant{
-		provider: p,
-		ctx:      ctx,
+		conn: c,
+		ctx:  ctx,
 	}
 
-	if err := p.DB.GetContext(ctx, &g, `SELECT * FROM grants WHERE id = $1 LIMIT 1`, id); err != nil {
+	if err := c.db.GetContext(ctx, &g, `SELECT * FROM grants WHERE id = $1 LIMIT 1`, id); err != nil {
 		if err == sql.ErrNoRows {
 			err = spectre.ErrNotFound
 		}
@@ -273,9 +273,9 @@ func (p *provider) GetGrant(ctx context.Context, id spectre.GrantID) (spectre.Gr
 	return &g, nil
 }
 
-func (p *provider) ReportPaste(ctx context.Context, paste spectre.Paste) error {
+func (c *conn) ReportPaste(ctx context.Context, paste spectre.Paste) error {
 	pID := paste.GetID()
-	_, err := p.DB.ExecContext(ctx, `
+	_, err := c.db.ExecContext(ctx, `
 		INSERT INTO paste_reports(paste_id, count)
 		VALUES($1, $2)
 		ON CONFLICT(paste_id)
@@ -285,13 +285,13 @@ func (p *provider) ReportPaste(ctx context.Context, paste spectre.Paste) error {
 	return err
 }
 
-func (p *provider) GetReport(ctx context.Context, pID spectre.PasteID) (spectre.Report, error) {
+func (c *conn) GetReport(ctx context.Context, pID spectre.PasteID) (spectre.Report, error) {
 	r := dbReport{
-		provider: p,
-		ctx:      ctx,
+		conn: c,
+		ctx:  ctx,
 	}
 
-	if err := p.DB.GetContext(ctx, &r, `SELECT paste_id, count FROM paste_reports WHERE paste_id = ?`, pID); err != nil {
+	if err := c.db.GetContext(ctx, &r, `SELECT paste_id, count FROM paste_reports WHERE paste_id = ?`, pID); err != nil {
 		if err == sql.ErrNoRows {
 			err = spectre.ErrNotFound
 		}
@@ -301,10 +301,10 @@ func (p *provider) GetReport(ctx context.Context, pID spectre.PasteID) (spectre.
 	return &r, nil
 }
 
-func (p *provider) GetReports(ctx context.Context) ([]spectre.Report, error) {
+func (c *conn) GetReports(ctx context.Context) ([]spectre.Report, error) {
 	reports := make([]spectre.Report, 0, 16)
 
-	rows, err := p.DB.QueryxContext(ctx, `SELECT paste_id, count FROM paste_reports`)
+	rows, err := c.db.QueryxContext(ctx, `SELECT paste_id, count FROM paste_reports`)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			err = spectre.ErrNotFound
@@ -315,8 +315,8 @@ func (p *provider) GetReports(ctx context.Context) ([]spectre.Report, error) {
 	defer rows.Close()
 	for rows.Next() {
 		r := &dbReport{
-			provider: p,
-			ctx:      ctx,
+			conn: c,
+			ctx:  ctx,
 		}
 		rows.Scan(&r.PasteID, &r.Count)
 		reports = append(reports, r)
@@ -324,11 +324,11 @@ func (p *provider) GetReports(ctx context.Context) ([]spectre.Report, error) {
 	return reports, rows.Err()
 }
 
-func (p *provider) SetLoggerOption(log logrus.FieldLogger) {
-	p.Logger = log
+func (c *conn) SetLoggerOption(log logrus.FieldLogger) {
+	c.logger = log
 }
 
-func (p *provider) SetDebugOption(debug bool) {
+func (c *conn) SetDebugOption(debug bool) {
 	// no-op
 }
 
@@ -341,7 +341,7 @@ CREATE TABLE IF NOT EXISTS _schema (
 CREATE UNIQUE INDEX IF NOT EXISTS uix__schema_version ON _schema USING btree (version);
 `
 
-func (p *provider) migrateDb() error {
+func (c *conn) migrateDb() error {
 	schemaBox, err := rice.FindBox("schema")
 	if err != nil {
 		return err
@@ -360,7 +360,7 @@ func (p *provider) migrateDb() error {
 		var desc string
 		n, _ := fmt.Sscanf(path, "%d_%s", &ver, &desc)
 		if n != 2 {
-			return fmt.Errorf("model/postgres: invalid schema migration filename %s", path)
+			return fmt.Errorf("postgres: invalid schema migration filename %s", path)
 		}
 		schemas[ver] = path
 		if ver > maxVersion {
@@ -372,7 +372,7 @@ func (p *provider) migrateDb() error {
 		return err
 	}
 
-	db := p.DB
+	db := c.db
 	_, err = db.Exec(dbV0Schema)
 	if err != nil {
 		return err
@@ -385,7 +385,7 @@ func (p *provider) migrateDb() error {
 	}
 
 	if schemaVersion > maxVersion {
-		return fmt.Errorf("model/postgres: database is newer than we can support! (%d > %d)", schemaVersion, maxVersion)
+		return fmt.Errorf("postgres: database is newer than we can support! (%d > %d)", schemaVersion, maxVersion)
 	}
 
 	for ; schemaVersion < maxVersion; schemaVersion++ {
@@ -417,10 +417,30 @@ func (p *provider) migrateDb() error {
 	return nil
 }
 
-func Open(arguments ...interface{}) (*provider, error) {
-	p := &provider{
-		GenerateNewPasteID: defaultPasteIDGenerator,
-	}
+type Conn struct {
+	c conn
+}
+
+func (c *Conn) PasteService() spectre.PasteService {
+	return &c.c
+}
+
+func (c *Conn) UserService() spectre.UserService {
+	return &c.c
+}
+
+func (c *Conn) GrantService() spectre.GrantService {
+	return &c.c
+}
+
+func (c *Conn) ReportService() spectre.ReportService {
+	return &c.c
+}
+
+func Open(arguments ...interface{}) (*Conn, error) {
+	var wrapper Conn
+	c := &wrapper.c
+	c.generateNewPasteID = defaultPasteIDGenerator
 
 	var connection *string
 	for _, arg := range arguments {
@@ -428,16 +448,16 @@ func Open(arguments ...interface{}) (*provider, error) {
 		case string:
 			connection = &a
 		default:
-			return nil, fmt.Errorf("model/postgres: unknown option type %T (%v)", a, a)
+			return nil, fmt.Errorf("postgres: unknown option type %T (%v)", a, a)
 		}
 	}
 
 	if connection == nil {
-		return nil, errors.New("model/postgres: no connection string provided")
+		return nil, errors.New("postgres: no connection string provided")
 	}
 
 	//if p.ChallengeProvider == nil {
-	//return nil, errors.New("model/postgres: no ChallengeProvider provided")
+	//return nil, errors.New("postgres: no ChallengeProvider provided")
 	//}
 
 	sqlDb, err := sqlx.Open("postgres", *connection)
@@ -445,28 +465,28 @@ func Open(arguments ...interface{}) (*provider, error) {
 		return nil, err
 	}
 
-	p.DB = sqlDb
+	c.db = sqlDb
 
-	err = p.migrateDb()
+	err = c.migrateDb()
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := p.DB.Exec(
+	res, err := c.db.Exec(
 		`DELETE FROM pastes WHERE expire_at < NOW()`,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	if p.Logger != nil {
+	if c.logger != nil {
 		nrows, _ := res.RowsAffected()
 		if nrows > 0 {
-			p.Logger.Infof("removed %d lingering expirees", nrows)
+			c.logger.Infof("removed %d lingering expirees", nrows)
 		}
 	}
 
-	return p, nil
+	return &wrapper, nil
 }
 
 //func init() {

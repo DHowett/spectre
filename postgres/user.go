@@ -27,8 +27,8 @@ type dbUser struct {
 	UserPermissions  spectre.Permission `db:"permissions"`
 	PastePermissions []*dbUserPastePermission
 
-	provider *provider
-	ctx      context.Context
+	conn *conn
+	ctx  context.Context
 }
 
 func (u *dbUser) GetID() uint {
@@ -44,7 +44,7 @@ func (u *dbUser) GetSource() spectre.UserSource {
 }
 
 func (u *dbUser) SetSource(source spectre.UserSource) {
-	tx, _ := u.provider.DB.BeginTxx(u.ctx, nil)
+	tx, _ := u.conn.db.BeginTxx(u.ctx, nil)
 	if _, err := tx.ExecContext(u.ctx, `UPDATE users SET source = $1 WHERE id = $2`, source, u.ID); err != nil {
 		tx.Rollback()
 	}
@@ -53,7 +53,7 @@ func (u *dbUser) SetSource(source spectre.UserSource) {
 }
 
 func (u *dbUser) UpdateChallenge(ch spectre.Challenger) {
-	tx, _ := u.provider.DB.BeginTxx(u.ctx, nil)
+	tx, _ := u.conn.db.BeginTxx(u.ctx, nil)
 
 	// TODO(DH) REMEMBER USER CHALLENGE IS SALT+USERNAME HMAC'D
 	challenge, salt, err := ch.Challenge()
@@ -91,14 +91,14 @@ func (u *dbUser) Permissions(class spectre.PermissionClass, args ...interface{})
 		default:
 			return nil
 		}
-		return newUserPastePermissionScope(u.ctx, u.provider, u, pid)
+		return newUserPastePermissionScope(u.ctx, u.conn, u, pid)
 	}
 	return nil
 }
 
 func (u *dbUser) GetPastes() ([]spectre.PasteID, error) {
 	var ids []string
-	if err := u.provider.DB.SelectContext(u.ctx, &ids, `SELECT paste_id FROM user_paste_permissions WHERE user_id = $1 AND permissions > 0`, u.ID); err != nil {
+	if err := u.conn.db.SelectContext(u.ctx, &ids, `SELECT paste_id FROM user_paste_permissions WHERE user_id = $1 AND permissions > 0`, u.ID); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil // A user having no pastes is no error
 		}

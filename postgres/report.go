@@ -11,8 +11,8 @@ type dbReport struct {
 	PasteID string
 	Count   int
 
-	provider *provider
-	ctx      context.Context
+	conn *conn
+	ctx  context.Context
 }
 
 func (r *dbReport) GetPasteID() spectre.PasteID {
@@ -38,6 +38,6 @@ func (r *dbReport) Commit() error {
 }
 
 func (r *dbReport) Erase() error {
-	_, err := r.provider.DB.ExecContext(r.ctx, `DELETE FROM paste_reports WHERE paste_id = $1`, r.PasteID)
+	_, err := r.conn.db.ExecContext(r.ctx, `DELETE FROM paste_reports WHERE paste_id = $1`, r.PasteID)
 	return err
 }

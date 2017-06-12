@@ -10,8 +10,8 @@ type dbGrant struct {
 	ID      string `db:"id"`
 	PasteID string `db:"paste_id"`
 
-	provider *provider
-	ctx      context.Context
+	conn *conn
+	ctx  context.Context
 }
 
 func (g *dbGrant) GetID() spectre.GrantID {
@@ -29,6 +29,6 @@ func (g *dbGrant) Commit() error {
 }
 
 func (g *dbGrant) Erase() error {
-	_, err := g.provider.DB.ExecContext(g.ctx, `DELETE FROM grants WHERE id = $1`, g.ID)
+	_, err := g.conn.db.ExecContext(g.ctx, `DELETE FROM grants WHERE id = $1`, g.ID)
 	return err
 }

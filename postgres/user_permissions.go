@@ -15,7 +15,7 @@ func (u *dbUserPermissionScope) set(newPerms spectre.Permission) error {
 	if u.err != nil {
 		return u.err
 	}
-	if _, err := u.u.provider.DB.ExecContext(u.u.ctx, `UPDATE users SET permissions = $1 WHERE id = $2`, newPerms, u.u.ID); err != nil {
+	if _, err := u.u.conn.db.ExecContext(u.u.ctx, `UPDATE users SET permissions = $1 WHERE id = $2`, newPerms, u.u.ID); err != nil {
 		return err
 	}
 

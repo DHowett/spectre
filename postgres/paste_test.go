@@ -461,10 +461,10 @@ func TestPasteEncryption(t *testing.T) {
 }
 
 func TestPasteCollision(t *testing.T) {
-	pgProvider := pqPasteService.(*provider)
-	old := pgProvider.GenerateNewPasteID
+	pgProvider := pqPasteService.(*conn)
+	old := pgProvider.generateNewPasteID
 	i := 0
-	pgProvider.GenerateNewPasteID = func(encrypted bool) spectre.PasteID {
+	pgProvider.generateNewPasteID = func(encrypted bool) spectre.PasteID {
 		// This function will be called once for the first paste and twice for the second paste.
 		defer func() {
 			i++
@@ -477,7 +477,7 @@ func TestPasteCollision(t *testing.T) {
 	}
 
 	defer func() {
-		pgProvider.GenerateNewPasteID = old
+		pgProvider.generateNewPasteID = old
 	}()
 
 	p1, err := pqPasteService.CreatePaste(context.Background(), nil)

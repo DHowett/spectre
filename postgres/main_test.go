@@ -55,15 +55,15 @@ func TestMain(m *testing.M) {
 	if testing.Verbose() {
 		logger.Level = logrus.DebugLevel
 	}
-	prov, err := Open( /*"postgres", */ *db) //, &noopChallengeProvider{}, spectre.FieldLoggingOption(logger))
+	prov, err := Open(*db)
 	if err != nil {
 		panic(err)
 	}
 
-	pqPasteService = prov
-	pqUserService = prov
-	pqGrantService = prov
-	pqReportService = prov
+	pqPasteService = prov.PasteService()
+	pqUserService = prov.UserService()
+	pqGrantService = prov.GrantService()
+	pqReportService = prov.ReportService()
 
 	e := m.Run()
 	os.Exit(e)
