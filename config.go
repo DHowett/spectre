@@ -1,16 +1,11 @@
-package config
+package spectre
 
 import (
-	"bytes"
-	"os"
-	"text/template"
 	"time"
 
-	ghtime "github.com/DHowett/ghostbin/lib/time"
+	ghtime "howett.net/spectre/internal/time"
 
 	"github.com/Sirupsen/logrus"
-
-	yaml "gopkg.in/yaml.v2"
 )
 
 type Duration time.Duration
@@ -43,7 +38,7 @@ func (l *LogLevel) LogrusLevel() logrus.Level {
 	return *l.l
 }
 
-type C struct {
+type Configuration struct {
 	Database *struct {
 		Dialect    string
 		Connection string
@@ -77,28 +72,6 @@ type C struct {
 	}
 }
 
-func (c *C) AppendFile(filename string) error {
-	tmpl, err := template.ParseFiles(filename)
-	if err != nil {
-		return err
-	}
-
-	tmpl.Funcs(template.FuncMap{
-		"env": func(key string) (string, error) {
-			return os.Getenv(key), nil
-		},
-	})
-
-	buf := &bytes.Buffer{}
-	err = tmpl.Execute(buf, c)
-	if err != nil {
-		return err
-	}
-
-	err = yaml.Unmarshal(buf.Bytes(), c)
-	if err != nil {
-		return err
-	}
-
-	return nil
+type ConfigurationService interface {
+	LoadConfiguration() (*Configuration, error)
 }
