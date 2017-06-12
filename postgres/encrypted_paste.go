@@ -4,14 +4,14 @@ import (
 	"io"
 	"time"
 
-	"github.com/DHowett/ghostbin/model"
+	"howett.net/spectre"
 )
 
 type encryptedPastePlaceholder struct {
-	ID model.PasteID
+	ID spectre.PasteID
 }
 
-func (e *encryptedPastePlaceholder) GetID() model.PasteID {
+func (e *encryptedPastePlaceholder) GetID() spectre.PasteID {
 	return e.ID
 }
 
@@ -44,17 +44,17 @@ func (e *encryptedPastePlaceholder) GetModificationTime() time.Time {
 }
 
 func (e *encryptedPastePlaceholder) Reader() (io.ReadCloser, error) {
-	return nil, model.ErrPasteEncrypted
+	return nil, spectre.ErrCryptorRequired
 }
 
 func (e *encryptedPastePlaceholder) Writer() (io.WriteCloser, error) {
-	return nil, model.ErrPasteEncrypted
+	return nil, spectre.ErrCryptorRequired
 }
 
 func (e *encryptedPastePlaceholder) Commit() error {
-	return model.ErrPasteEncrypted
+	return spectre.ErrCryptorRequired
 }
 
 func (e *encryptedPastePlaceholder) Erase() error {
-	return model.ErrPasteEncrypted
+	return spectre.ErrCryptorRequired
 }

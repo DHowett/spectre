@@ -1,4 +1,6 @@
-package model
+package spectre
+
+import "context"
 
 type UserSource int
 
@@ -15,10 +17,19 @@ type User interface {
 	GetSource() UserSource
 	SetSource(UserSource)
 
-	UpdateChallenge(password string)
-	Check(password string) bool
+	UpdateChallenge(challenger Challenger)
+	Check(challenger Challenger) bool
 
 	Permissions(class PermissionClass, args ...interface{}) PermissionScope
 
 	GetPastes() ([]PasteID, error)
+
+	Commit() error
+	Erase() error
+}
+
+type UserService interface {
+	GetUserNamed(context.Context, string) (User, error)
+	GetUserByID(context.Context, uint) (User, error)
+	CreateUser(context.Context, string) (User, error)
 }

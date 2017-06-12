@@ -4,20 +4,20 @@ import (
 	"context"
 	"testing"
 
-	"github.com/DHowett/ghostbin/model"
+	"howett.net/spectre"
 )
 
 func TestGrant(t *testing.T) {
-	p, err := gTestProvider.CreatePaste(context.Background())
+	p, err := pqPasteService.CreatePaste(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
 	pID := p.GetID()
 
-	var g model.Grant
+	var g spectre.Grant
 	t.Run("Create", func(t *testing.T) {
-		g, err = gTestProvider.CreateGrant(context.Background(), p)
+		g, err = pqGrantService.CreateGrant(context.Background(), p)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -31,9 +31,9 @@ func TestGrant(t *testing.T) {
 		}
 	})
 
-	var g2 model.Grant
+	var g2 spectre.Grant
 	t.Run("Lookup", func(t *testing.T) {
-		g2, err = gTestProvider.GetGrant(context.Background(), g.GetID())
+		g2, err = pqGrantService.GetGrant(context.Background(), g.GetID())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -47,22 +47,22 @@ func TestGrant(t *testing.T) {
 		}
 	})
 
-	t.Run("Destroy", func(t *testing.T) {
-		err := g.Destroy()
+	t.Run("Erase", func(t *testing.T) {
+		err := g.Erase()
 		if err != nil {
 			t.Fatal(err)
 		}
 	})
 
-	t.Run("LookupAfterDestroy", func(t *testing.T) {
-		_, err := gTestProvider.GetGrant(context.Background(), g2.GetID())
-		if err != model.ErrNotFound {
+	t.Run("LookupAfterErase", func(t *testing.T) {
+		_, err := pqGrantService.GetGrant(context.Background(), g2.GetID())
+		if err != spectre.ErrNotFound {
 			t.Fatal("Expected ErrNotFound; got `%v`", err)
 		}
 	})
 
-	t.Run("DestroyAgain", func(t *testing.T) {
-		err := g2.Destroy()
+	t.Run("EraseAgain", func(t *testing.T) {
+		err := g2.Erase()
 		if err != nil {
 			t.Fatal(err)
 		}

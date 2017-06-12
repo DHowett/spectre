@@ -4,20 +4,70 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math"
 	"testing"
 	"time"
 
-	"github.com/DHowett/ghostbin/model"
+	"howett.net/spectre"
 )
+
+type testReadCloser struct {
+	io.ReadCloser
+}
+
+func (r *testReadCloser) Read(p []byte) (int, error) {
+	b := make([]byte, len(p))
+	n, err := r.ReadCloser.Read(b)
+	if err != nil {
+		return n, err
+	}
+	for i, v := range b {
+		p[i] = byte((int(v) + 256 - 1) % 256)
+	}
+	return n, nil
+}
+
+type testWriteCloser struct {
+	io.WriteCloser
+}
+
+func (r *testWriteCloser) Write(p []byte) (int, error) {
+	b := make([]byte, len(p))
+	copy(b, p)
+	for i, v := range b {
+		b[i] = byte((int(v) + 1) % 256)
+	}
+	return r.WriteCloser.Write(b)
+}
+
+type testCryptor struct {
+	passphrase string
+}
+
+func (cr *testCryptor) Authenticate(salt []byte, challenge []byte) (bool, error) {
+	return string(challenge) == (cr.passphrase + string(salt)), nil
+}
+
+func (cr *testCryptor) Challenge() ([]byte, []byte, error) {
+	return []byte(cr.passphrase + "a"), []byte{'a'}, nil
+}
+
+func (cr *testCryptor) Reader(r io.ReadCloser) (io.ReadCloser, error) {
+	return &testReadCloser{r}, nil
+}
+
+func (cr *testCryptor) Writer(w io.WriteCloser) (io.WriteCloser, error) {
+	return &testWriteCloser{w}, nil
+}
 
 func TestPaste(t *testing.T) {
 	// used in each subtest to look up the paste anew.
-	var pID model.PasteID
+	var pID spectre.PasteID
 
 	t.Run("Create", func(t *testing.T) {
-		p, err := gTestProvider.CreatePaste(context.Background())
+		p, err := pqPasteService.CreatePaste(context.Background(), nil)
 		if err != nil {
 			t.Fatal(err)
 			return
@@ -26,14 +76,14 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("GetValues", func(t *testing.T) {
-		_, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		_, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
 	})
 
 	t.Run("ReadBody1", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -51,7 +101,7 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("CreateBody", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -70,7 +120,7 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("ReadBody2", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -88,7 +138,7 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("UpdateBody", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -107,7 +157,7 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("ReadBody3", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -125,7 +175,7 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("Destroy", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -136,7 +186,7 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("LookupAfterDestroy", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if p != nil || err == nil {
 			t.Fatal("got a paste back/no error?")
 		}
@@ -159,10 +209,10 @@ func expectTimeEq(t *testing.T, field string, l, r time.Time) {
 
 func TestPasteMutation(t *testing.T) {
 	// used in each subtest to look up the paste anew.
-	var pID model.PasteID
+	var pID spectre.PasteID
 
 	t.Run("Create", func(t *testing.T) {
-		p, err := gTestProvider.CreatePaste(context.Background())
+		p, err := pqPasteService.CreatePaste(context.Background(), nil)
 		if err != nil {
 			t.Fatal(err)
 			return
@@ -173,7 +223,7 @@ func TestPasteMutation(t *testing.T) {
 	expTime := time.Now().Add(1 * time.Hour)
 
 	t.Run("SetValues1", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -189,7 +239,7 @@ func TestPasteMutation(t *testing.T) {
 	})
 
 	t.Run("GetValues1", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -200,7 +250,7 @@ func TestPasteMutation(t *testing.T) {
 	})
 
 	t.Run("ClearValues", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -215,7 +265,7 @@ func TestPasteMutation(t *testing.T) {
 	})
 
 	t.Run("GetValues2", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -228,10 +278,10 @@ func TestPasteMutation(t *testing.T) {
 
 func TestPasteMutationViaWriterCommit(t *testing.T) {
 	// used in each subtest to look up the paste anew.
-	var pID model.PasteID
+	var pID spectre.PasteID
 
 	t.Run("Create", func(t *testing.T) {
-		p, err := gTestProvider.CreatePaste(context.Background())
+		p, err := pqPasteService.CreatePaste(context.Background(), nil)
 		if err != nil {
 			t.Fatal(err)
 			return
@@ -242,7 +292,7 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 	expTime := time.Now().Add(1 * time.Hour)
 
 	t.Run("SetValues1", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -263,7 +313,7 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 	})
 
 	t.Run("GetValues1", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -274,7 +324,7 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 	})
 
 	t.Run("ClearValues", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -294,7 +344,7 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 	})
 
 	t.Run("GetValues2", func(t *testing.T) {
-		p, err := gTestProvider.GetPaste(context.Background(), pID, nil)
+		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
@@ -306,7 +356,7 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 }
 
 func TestPasteReadAfterDestroy(t *testing.T) {
-	p, err := gTestProvider.CreatePaste(context.Background())
+	p, err := pqPasteService.CreatePaste(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -329,7 +379,7 @@ func TestPasteReadAfterDestroy(t *testing.T) {
 }
 
 func TestPasteEncryption(t *testing.T) {
-	p, err := gTestProvider.CreateEncryptedPaste(context.Background(), model.PasteEncryptionMethodAES_CTR, []byte("passphrase"))
+	p, err := pqPasteService.CreatePaste(context.Background(), &testCryptor{"passphrase"})
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -353,13 +403,13 @@ func TestPasteEncryption(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pBad, err := gTestProvider.GetPaste(context.Background(), p.GetID(), []byte("bad!"))
+	pBad, err := pqPasteService.GetPaste(context.Background(), &testCryptor{"bad!"}, p.GetID())
 	if pBad != nil || err == nil {
 		t.Fatal("got back a paste with a bad passphrase!")
 	}
 
-	pFacade, err := gTestProvider.GetPaste(context.Background(), p.GetID(), nil)
-	if err != model.ErrPasteEncrypted {
+	pFacade, err := pqPasteService.GetPaste(context.Background(), nil, p.GetID())
+	if err != spectre.ErrCryptorRequired {
 		t.Fatal("didn't get an error reading an encrypted paste")
 	}
 
@@ -380,7 +430,7 @@ func TestPasteEncryption(t *testing.T) {
 		t.Fatal("encrypted paste retrieved without password readable?")
 	}
 
-	pReal, err := gTestProvider.GetPaste(context.Background(), p.GetID(), []byte("passphrase"))
+	pReal, err := pqPasteService.GetPaste(context.Background(), &testCryptor{"passphrase"}, p.GetID())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -407,44 +457,44 @@ func TestPasteEncryption(t *testing.T) {
 		t.Fatalf("incomprehensible paste data; real <%s>, readback <%s>", string(data), string(rereadData))
 	}
 
-	p.Erase()
+	//p.Erase()
 }
 
 func TestPasteCollision(t *testing.T) {
-	pgProvider := gTestProvider.(*provider)
+	pgProvider := pqPasteService.(*provider)
 	old := pgProvider.GenerateNewPasteID
 	i := 0
-	pgProvider.GenerateNewPasteID = func(encrypted bool) model.PasteID {
+	pgProvider.GenerateNewPasteID = func(encrypted bool) spectre.PasteID {
 		// This function will be called once for the first paste and twice for the second paste.
 		defer func() {
 			i++
 		}()
 		switch i {
 		case 0, 1:
-			return model.PasteID("first_collision")
+			return spectre.PasteID("first_collision")
 		}
-		return model.PasteID(fmt.Sprintf("uniqued %d", i))
+		return spectre.PasteID(fmt.Sprintf("uniqued %d", i))
 	}
 
 	defer func() {
 		pgProvider.GenerateNewPasteID = old
 	}()
 
-	p1, err := gTestProvider.CreatePaste(context.Background())
+	p1, err := pqPasteService.CreatePaste(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
-	if p1.GetID() != model.PasteID("first_collision") {
+	if p1.GetID() != spectre.PasteID("first_collision") {
 		t.Fatalf("expected first paste ID to be `first_collision`; got %v", p1.GetID())
 	}
 
-	p2, err := gTestProvider.CreatePaste(context.Background())
+	p2, err := pqPasteService.CreatePaste(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
-	if p2.GetID() != model.PasteID("uniqued 2") {
+	if p2.GetID() != spectre.PasteID("uniqued 2") {
 		t.Fatalf("expected second paste ID to be `uniqued 2`; got %v", p2.GetID())
 	}
 }

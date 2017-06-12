@@ -1,4 +1,4 @@
-package model
+package spectre
 
 const (
 	UserPermissionUnknown Permission = (0)

@@ -1,6 +1,7 @@
-package model
+package spectre
 
 import (
+	"context"
 	"io"
 	"time"
 )
@@ -9,10 +10,6 @@ type PasteID string
 
 func (id PasteID) String() string {
 	return string(id)
-}
-
-func PasteIDFromString(s string) PasteID {
-	return PasteID(s)
 }
 
 type Paste interface {
@@ -41,4 +38,11 @@ type Paste interface {
 
 	Commit() error
 	Erase() error
+}
+
+type PasteService interface {
+	CreatePaste(context.Context, Cryptor) (Paste, error)
+	GetPaste(context.Context, Cryptor, PasteID) (Paste, error)
+	GetPastes(context.Context, []PasteID) ([]Paste, error)
+	DestroyPaste(context.Context, PasteID) (bool, error)
 }

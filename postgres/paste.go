@@ -8,7 +8,8 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/DHowett/ghostbin/model"
+	"howett.net/spectre"
+
 	"github.com/jmoiron/sqlx"
 )
 
@@ -28,13 +29,12 @@ type dbPaste struct {
 
 	LanguageName sql.NullString `db:"language_name"`
 
-	HMAC             []byte                      `db:"hmac"`
-	EncryptionSalt   []byte                      `db:"encryption_salt"`
-	EncryptionMethod model.PasteEncryptionMethod `db:"encryption_method"`
-
-	encryptionKey []byte
+	HMAC             []byte `db:"hmac"`
+	EncryptionSalt   []byte `db:"encryption_salt"`
+	EncryptionMethod int    `db:"encryption_method"`
 
 	provider *provider
+	cryptor  spectre.Cryptor
 	ctx      context.Context
 	tx       *sqlx.Tx
 }
@@ -54,8 +54,8 @@ func (p *dbPaste) commitTx() error {
 	return tx.Commit()
 }
 
-func (p *dbPaste) GetID() model.PasteID {
-	return model.PasteID(p.ID)
+func (p *dbPaste) GetID() spectre.PasteID {
+	return spectre.PasteID(p.ID)
 }
 func (p *dbPaste) GetModificationTime() time.Time {
 	return p.UpdatedAt
@@ -73,7 +73,7 @@ func (p *dbPaste) SetLanguageName(language string) {
 	p.tx.ExecContext(p.ctx, `UPDATE pastes SET language_name = $1 WHERE id = $2`, p.LanguageName, p.ID)
 }
 func (p *dbPaste) IsEncrypted() bool {
-	return p.EncryptionMethod != model.PasteEncryptionMethodNone
+	return p.EncryptionMethod != 0 //TODO(DH) spectre.PasteEncryptionMethodNone
 }
 func (p *dbPaste) GetExpirationTime() *time.Time {
 	return p.ExpireAt
@@ -116,7 +116,8 @@ func (p *dbPaste) Erase() error {
 			return err
 		}
 	}
-	return p.provider.DestroyPaste(p.ctx, model.PasteID(p.ID))
+	_, err := p.provider.DestroyPaste(p.ctx, spectre.PasteID(p.ID))
+	return err
 }
 
 func (p *dbPaste) Reader() (io.ReadCloser, error) {
@@ -128,8 +129,9 @@ func (p *dbPaste) Reader() (io.ReadCloser, error) {
 		return nil, err
 	}
 	r := ioutil.NopCloser(bytes.NewReader(b.Data))
-	if p.IsEncrypted() {
-		return model.GetPasteEncryptionCodec(p.EncryptionMethod).Reader(p.encryptionKey, r), nil
+
+	if p.cryptor != nil {
+		return p.cryptor.Reader(r)
 	}
 	return r, nil
 }
@@ -169,8 +171,8 @@ func (p *dbPaste) Writer() (io.WriteCloser, error) {
 		return nil, err
 	}
 
-	if p.IsEncrypted() {
-		return model.GetPasteEncryptionCodec(p.EncryptionMethod).Writer(p.encryptionKey, w), nil
+	if p.cryptor != nil {
+		return p.cryptor.Writer(w)
 	}
 	return w, nil
 }

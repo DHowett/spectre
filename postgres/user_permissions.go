@@ -1,19 +1,17 @@
 package postgres
 
-import (
-	"github.com/DHowett/ghostbin/model"
-)
+import "howett.net/spectre"
 
 type dbUserPermissionScope struct {
 	u   *dbUser
 	err error
 }
 
-func (u *dbUserPermissionScope) Has(p model.Permission) bool {
+func (u *dbUserPermissionScope) Has(p spectre.Permission) bool {
 	return u.u.UserPermissions&p != 0
 }
 
-func (u *dbUserPermissionScope) set(newPerms model.Permission) error {
+func (u *dbUserPermissionScope) set(newPerms spectre.Permission) error {
 	if u.err != nil {
 		return u.err
 	}
@@ -25,10 +23,10 @@ func (u *dbUserPermissionScope) set(newPerms model.Permission) error {
 	return nil
 }
 
-func (u *dbUserPermissionScope) Grant(p model.Permission) error {
+func (u *dbUserPermissionScope) Grant(p spectre.Permission) error {
 	return u.set(u.u.UserPermissions | p)
 }
 
-func (u *dbUserPermissionScope) Revoke(p model.Permission) error {
+func (u *dbUserPermissionScope) Revoke(p spectre.Permission) error {
 	return u.set(u.u.UserPermissions & (^p))
 }

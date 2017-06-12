@@ -7,7 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/DHowett/ghostbin/model"
+	"howett.net/spectre"
+
 	"github.com/Sirupsen/logrus"
 )
 
@@ -25,7 +26,10 @@ func (n *noopChallengeProvider) Challenge(message []byte, key []byte) []byte {
 	return append(message, key...)
 }
 
-var gTestProvider model.Provider
+var pqPasteService spectre.PasteService
+var pqUserService spectre.UserService
+var pqGrantService spectre.GrantService
+var pqReportService spectre.ReportService
 
 func TestMain(m *testing.M) {
 	db := flag.String("db", "postgresql://ghostbin:password@localhost/ghostbintest?sslmode=disable", "database")
@@ -51,10 +55,16 @@ func TestMain(m *testing.M) {
 	if testing.Verbose() {
 		logger.Level = logrus.DebugLevel
 	}
-	gTestProvider, err = model.Open("postgres", *db, &noopChallengeProvider{}, model.FieldLoggingOption(logger))
+	prov, err := Open( /*"postgres", */ *db) //, &noopChallengeProvider{}, spectre.FieldLoggingOption(logger))
 	if err != nil {
 		panic(err)
 	}
+
+	pqPasteService = prov
+	pqUserService = prov
+	pqGrantService = prov
+	pqReportService = prov
+
 	e := m.Run()
 	os.Exit(e)
 }

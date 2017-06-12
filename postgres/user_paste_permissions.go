@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/DHowett/ghostbin/model"
+	"howett.net/spectre"
 )
 
 type userPastePermissionScope struct {
@@ -15,7 +15,7 @@ type userPastePermissionScope struct {
 	ctx      context.Context
 }
 
-func newUserPastePermissionScope(ctx context.Context, prov *provider, u *dbUser, id model.PasteID) *userPastePermissionScope {
+func newUserPastePermissionScope(ctx context.Context, prov *provider, u *dbUser, id spectre.PasteID) *userPastePermissionScope {
 	var pPerm dbUserPastePermission
 	err := u.provider.DB.GetContext(ctx, &pPerm, `SELECT * FROM user_paste_permissions WHERE user_id = $1 AND paste_id = $2 LIMIT 1`, u.ID, id)
 	if err == sql.ErrNoRows {
@@ -29,14 +29,14 @@ func newUserPastePermissionScope(ctx context.Context, prov *provider, u *dbUser,
 	return &userPastePermissionScope{provider: prov, ctx: ctx, pPerm: &pPerm, err: err}
 }
 
-func (s *userPastePermissionScope) Has(p model.Permission) bool {
+func (s *userPastePermissionScope) Has(p spectre.Permission) bool {
 	if s.err != nil || s.pPerm == nil {
 		return false
 	}
 	return s.pPerm.Permissions&p != 0
 }
 
-func (s *userPastePermissionScope) Grant(p model.Permission) error {
+func (s *userPastePermissionScope) Grant(p spectre.Permission) error {
 	if s.err != nil {
 		return s.err
 	}
@@ -56,7 +56,7 @@ func (s *userPastePermissionScope) Grant(p model.Permission) error {
 		if s.provider.Logger != nil {
 			s.provider.Logger.Infof("New permission set %x", newPerms)
 		}
-		s.pPerm.Permissions = model.Permission(newPerms)
+		s.pPerm.Permissions = spectre.Permission(newPerms)
 	} else {
 		if s.provider.Logger != nil {
 			s.provider.Logger.Error(err)
@@ -67,7 +67,7 @@ func (s *userPastePermissionScope) Grant(p model.Permission) error {
 	return s.err
 }
 
-func (s *userPastePermissionScope) Revoke(p model.Permission) error {
+func (s *userPastePermissionScope) Revoke(p spectre.Permission) error {
 	if s.err != nil {
 		return s.err
 	}

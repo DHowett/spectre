@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/DHowett/ghostbin/lib/crypto"
-	"github.com/DHowett/ghostbin/model"
+	"howett.net/spectre"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/lib/pq"
 
@@ -17,16 +17,20 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type provider struct {
-	DB                *sqlx.DB
-	Logger            logrus.FieldLogger
-	ChallengeProvider crypto.ChallengeProvider
+var _ spectre.PasteService = &provider{}
+var _ spectre.UserService = &provider{}
+var _ spectre.GrantService = &provider{}
+var _ spectre.ReportService = &provider{}
 
-	GenerateNewPasteID func(bool) model.PasteID
+type provider struct {
+	DB     *sqlx.DB
+	Logger logrus.FieldLogger
+
+	GenerateNewPasteID func(bool) spectre.PasteID
 }
 
 // User
-func (p *provider) getUserWithQuery(ctx context.Context, query string, args ...interface{}) (model.User, error) {
+func (p *provider) getUserWithQuery(ctx context.Context, query string, args ...interface{}) (spectre.User, error) {
 	u := dbUser{
 		provider: p,
 		ctx:      ctx,
@@ -39,15 +43,15 @@ func (p *provider) getUserWithQuery(ctx context.Context, query string, args ...i
 	return &u, nil
 }
 
-func (p *provider) GetUserNamed(ctx context.Context, name string) (model.User, error) {
+func (p *provider) GetUserNamed(ctx context.Context, name string) (spectre.User, error) {
 	return p.getUserWithQuery(ctx, "name = $1", name)
 }
 
-func (p *provider) GetUserByID(ctx context.Context, id uint) (model.User, error) {
+func (p *provider) GetUserByID(ctx context.Context, id uint) (spectre.User, error) {
 	return p.getUserWithQuery(ctx, "id = $1", id)
 }
 
-func (p *provider) CreateUser(ctx context.Context, name string) (model.User, error) {
+func (p *provider) CreateUser(ctx context.Context, name string) (spectre.User, error) {
 	u := &dbUser{
 		Name:     name,
 		provider: p,
@@ -62,7 +66,7 @@ func (p *provider) CreateUser(ctx context.Context, name string) (model.User, err
 }
 
 // Paste
-func defaultPasteIDGenerator(encrypted bool) model.PasteID {
+func defaultPasteIDGenerator(encrypted bool) spectre.PasteID {
 	idlen := 5
 	if encrypted {
 		idlen = 8
@@ -70,7 +74,7 @@ func defaultPasteIDGenerator(encrypted bool) model.PasteID {
 
 	for {
 		s, _ := generateRandomBase32String(idlen)
-		return model.PasteIDFromString(s)
+		return spectre.PasteID(s)
 	}
 }
 
@@ -79,25 +83,22 @@ func isUniquenessError(err error) bool {
 	return ok && pqe.Code == pq.ErrorCode("23505")
 }
 
-func (p *provider) createPaste(ctx context.Context, method model.PasteEncryptionMethod, passphraseMaterial []byte) (model.Paste, error) {
+func (p *provider) CreatePaste(ctx context.Context, cryptor spectre.Cryptor) (spectre.Paste, error) {
 	var salt []byte
-	var key []byte
 	var hmac []byte
 
 	for {
-		id := p.GenerateNewPasteID(method != model.PasteEncryptionMethodNone)
+		id := p.GenerateNewPasteID(cryptor != nil) //method != spectre.PasteEncryptionMethodNone)
 		var err error
-		if method != model.PasteEncryptionMethodNone {
-			if passphraseMaterial == nil {
-				return nil, errors.New("model: unacceptable encryption material")
-			}
-			salt, _ = generateRandomBytes(16)
-			codec := model.GetPasteEncryptionCodec(method)
-			key, err = codec.DeriveKey(passphraseMaterial, salt)
+		if cryptor != nil {
+			//TODO(DH) if passphraseMaterial == nil {
+			//return nil, errors.New("model: unacceptable encryption material")
+			//}
+			var err error
+			hmac, salt, err = cryptor.Challenge()
 			if err != nil {
 				return nil, err
 			}
-			hmac = codec.GenerateHMAC(id, salt, key)
 		}
 
 		_, err = p.DB.ExecContext(ctx,
@@ -108,7 +109,7 @@ func (p *provider) createPaste(ctx context.Context, method model.PasteEncryption
 				encryption_salt,
 				encryption_method,
 				hmac
-			) VALUES($1, NOW(), NOW(), $2, $3, $4)`, id, salt, method, hmac)
+			) VALUES($1, NOW(), NOW(), $2, $3, $4)`, id, salt, 0 /*TODO(DH) method*/, hmac)
 		if err != nil {
 			if isUniquenessError(err) {
 				continue
@@ -119,24 +120,16 @@ func (p *provider) createPaste(ctx context.Context, method model.PasteEncryption
 		return &dbPaste{
 			provider:         p,
 			ctx:              ctx,
+			cryptor:          cryptor,
 			ID:               string(id),
 			EncryptionSalt:   salt,
-			EncryptionMethod: method,
+			EncryptionMethod: 0, //TODO(DH) 1,
 			HMAC:             hmac,
-			encryptionKey:    key,
 		}, nil
 	}
 }
 
-func (p *provider) CreatePaste(ctx context.Context) (model.Paste, error) {
-	return p.createPaste(ctx, model.PasteEncryptionMethodNone, nil)
-}
-
-func (p *provider) CreateEncryptedPaste(ctx context.Context, method model.PasteEncryptionMethod, passphraseMaterial []byte) (model.Paste, error) {
-	return p.createPaste(ctx, method, passphraseMaterial)
-}
-
-func (p *provider) GetPaste(ctx context.Context, id model.PasteID, passphraseMaterial []byte) (model.Paste, error) {
+func (p *provider) GetPaste(ctx context.Context, cryptor spectre.Cryptor, id spectre.PasteID) (spectre.Paste, error) {
 	paste := dbPaste{
 		provider: p,
 		ctx:      ctx,
@@ -144,39 +137,34 @@ func (p *provider) GetPaste(ctx context.Context, id model.PasteID, passphraseMat
 
 	if err := p.DB.GetContext(ctx, &paste, `SELECT * FROM view_active_pastes WHERE id = $1 LIMIT 1`, id); err != nil {
 		if err == sql.ErrNoRows {
-			return nil, model.ErrNotFound
+			return nil, spectre.ErrNotFound
 		}
 		return nil, err
 	}
 
 	// This paste is encrypted
-	if paste.IsEncrypted() {
+	if len(paste.HMAC) != 0 { //paste.IsEncrypted() {
 		// If they haven't requested decryption, we can
 		// still tell them that a paste exists.
 		// It will be a stub/placeholder that only has an ID.
-		if passphraseMaterial == nil {
+		if cryptor == nil {
 			return &encryptedPastePlaceholder{
 				ID: id,
-			}, model.ErrPasteEncrypted
+			}, spectre.ErrCryptorRequired
 		}
 
-		key, err := model.GetPasteEncryptionCodec(paste.EncryptionMethod).DeriveKey(passphraseMaterial, paste.EncryptionSalt)
-		if err != nil {
-			return nil, model.ErrPasteEncrypted
+		ok, err := cryptor.Authenticate(paste.EncryptionSalt, paste.HMAC)
+		if !ok || err != nil {
+			return nil, spectre.ErrChallengeRejected
 		}
 
-		ok := model.GetPasteEncryptionCodec(paste.EncryptionMethod).Authenticate(id, paste.EncryptionSalt, key, paste.HMAC)
-		if !ok {
-			return nil, model.ErrInvalidKey
-		}
-
-		paste.encryptionKey = key
+		paste.cryptor = cryptor
 	}
 
 	return &paste, nil
 }
 
-func (p *provider) GetPastes(ctx context.Context, ids []model.PasteID) ([]model.Paste, error) {
+func (p *provider) GetPastes(ctx context.Context, ids []spectre.PasteID) ([]spectre.Paste, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -195,12 +183,12 @@ func (p *provider) GetPastes(ctx context.Context, ids []model.PasteID) ([]model.
 	rows, err := p.DB.QueryxContext(ctx, query, args...)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, model.ErrNotFound
+			return nil, spectre.ErrNotFound
 		}
 		return nil, err
 	}
 
-	iPastes := make([]model.Paste, len(ids))
+	iPastes := make([]spectre.Paste, len(ids))
 	i := 0
 	for rows.Next() {
 		paste := &dbPaste{
@@ -221,27 +209,27 @@ func (p *provider) GetPastes(ctx context.Context, ids []model.PasteID) ([]model.
 	return iPastes[:i], nil
 }
 
-func (p *provider) DestroyPaste(ctx context.Context, id model.PasteID) error {
+func (p *provider) DestroyPaste(ctx context.Context, id spectre.PasteID) (bool, error) {
 	tx, err := p.DB.BeginTxx(ctx, nil)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	_, err = tx.ExecContext(ctx, `DELETE FROM pastes WHERE id = $1`, id)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return false, err
 	}
 
 	err = tx.Commit()
 	if err != nil && err != sql.ErrNoRows {
-		return err
+		return false, err
 	}
 
-	return nil
+	return err != sql.ErrNoRows, nil
 }
 
-func (p *provider) CreateGrant(ctx context.Context, paste model.Paste) (model.Grant, error) {
+func (p *provider) CreateGrant(ctx context.Context, paste spectre.Paste) (spectre.Grant, error) {
 	for {
 		id, err := generateRandomBase32String(32)
 		if err != nil {
@@ -269,7 +257,7 @@ func (p *provider) CreateGrant(ctx context.Context, paste model.Paste) (model.Gr
 	}
 }
 
-func (p *provider) GetGrant(ctx context.Context, id model.GrantID) (model.Grant, error) {
+func (p *provider) GetGrant(ctx context.Context, id spectre.GrantID) (spectre.Grant, error) {
 	g := dbGrant{
 		provider: p,
 		ctx:      ctx,
@@ -277,7 +265,7 @@ func (p *provider) GetGrant(ctx context.Context, id model.GrantID) (model.Grant,
 
 	if err := p.DB.GetContext(ctx, &g, `SELECT * FROM grants WHERE id = $1 LIMIT 1`, id); err != nil {
 		if err == sql.ErrNoRows {
-			err = model.ErrNotFound
+			err = spectre.ErrNotFound
 		}
 		return nil, err
 	}
@@ -285,7 +273,7 @@ func (p *provider) GetGrant(ctx context.Context, id model.GrantID) (model.Grant,
 	return &g, nil
 }
 
-func (p *provider) ReportPaste(ctx context.Context, paste model.Paste) error {
+func (p *provider) ReportPaste(ctx context.Context, paste spectre.Paste) error {
 	pID := paste.GetID()
 	_, err := p.DB.ExecContext(ctx, `
 		INSERT INTO paste_reports(paste_id, count)
@@ -297,7 +285,7 @@ func (p *provider) ReportPaste(ctx context.Context, paste model.Paste) error {
 	return err
 }
 
-func (p *provider) GetReport(ctx context.Context, pID model.PasteID) (model.Report, error) {
+func (p *provider) GetReport(ctx context.Context, pID spectre.PasteID) (spectre.Report, error) {
 	r := dbReport{
 		provider: p,
 		ctx:      ctx,
@@ -305,7 +293,7 @@ func (p *provider) GetReport(ctx context.Context, pID model.PasteID) (model.Repo
 
 	if err := p.DB.GetContext(ctx, &r, `SELECT paste_id, count FROM paste_reports WHERE paste_id = ?`, pID); err != nil {
 		if err == sql.ErrNoRows {
-			err = model.ErrNotFound
+			err = spectre.ErrNotFound
 		}
 		return nil, err
 	}
@@ -313,13 +301,13 @@ func (p *provider) GetReport(ctx context.Context, pID model.PasteID) (model.Repo
 	return &r, nil
 }
 
-func (p *provider) GetReports(ctx context.Context) ([]model.Report, error) {
-	reports := make([]model.Report, 0, 16)
+func (p *provider) GetReports(ctx context.Context) ([]spectre.Report, error) {
+	reports := make([]spectre.Report, 0, 16)
 
 	rows, err := p.DB.QueryxContext(ctx, `SELECT paste_id, count FROM paste_reports`)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			err = model.ErrNotFound
+			err = spectre.ErrNotFound
 		}
 		return nil, err
 	}
@@ -429,9 +417,7 @@ func (p *provider) migrateDb() error {
 	return nil
 }
 
-type pqDriver struct{}
-
-func (pqDriver) Open(arguments ...interface{}) (model.Provider, error) {
+func Open(arguments ...interface{}) (*provider, error) {
 	p := &provider{
 		GenerateNewPasteID: defaultPasteIDGenerator,
 	}
@@ -441,10 +427,6 @@ func (pqDriver) Open(arguments ...interface{}) (model.Provider, error) {
 		switch a := arg.(type) {
 		case string:
 			connection = &a
-		case crypto.ChallengeProvider:
-			p.ChallengeProvider = a
-		case model.Option:
-			a(p)
 		default:
 			return nil, fmt.Errorf("model/postgres: unknown option type %T (%v)", a, a)
 		}
@@ -454,9 +436,9 @@ func (pqDriver) Open(arguments ...interface{}) (model.Provider, error) {
 		return nil, errors.New("model/postgres: no connection string provided")
 	}
 
-	if p.ChallengeProvider == nil {
-		return nil, errors.New("model/postgres: no ChallengeProvider provided")
-	}
+	//if p.ChallengeProvider == nil {
+	//return nil, errors.New("model/postgres: no ChallengeProvider provided")
+	//}
 
 	sqlDb, err := sqlx.Open("postgres", *connection)
 	if err != nil {
@@ -487,6 +469,6 @@ func (pqDriver) Open(arguments ...interface{}) (model.Provider, error) {
 	return p, nil
 }
 
-func init() {
-	model.Register("postgres", &pqDriver{})
-}
+//func init() {
+//spectre.Register("postgres", &pqDriver{})
+//}
