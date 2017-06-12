@@ -90,14 +90,14 @@ func (a *ghostbinApplication) GenerateURL(ut URLType, params ...string) *url.URL
 	defer a.mutex.RUnlock()
 
 	u, ok := a.urlRoutes[ut]
-	err := errors.New("route doesn't exist!")
+	err := errors.New("route doesn't exist")
 	var ret *url.URL
 	if ok {
 		ret, err = u.URL(params...)
 	}
 
 	if err != nil {
-		a.Logger.Error("unable to generate url type <%s> (params %v): %v", ut, params, err)
+		a.Logger.Errorf("unable to generate url type <%s> (params %v): %v", ut, params, err)
 
 		return &url.URL{
 			Path: "/",
@@ -281,7 +281,7 @@ func (a *ghostbinApplication) init() error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGHUP)
 	go func() {
-		for _ = range sigChan {
+		for range sigChan {
 			a.Logger.Info("Received SIGHUP")
 			viewModel.Reload()
 			// TODO(DH) DUPED
@@ -353,7 +353,7 @@ func (a *ghostbinApplication) init() error {
 	for pathPrefix, controller := range controllerRoutes {
 		l := a.Logger.WithFields(logrus.Fields{
 			"facility":   "routing",
-			"controller": fmt.Sprintf("%+T", controller),
+			"controller": fmt.Sprintf("%T", controller),
 			"path":       pathPrefix,
 		})
 
@@ -553,7 +553,7 @@ func main() {
 	}
 }
 
-var defaultTLSConfig *tls.Config = &tls.Config{
+var defaultTLSConfig = &tls.Config{
 	PreferServerCipherSuites: true,
 	CurvePreferences: []tls.CurveID{
 		tls.CurveP256,
