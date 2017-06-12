@@ -13,7 +13,7 @@ Error
 {{define "error_body" -}}
 {{template "partial_warning_title" "Something's Wrong :("}}
 <div class="well well-error">
-	{{.Obj.Error}}<br>
+	{{.Obj}}<br>
 	<a href="/">Go to the homepage and try again.</a>
 </div>
 {{- end}}
@@ -43,7 +43,7 @@ Error
 
 {{define "partial_error" -}}
 <div class="well well-error">
-	{{- .Obj.Error -}}
+	{{- .Obj -}}
 </div>
 {{- end}}
 
