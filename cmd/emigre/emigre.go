@@ -9,9 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/DHowett/ghostbin/lib/config"
-	"github.com/DHowett/ghostbin/model"
-	_ "github.com/DHowett/ghostbin/model/postgres"
+	"howett.net/spectre"
+	"howett.net/spectre/internal/config"
+	"howett.net/spectre/postgres"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/jessevdk/go-flags"
 	"github.com/jmoiron/sqlx"
@@ -34,7 +35,7 @@ type options struct {
 type migrator struct {
 	logger logrus.FieldLogger
 
-	config *config.C
+	config *spectre.Configuration
 	opts   options
 
 	// source
@@ -44,7 +45,7 @@ type migrator struct {
 	// destination
 	db *sqlx.DB
 
-	pasteHits map[model.PasteID]struct{}
+	pasteHits map[spectre.PasteID]struct{}
 	userHits  map[string]struct{}
 
 	pendingPasteBodies chan *fsPaste
@@ -58,12 +59,12 @@ type migrator struct {
 	finished chan bool
 }
 
-func newMigrator(opts options, config *config.C, logger logrus.FieldLogger) (*migrator, error) {
+func newMigrator(opts options, config *spectre.Configuration, logger logrus.FieldLogger) (*migrator, error) {
 	m := &migrator{
 		logger:             logger,
 		config:             config,
 		opts:               opts,
-		pasteHits:          make(map[model.PasteID]struct{}),
+		pasteHits:          make(map[spectre.PasteID]struct{}),
 		userHits:           make(map[string]struct{}),
 		pendingPasteBodies: make(chan *fsPaste, 1000000),
 		pendingUserPerms:   make(chan *User, 100000),
@@ -81,7 +82,7 @@ func newMigrator(opts options, config *config.C, logger logrus.FieldLogger) (*mi
 }
 
 func (m *migrator) initSchema() error {
-	_, err := model.Open(m.config.Database.Dialect, m.db.DB, &noopChallengeProvider{})
+	_, err := postgres.Open(m.config.Database.Connection)
 	return err
 }
 
@@ -103,7 +104,7 @@ func (m *migrator) migratePastes(logger logrus.FieldLogger) (int, error) {
 			return nil
 		}
 		plog := logger.WithField("paste", fi.Name())
-		fsp, err := m.pasteStore.Get(model.PasteIDFromString(fi.Name()), nil)
+		fsp, err := m.pasteStore.Get(spectre.PasteID(fi.Name()), nil)
 		if err != nil {
 			plog.Error(err)
 			return nil
@@ -143,20 +144,20 @@ func (m *migrator) migrateUserPermissions(logger logrus.FieldLogger, u *User, in
 	if userPerms, ok := u.Values["permissions"].(*PastePermissionSet); ok {
 		nCurrentPerms := 0
 		for pid, pperm := range userPerms.Entries {
-			if _, ok := m.pasteHits[model.PasteID(pid)]; !ok {
+			if _, ok := m.pasteHits[spectre.PasteID(pid)]; !ok {
 				continue
 			}
-			var newPerm model.Permission
+			var newPerm spectre.Permission
 			if pperm["grant"] {
-				newPerm |= model.PastePermissionGrant
+				newPerm |= spectre.PastePermissionGrant
 			}
 			if pperm["edit"] {
-				newPerm |= model.PastePermissionEdit
+				newPerm |= spectre.PastePermissionEdit
 			}
 
 			// legacy grant + edit = all future permissions
-			if newPerm == model.PastePermissionGrant|model.PastePermissionEdit {
-				newPerm = model.PastePermissionAll
+			if newPerm == spectre.PastePermissionGrant|spectre.PastePermissionEdit {
+				newPerm = spectre.PastePermissionAll
 			}
 
 			// This INSERT is prepared with a (SELECT id FROM users WHERE name ...)
@@ -202,14 +203,14 @@ func (m *migrator) migrateUsers(logger logrus.FieldLogger) (int, int, error) {
 			ulog.Warning("skipped duplicate")
 			return nil
 		}
-		source := model.UserSourceGhostbin
+		source := spectre.UserSourceGhostbin
 		if u.Persona {
-			source = model.UserSourceMozillaPersona
+			source = spectre.UserSourceMozillaPersona
 		}
 		perms := uint64(0)
 		if upp, ok := u.Values["user.permissions"].(PastePermission); ok {
 			if upp["admin"] {
-				perms = perms | uint64(model.UserPermissionAll)
+				perms = perms | uint64(spectre.UserPermissionAll)
 			}
 		}
 
@@ -421,28 +422,19 @@ func (m *migrator) Run() {
 	<-m.finished
 }
 
-func loadConfiguration(opts options, logger logrus.FieldLogger) *config.C {
-	var c config.C
-	// Base config: required
-	err := c.AppendFile("config.yml")
+func loadConfiguration(opts options, logger logrus.FieldLogger) *spectre.Configuration {
+	files := []string{
+		"config.yml",
+		fmt.Sprintf("config.%s.yml", opts.Environment),
+	}
+
+	files = append(files, opts.ConfigFiles...)
+
+	c, err := config.NewFileConfigurationService(files).LoadConfiguration()
 	if err != nil {
-		logger.Fatalf("failed to load base config file config.yml: %v", err)
+		logger.Fatalf("failed to log config: %v", err)
 	}
-
-	envConfig := fmt.Sprintf("config.%s.yml", opts.Environment)
-	err = c.AppendFile(envConfig)
-	if err != nil {
-		logger.Fatalf("failed to load environment config file %s: %v", envConfig, err)
-	}
-
-	for _, f := range opts.ConfigFiles {
-		err = c.AppendFile(f)
-		if err != nil {
-			logger.Fatalf("failed to load additional config file %s: %v", f, err)
-		}
-	}
-
-	return &c
+	return c
 }
 
 func main() {

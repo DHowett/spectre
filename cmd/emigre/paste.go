@@ -8,9 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	ghtime "github.com/DHowett/ghostbin/lib/time"
-	"github.com/DHowett/ghostbin/model"
+	"howett.net/spectre"
+
 	"github.com/DHowett/go-xattr"
+	ghtime "howett.net/spectre/internal/time"
 )
 
 var base32Encoder = base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789")
@@ -24,7 +25,7 @@ func (pr *pasteReader) Close() error {
 }
 
 type fsPaste struct {
-	ID       model.PasteID
+	ID       spectre.PasteID
 	Language string
 
 	ModTime time.Time
@@ -35,7 +36,7 @@ type fsPaste struct {
 
 	HMAC             []byte
 	EncryptionSalt   []byte
-	EncryptionMethod model.PasteEncryptionMethod
+	EncryptionMethod int
 
 	store *FilesystemPasteStore
 }
@@ -54,7 +55,7 @@ func NewFilesystemPasteStore(path string) *FilesystemPasteStore {
 	}
 }
 
-func (store *FilesystemPasteStore) filenameForID(id model.PasteID) string {
+func (store *FilesystemPasteStore) filenameForID(id spectre.PasteID) string {
 	return filepath.Join(store.path, id.String())
 }
 
@@ -67,7 +68,7 @@ func getMetadata(fn string, name string, dflt string) string {
 	return string(bytes)
 }
 
-func (store *FilesystemPasteStore) Get(id model.PasteID, passphraseMaterial []byte) (*fsPaste, error) {
+func (store *FilesystemPasteStore) Get(id spectre.PasteID, passphraseMaterial []byte) (*fsPaste, error) {
 	filename := store.filenameForID(id)
 	stat, err := os.Stat(filename)
 	if err != nil {
@@ -79,7 +80,7 @@ func (store *FilesystemPasteStore) Get(id model.PasteID, passphraseMaterial []by
 	hmac := getMetadata(filename, "hmac", "")
 
 	method, _ := strconv.Atoi(getMetadata(filename, "encryption_version", ""))
-	paste.EncryptionMethod = model.PasteEncryptionMethod(method)
+	paste.EncryptionMethod = method
 	if hmac != "" {
 		hmacBytes, err := base32Encoder.DecodeString(hmac)
 		if err != nil {
@@ -87,10 +88,10 @@ func (store *FilesystemPasteStore) Get(id model.PasteID, passphraseMaterial []by
 		}
 		paste.HMAC = hmacBytes
 
-		if paste.EncryptionMethod == model.PasteEncryptionMethodNone {
-			// Pastes with an HMAC but no encryption method use Ghostbin Legacy Enc.
-			paste.EncryptionMethod = model.PasteEncryptionMethodAES_OFB
-		}
+		//TODO(DH) if paste.EncryptionMethod == model.PasteEncryptionMethodNone {
+		// Pastes with an HMAC but no encryption method use Ghostbin Legacy Enc.
+		//paste.EncryptionMethod = model.PasteEncryptionMethodAES_OFB
+		//}
 
 		salt := getMetadata(filename, "encryption_salt", "")
 		if salt == "" {
