@@ -19,6 +19,7 @@ type Paste interface {
 	SetLanguageName(string)
 
 	IsEncrypted() bool
+	GetEncryptionMethod() EncryptionMethod
 
 	// GetExpirationTime returns the time at which this paste will
 	// expire or nil if the paste does not expire.

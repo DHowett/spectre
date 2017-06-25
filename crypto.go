@@ -2,6 +2,12 @@ package spectre
 
 import "io"
 
+type EncryptionMethod uint
+
+const (
+	EncryptionMethodNone EncryptionMethod = iota
+)
+
 // Challenger embeds a key or passphrase material.
 type Challenger interface {
 	// Authenticate should do what its name says it should do.
@@ -19,4 +25,7 @@ type Cryptor interface {
 
 	// Writer should be implemented by cryptors that can encrypt arbitrary data.
 	Writer(io.WriteCloser) (io.WriteCloser, error)
+
+	// EncryptionMethod should return an application-specific encryption method identifier for this cryptor.
+	EncryptionMethod() EncryptionMethod
 }
