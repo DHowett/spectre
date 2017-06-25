@@ -29,9 +29,9 @@ type dbPaste struct {
 
 	LanguageName sql.NullString `db:"language_name"`
 
-	HMAC             []byte `db:"hmac"`
-	EncryptionSalt   []byte `db:"encryption_salt"`
-	EncryptionMethod int    `db:"encryption_method"`
+	HMAC             []byte                   `db:"hmac"`
+	EncryptionSalt   []byte                   `db:"encryption_salt"`
+	EncryptionMethod spectre.EncryptionMethod `db:"encryption_method"`
 
 	conn    *conn
 	cryptor spectre.Cryptor
@@ -73,7 +73,10 @@ func (p *dbPaste) SetLanguageName(language string) {
 	p.tx.ExecContext(p.ctx, `UPDATE pastes SET language_name = $1 WHERE id = $2`, p.LanguageName, p.ID)
 }
 func (p *dbPaste) IsEncrypted() bool {
-	return p.EncryptionMethod != 0 //TODO(DH) spectre.PasteEncryptionMethodNone
+	return p.EncryptionMethod != spectre.EncryptionMethodNone
+}
+func (p *dbPaste) GetEncryptionMethod() spectre.EncryptionMethod {
+	return p.EncryptionMethod
 }
 func (p *dbPaste) GetExpirationTime() *time.Time {
 	return p.ExpireAt

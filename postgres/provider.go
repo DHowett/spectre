@@ -90,6 +90,7 @@ func (c *conn) CreatePaste(ctx context.Context, cryptor spectre.Cryptor) (spectr
 	for {
 		id := c.generateNewPasteID(cryptor != nil) //method != spectre.PasteEncryptionMethodNone)
 		var err error
+		method := spectre.EncryptionMethodNone
 		if cryptor != nil {
 			//TODO(DH) if passphraseMaterial == nil {
 			//return nil, errors.New("model: unacceptable encryption material")
@@ -99,6 +100,8 @@ func (c *conn) CreatePaste(ctx context.Context, cryptor spectre.Cryptor) (spectr
 			if err != nil {
 				return nil, err
 			}
+
+			method = cryptor.EncryptionMethod()
 		}
 
 		_, err = c.db.ExecContext(ctx,
@@ -109,7 +112,7 @@ func (c *conn) CreatePaste(ctx context.Context, cryptor spectre.Cryptor) (spectr
 				encryption_salt,
 				encryption_method,
 				hmac
-			) VALUES($1, NOW(), NOW(), $2, $3, $4)`, id, salt, 0 /*TODO(DH) method*/, hmac)
+			) VALUES($1, NOW(), NOW(), $2, $3, $4)`, id, salt, method, hmac)
 		if err != nil {
 			if isUniquenessError(err) {
 				continue
@@ -123,7 +126,7 @@ func (c *conn) CreatePaste(ctx context.Context, cryptor spectre.Cryptor) (spectr
 			cryptor:          cryptor,
 			ID:               string(id),
 			EncryptionSalt:   salt,
-			EncryptionMethod: 0, //TODO(DH) 1,
+			EncryptionMethod: method,
 			HMAC:             hmac,
 		}, nil
 	}
@@ -142,14 +145,14 @@ func (c *conn) GetPaste(ctx context.Context, cryptor spectre.Cryptor, id spectre
 		return nil, err
 	}
 
-	// This paste is encrypted
-	if len(paste.HMAC) != 0 { //paste.IsEncrypted() {
+	if paste.IsEncrypted() {
 		// If they haven't requested decryption, we can
 		// still tell them that a paste exists.
 		// It will be a stub/placeholder that only has an ID.
 		if cryptor == nil {
 			return &encryptedPastePlaceholder{
-				ID: id,
+				ID:               id,
+				EncryptionMethod: paste.EncryptionMethod,
 			}, spectre.ErrCryptorRequired
 		}
 

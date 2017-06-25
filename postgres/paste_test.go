@@ -62,6 +62,10 @@ func (cr *testCryptor) Writer(w io.WriteCloser) (io.WriteCloser, error) {
 	return &testWriteCloser{w}, nil
 }
 
+func (cr *testCryptor) EncryptionMethod() spectre.EncryptionMethod {
+	return spectre.EncryptionMethod(1)
+}
+
 func TestPaste(t *testing.T) {
 	// used in each subtest to look up the paste anew.
 	var pID spectre.PasteID
