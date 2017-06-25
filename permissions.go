@@ -28,3 +28,8 @@ const (
 	PermissionClassUser PermissionClass = iota + 1
 	PermissionClassPaste
 )
+
+// Permitter is an interface that models any item that can return permissions.
+type Permitter interface {
+	Permissions(class PermissionClass, args ...interface{}) PermissionScope
+}

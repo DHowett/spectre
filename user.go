@@ -20,12 +20,12 @@ type User interface {
 	UpdateChallenge(challenger Challenger)
 	Check(challenger Challenger) bool
 
-	Permissions(class PermissionClass, args ...interface{}) PermissionScope
-
 	GetPastes() ([]PasteID, error)
 
 	Commit() error
 	Erase() error
+
+	Permitter
 }
 
 type UserService interface {
