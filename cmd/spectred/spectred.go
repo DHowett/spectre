@@ -1,7 +1,27 @@
 package main
 
-import "fmt"
+import (
+	"flag"
+
+	"howett.net/spectre/http"
+	"howett.net/spectre/postgres"
+)
 
 func main() {
-	fmt.Println("there's nothing here.")
+	db := flag.String("db", "postgresql://ghostbin:password@localhost/ghostbintest?sslmode=disable", "database")
+	flag.Parse()
+
+	pconn, err := postgres.Open(*db)
+	if err != nil {
+		panic(err)
+	}
+
+	server := &http.Server{
+		Addr:         ":8080",
+		Proxied:      false,
+		DocumentRoot: ".",
+
+		PasteService: pconn.PasteService(),
+	}
+	server.Listen()
 }
