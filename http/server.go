@@ -15,30 +15,6 @@ import (
 )
 
 /*
-// TODO(DH): Consider this.
-// ### Pros
-//  * We can buffer the response; if an error is encountered we can destroy it
-//  * We can accumulate its size for logging purposes
-// ### Cons
-//  * Need to reimplement Hijacker and CloseNotifier
-//  * Need to reimplement Headers and any other mutators
-type bufferedResponseWriter struct {
-	buf bytes.Buffer
-	hijacked bool
-}
-
-type hijackableBufferedResponseWriter struct {
-	bufferedResponseWriter
-	http.Hijacker
-}
-
-func (h *hijackableBufferedResponseWriter) Hijack() (net.Conn, bufio.ReadWriter, error) {
-	h.bufferedResponseWriter.hijacked = true
-	return h.Hijacker.Hijack()
-}
-*/
-
-/*
 // TODO(DH): Consider whether we need to do this
 type stripPrefixHandler struct {
 	prefix string
@@ -69,6 +45,20 @@ type Server struct {
 }
 
 func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
+	var flusher http.Flusher
+
+	if _, ok := w.(http.Hijacker); ok {
+		bufw := &hijackableBufferedResponseWriter{bufferedResponseWriter{w: w}}
+		w = bufw
+		flusher = bufw
+	} else {
+		bufw := &bufferedResponseWriter{w: w}
+		w = bufw
+		flusher = bufw
+	}
+
+	defer flusher.Flush()
+
 	clean := path.Clean("/" + r.URL.Path)
 	if clean != "/" {
 		path := filepath.Join(s.DocumentRoot, clean)
