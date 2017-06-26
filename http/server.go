@@ -107,7 +107,6 @@ func (s *Server) init() {
 	// TODO(DH): Killify this
 	ph := &pasteHandler{
 		PasteService: s.PasteService,
-		Permitter:    nil,
 	}
 
 	s.addPrefixedHandler("/paste", ph)

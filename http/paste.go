@@ -11,7 +11,6 @@ import (
 
 type pasteHandler struct {
 	PasteService spectre.PasteService
-	Permitter    spectre.Permitter
 }
 
 func (ph *pasteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
