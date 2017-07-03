@@ -1,23 +1,21 @@
-package config
+package main
 
 import (
 	"bytes"
 	"html/template"
 	"os"
 
-	"howett.net/spectre"
-
 	yaml "gopkg.in/yaml.v2"
 )
 
-var _ spectre.ConfigurationService = &fileConfigurationService{}
+var _ ConfigurationService = &fileConfigurationService{}
 
 type fileConfigurationService struct {
 	files []string
 }
 
-func (fc *fileConfigurationService) LoadConfiguration() (*spectre.Configuration, error) {
-	var c spectre.Configuration
+func (fc *fileConfigurationService) LoadConfiguration() (*Configuration, error) {
+	var c Configuration
 	for _, file := range fc.files {
 		err := fc.appendFileToConfiguration(&c, file)
 		if err != nil {
@@ -27,7 +25,7 @@ func (fc *fileConfigurationService) LoadConfiguration() (*spectre.Configuration,
 	return &c, nil
 }
 
-func (fc *fileConfigurationService) appendFileToConfiguration(c *spectre.Configuration, filename string) error {
+func (fc *fileConfigurationService) appendFileToConfiguration(c *Configuration, filename string) error {
 	tmpl, err := template.ParseFiles(filename)
 	if err != nil {
 		return err
@@ -53,7 +51,7 @@ func (fc *fileConfigurationService) appendFileToConfiguration(c *spectre.Configu
 	return nil
 }
 
-func NewFileConfigurationService(files []string) spectre.ConfigurationService {
+func NewFileConfigurationService(files []string) ConfigurationService {
 	return &fileConfigurationService{
 		files: files,
 	}

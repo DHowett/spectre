@@ -1,4 +1,4 @@
-package spectre
+package main
 
 import (
 	"time"
