@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,7 +9,6 @@ import (
 	"time"
 
 	"howett.net/spectre"
-	"howett.net/spectre/internal/config"
 	"howett.net/spectre/postgres"
 
 	"github.com/Sirupsen/logrus"
@@ -22,9 +20,7 @@ type options struct {
 	Pastes   string `short:"p" long:"pastes" description:"paste store directory" default:"./pastes"`
 	Accounts string `short:"a" long:"accounts" description:"account store directory" default:"./accounts"`
 
-	// These options mirror those in spectre core.
-	Environment string   `long:"env" description:"Ghostbin environment (dev/production). Influences the default configuration set by including config.$ENV.yml." default:"dev"`
-	ConfigFiles []string `long:"config" short:"c" description:"A configuration file (.yml) to read; can be specified multiple times."`
+	Database string `long:"db" description:"A postgresql database connection string"`
 
 	SkipPastes      bool `long:"sp" description:"skip pastes (and paste bodies, user perms)"`
 	SkipUsers       bool `long:"su" description:"skip users (and user perms)"`
@@ -35,8 +31,7 @@ type options struct {
 type migrator struct {
 	logger logrus.FieldLogger
 
-	config *spectre.Configuration
-	opts   options
+	opts options
 
 	// source
 	pasteStore *FilesystemPasteStore
@@ -59,10 +54,9 @@ type migrator struct {
 	finished chan bool
 }
 
-func newMigrator(opts options, config *spectre.Configuration, logger logrus.FieldLogger) (*migrator, error) {
+func newMigrator(opts options, logger logrus.FieldLogger) (*migrator, error) {
 	m := &migrator{
 		logger:             logger,
-		config:             config,
 		opts:               opts,
 		pasteHits:          make(map[spectre.PasteID]struct{}),
 		userHits:           make(map[string]struct{}),
@@ -73,7 +67,7 @@ func newMigrator(opts options, config *spectre.Configuration, logger logrus.Fiel
 	m.pasteStore = NewFilesystemPasteStore(opts.Pastes)
 	m.userStore = NewFilesystemUserStore(opts.Accounts)
 
-	db, err := sqlx.Open(m.config.Database.Dialect, m.config.Database.Connection)
+	db, err := sqlx.Open("postgres", m.opts.Database)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +76,7 @@ func newMigrator(opts options, config *spectre.Configuration, logger logrus.Fiel
 }
 
 func (m *migrator) initSchema() error {
-	_, err := postgres.Open(m.config.Database.Connection)
+	_, err := postgres.Open(m.opts.Database)
 	return err
 }
 
@@ -422,21 +416,6 @@ func (m *migrator) Run() {
 	<-m.finished
 }
 
-func loadConfiguration(opts options, logger logrus.FieldLogger) *spectre.Configuration {
-	files := []string{
-		"config.yml",
-		fmt.Sprintf("config.%s.yml", opts.Environment),
-	}
-
-	files = append(files, opts.ConfigFiles...)
-
-	c, err := config.NewFileConfigurationService(files).LoadConfiguration()
-	if err != nil {
-		logger.Fatalf("failed to log config: %v", err)
-	}
-	return c
-}
-
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	logger := logrus.New()
@@ -446,9 +425,7 @@ func main() {
 		return
 	}
 
-	config := loadConfiguration(opts, logger)
-
-	m, err := newMigrator(opts, config, logger)
+	m, err := newMigrator(opts, logger)
 	if err != nil {
 		logger.Fatal(err)
 	}
