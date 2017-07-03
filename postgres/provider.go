@@ -58,7 +58,7 @@ func (c *conn) CreateUser(ctx context.Context, name string) (spectre.User, error
 		ctx:  ctx,
 	}
 
-	if _, err := c.db.ExecContext(ctx, "INSERT INTO users(name, updated_at) VALUES($1, NOW())", name); err != nil {
+	if _, err := c.db.ExecContext(ctx, "INSERT INTO users(name) VALUES($1)", name); err != nil {
 		return nil, err
 	}
 
@@ -107,12 +107,10 @@ func (c *conn) CreatePaste(ctx context.Context, cryptor spectre.Cryptor) (spectr
 		_, err = c.db.ExecContext(ctx,
 			`INSERT INTO pastes(
 				id,
-				created_at,
-				updated_at,
 				encryption_salt,
 				encryption_method,
 				hmac
-			) VALUES($1, NOW(), NOW(), $2, $3, $4)`, id, salt, method, hmac)
+			) VALUES($1, $2, $3, $4)`, id, salt, method, hmac)
 		if err != nil {
 			if isUniquenessError(err) {
 				continue

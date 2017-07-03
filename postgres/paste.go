@@ -107,8 +107,6 @@ func (p *dbPaste) SetTitle(title string) {
 }
 
 func (p *dbPaste) Commit() error {
-	p.tx.ExecContext(p.ctx, `UPDATE pastes SET updated_at = NOW() WHERE id = $1`, p.ID)
-
 	return p.commitTx()
 }
 
