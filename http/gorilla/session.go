@@ -140,13 +140,6 @@ func (s *session) getGorillaSession(scope http.SessionScope, create bool) (*sess
 	return session, nil
 }
 
-func (s *session) Scope(scope http.SessionScope) *ScopedSession {
-	return &ScopedSession{
-		session: s,
-		scope:   scope,
-	}
-}
-
 func (s *session) GetOk(scope http.SessionScope, key string) (interface{}, bool) {
 	store, err := s.getGorillaSession(scope, false)
 	if err != nil {
@@ -227,34 +220,4 @@ func (s *session) Delete(scope http.SessionScope, key string) {
 
 	// If it didn't exist, don't dirty the session.
 	s.dirty[scope] = s.dirty[scope] || dirty
-}
-
-// TODO(DH): Determine whether this is needed?
-type ScopedSession struct {
-	session *session
-	scope   http.SessionScope
-}
-
-func (s *ScopedSession) Save() {
-	s.session.Save()
-}
-
-func (s *ScopedSession) GetOk(key string) (interface{}, bool) {
-	return s.session.GetOk(s.scope, key)
-}
-
-func (s *ScopedSession) Get(key string) interface{} {
-	return s.session.Get(s.scope, key)
-}
-
-func (s *ScopedSession) Set(key string, val interface{}) {
-	s.session.Set(s.scope, key, val)
-}
-
-func (s *ScopedSession) Delete(key string) {
-	s.session.Delete(s.scope, key)
-}
-
-func (s *ScopedSession) MarkDirty() {
-	s.session.MarkDirty(s.scope)
 }
