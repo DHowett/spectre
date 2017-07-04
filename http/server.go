@@ -106,7 +106,15 @@ func (s *Server) init() {
 		PasteService: s.PasteService,
 	}
 
-	s.addPrefixedHandler("/paste", ph)
+
+	wps := &contextBindingPermitterProvider{
+		Handler:           ph,
+		PermitterProvider: s.RequestPermitterProvider,
+	}
+
+	ph.PermitterProvider = wps
+
+	s.addPrefixedHandler("/paste", wps)
 
 	if s.Proxied {
 		handler = handlers.ProxyHeaders(handler)

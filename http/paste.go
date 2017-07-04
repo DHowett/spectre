@@ -10,7 +10,8 @@ import (
 )
 
 type pasteHandler struct {
-	PasteService spectre.PasteService
+	PasteService      spectre.PasteService
+	PermitterProvider PermitterProvider
 }
 
 func (ph *pasteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
