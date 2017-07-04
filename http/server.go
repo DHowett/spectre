@@ -37,6 +37,13 @@ type Server struct {
 	GrantService  spectre.GrantService
 	ReportService spectre.ReportService
 
+	// User-controlled: web services
+	SessionService            SessionService
+	RequestUserService        UserService
+	RequestPermitterProvider  PermitterProvider
+	RequestChallengerProvider ChallengerProvider
+	PasteCryptorProvider      PasteCryptorProvider
+
 	// Internal: handlers
 	prefixes map[string]http.Handler
 
