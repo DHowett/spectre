@@ -109,15 +109,10 @@ func TestPaste(t *testing.T) {
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
-		writer, err := p.Writer()
-		if err != nil {
-			t.Fatal(err)
-		}
-		n, err := writer.Write([]byte("hello"))
-		if n != 5 || err != nil {
-			t.Fatalf("failed to write 5 bytes; got %d: %v", n, err)
-		}
-		err = writer.Close()
+		body := "hello"
+		err = p.Update(spectre.PasteUpdate{
+			Body: &body,
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -146,18 +141,10 @@ func TestPaste(t *testing.T) {
 		if err != nil {
 			t.Fatal("failed to get", pID, ":", err)
 		}
-		writer, err := p.Writer()
-		if err != nil {
-			t.Fatal(err)
-		}
-		n, err := writer.Write([]byte("goodbye"))
-		if n != 7 || err != nil {
-			t.Fatalf("failed to write 7 bytes; got %d: %v", n, err)
-		}
-		err = writer.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
+		body := "goodbye"
+		err = p.Update(spectre.PasteUpdate{
+			Body: &body,
+		})
 	})
 
 	t.Run("ReadBody3", func(t *testing.T) {
@@ -232,11 +219,14 @@ func TestPasteMutation(t *testing.T) {
 			t.Fatal("failed to get", pID, ":", err)
 		}
 
-		p.SetTitle("Hello World")
-		p.SetLanguageName("c")
-		p.SetExpirationTime(expTime)
+		title := "Hello World"
+		lang := "c"
+		err = p.Update(spectre.PasteUpdate{
+			Title:          &title,
+			LanguageName:   &lang,
+			ExpirationTime: &expTime,
+		})
 
-		err = p.Commit()
 		if err != nil {
 			t.Fatal("failed to save", pID, err)
 		}
@@ -259,10 +249,12 @@ func TestPasteMutation(t *testing.T) {
 			t.Fatal("failed to get", pID, ":", err)
 		}
 
-		p.SetTitle("")
-		p.ClearExpirationTime()
+		title := ""
+		err = p.Update(spectre.PasteUpdate{
+			Title:          &title,
+			ExpirationTime: spectre.ExpirationTimeNever,
+		})
 
-		err = p.Commit()
 		if err != nil {
 			t.Fatal("failed to save", pID, err)
 		}
@@ -301,16 +293,16 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 			t.Fatal("failed to get", pID, ":", err)
 		}
 
-		p.SetTitle("Hello World")
-		p.SetLanguageName("c")
-		p.SetExpirationTime(expTime)
+		title := "Hello World"
+		lang := "c"
+		body := "-"
+		err = p.Update(spectre.PasteUpdate{
+			Title:          &title,
+			LanguageName:   &lang,
+			ExpirationTime: &expTime,
+			Body:           &body,
+		})
 
-		writer, err := p.Writer()
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, _ = writer.Write([]byte{'-'})
-		err = writer.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -333,15 +325,12 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 			t.Fatal("failed to get", pID, ":", err)
 		}
 
-		p.SetTitle("")
-		p.ClearExpirationTime()
+		title := ""
+		err = p.Update(spectre.PasteUpdate{
+			Title:          &title,
+			ExpirationTime: spectre.ExpirationTimeNever,
+		})
 
-		writer, err := p.Writer()
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, _ = writer.Write([]byte{'-'})
-		err = writer.Close()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -389,20 +378,13 @@ func TestPasteEncryption(t *testing.T) {
 		return
 	}
 
-	p.SetTitle("My Test Paste")
+	title := "My Test Paste"
+	body := "secret data!"
+	err = p.Update(spectre.PasteUpdate{
+		Title: &title,
+		Body:  &body,
+	})
 
-	w, err := p.Writer()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	data := []byte("secret data!")
-	_, err = w.Write(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = w.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -457,8 +439,8 @@ func TestPasteEncryption(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !bytes.Equal(data, rereadData) {
-		t.Fatalf("incomprehensible paste data; real <%s>, readback <%s>", string(data), string(rereadData))
+	if !bytes.Equal([]byte(body), rereadData) {
+		t.Fatalf("incomprehensible paste data; real <%s>, readback <%s>", body, string(rereadData))
 	}
 
 	//p.Erase()

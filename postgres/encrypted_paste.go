@@ -20,8 +20,6 @@ func (e *encryptedPastePlaceholder) GetLanguageName() string {
 	return "unknown"
 }
 
-func (e *encryptedPastePlaceholder) SetLanguageName(string) {}
-
 func (e *encryptedPastePlaceholder) IsEncrypted() bool {
 	return true
 }
@@ -34,14 +32,9 @@ func (e *encryptedPastePlaceholder) GetExpirationTime() *time.Time {
 	return nil
 }
 
-func (e *encryptedPastePlaceholder) SetExpirationTime(time time.Time) {}
-func (e *encryptedPastePlaceholder) ClearExpirationTime()             {}
-
 func (e *encryptedPastePlaceholder) GetTitle() string {
 	return ""
 }
-
-func (e *encryptedPastePlaceholder) SetTitle(string) {}
 
 func (e *encryptedPastePlaceholder) GetModificationTime() time.Time {
 	var t time.Time
@@ -52,11 +45,7 @@ func (e *encryptedPastePlaceholder) Reader() (io.ReadCloser, error) {
 	return nil, spectre.ErrCryptorRequired
 }
 
-func (e *encryptedPastePlaceholder) Writer() (io.WriteCloser, error) {
-	return nil, spectre.ErrCryptorRequired
-}
-
-func (e *encryptedPastePlaceholder) Commit() error {
+func (p *encryptedPastePlaceholder) Update(u spectre.PasteUpdate) error {
 	return spectre.ErrCryptorRequired
 }
 

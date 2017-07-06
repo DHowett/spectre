@@ -4,14 +4,23 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"strings"
 	"time"
 
 	"howett.net/spectre"
 
 	"github.com/jmoiron/sqlx"
 )
+
+func sqlStringFromPtr(s *string) sql.NullString {
+	return sql.NullString{
+		Valid:  *s != "",
+		String: *s,
+	}
+}
 
 type pasteBody struct {
 	PasteID string `db:"paste_id"`
@@ -36,22 +45,6 @@ type dbPaste struct {
 	conn    *conn
 	cryptor spectre.Cryptor
 	ctx     context.Context
-	tx      *sqlx.Tx
-}
-
-func (p *dbPaste) openTx() error {
-	if p.tx == nil {
-		var err error
-		p.tx, err = p.conn.db.BeginTxx(p.ctx, nil)
-		return err
-	}
-	return nil
-}
-
-func (p *dbPaste) commitTx() error {
-	tx := p.tx
-	p.tx = nil
-	return tx.Commit()
 }
 
 func (p *dbPaste) GetID() spectre.PasteID {
@@ -66,12 +59,6 @@ func (p *dbPaste) GetLanguageName() string {
 	}
 	return ""
 }
-func (p *dbPaste) SetLanguageName(language string) {
-	p.openTx()
-	p.LanguageName.Valid = language != ""
-	p.LanguageName.String = language
-	p.tx.ExecContext(p.ctx, `UPDATE pastes SET language_name = $1 WHERE id = $2`, p.LanguageName, p.ID)
-}
 func (p *dbPaste) IsEncrypted() bool {
 	return p.EncryptionMethod != spectre.EncryptionMethodNone
 }
@@ -81,42 +68,91 @@ func (p *dbPaste) GetEncryptionMethod() spectre.EncryptionMethod {
 func (p *dbPaste) GetExpirationTime() *time.Time {
 	return p.ExpireAt
 }
-func (p *dbPaste) setExpirationTime(time *time.Time) {
-	p.openTx()
-	p.ExpireAt = time
-	p.tx.ExecContext(p.ctx, `UPDATE pastes SET expire_at = $1 WHERE id = $2`, p.ExpireAt, p.ID)
-}
-func (p *dbPaste) SetExpirationTime(time time.Time) {
-	p.setExpirationTime(&time)
-}
-func (p *dbPaste) ClearExpirationTime() {
-	p.setExpirationTime(nil)
-}
-
 func (p *dbPaste) GetTitle() string {
 	if p.Title.Valid {
 		return p.Title.String
 	}
 	return ""
 }
-func (p *dbPaste) SetTitle(title string) {
-	p.openTx()
-	p.Title.Valid = (title != "")
-	p.Title.String = title
-	p.tx.ExecContext(p.ctx, `UPDATE pastes SET title = $1 WHERE id = $2`, p.Title, p.ID)
-}
+func (p *dbPaste) Update(u spectre.PasteUpdate) error {
+	clauses := make([]string, 0, 4)
+	args := make([]interface{}, 0, 4)
+	// resolutions is a list of functions to execute when
+	// the transaction completes; this ensures that we only change
+	// the actual in-memory representation of p if the transaction
+	// succeeds.
+	resolutions := make([]func(), 0, 4)
 
-func (p *dbPaste) Commit() error {
-	return p.commitTx()
-}
+	if u.LanguageName != nil {
+		l := sqlStringFromPtr(u.LanguageName)
+		clauses = append(clauses, `language_name = ?`)
+		args = append(args, l)
+		resolutions = append(resolutions, func() {
+			p.LanguageName = l
+		})
+	}
 
-func (p *dbPaste) Erase() error {
-	if p.tx != nil {
-		err := p.tx.Rollback()
+	if u.ExpirationTime != nil {
+		v := u.ExpirationTime
+		if *v == *spectre.ExpirationTimeNever {
+			v = nil
+		}
+
+		clauses = append(clauses, `expire_at = ?`)
+		args = append(args, v)
+		resolutions = append(resolutions, func() {
+			p.ExpireAt = v
+		})
+	}
+
+	if u.Title != nil {
+		t := sqlStringFromPtr(u.Title)
+		clauses = append(clauses, `title = ?`)
+		args = append(args, t)
+		resolutions = append(resolutions, func() {
+			p.Title = t
+		})
+	}
+
+	if len(clauses) == 0 && u.Body == nil {
+		return nil // no updates
+	}
+
+	tx, err := p.conn.db.BeginTxx(p.ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	if len(clauses) > 0 {
+		args = append(args, p.ID)
+		query := fmt.Sprintf(`UPDATE pastes SET %s WHERE id = ?`, strings.Join(clauses, ", "))
+		rebound := tx.Rebind(query)
+
+		_, err := tx.ExecContext(p.ctx, rebound, args...)
 		if err != nil {
+			tx.Rollback()
 			return err
 		}
 	}
+
+	for _, f := range resolutions {
+		f()
+	}
+
+	if u.Body != nil {
+		w, err := p.writer(tx)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		io.WriteString(w, *u.Body)
+		w.Close() // queries against tx
+	}
+
+	return tx.Commit()
+}
+
+func (p *dbPaste) Erase() error {
 	_, err := p.conn.DestroyPaste(p.ctx, spectre.PasteID(p.ID))
 	return err
 }
@@ -139,41 +175,33 @@ func (p *dbPaste) Reader() (io.ReadCloser, error) {
 
 type pasteWriter struct {
 	bytes.Buffer
-	p    *dbPaste // for UpdatedAt
-	b    *pasteBody
-	conn *conn
-}
-
-func newPasteWriter(p *dbPaste) (*pasteWriter, error) {
-	return &pasteWriter{
-		p: p,
-	}, nil
+	tx *sqlx.Tx
+	id string
 }
 
 func (pw *pasteWriter) Close() error {
 	newData := pw.Buffer.Bytes()
 
-	// TODO(DH) error
-	pw.p.openTx()
-	pw.p.tx.ExecContext(pw.p.ctx, `
+	_, err := pw.tx.Exec(`
 	INSERT INTO paste_bodies(paste_id, data)
 	VALUES($1, $2)
 	ON CONFLICT(paste_id)
 	DO
 		UPDATE SET data = EXCLUDED.data
-	`, pw.p.ID, newData)
+	`, pw.id, newData)
 
-	return pw.p.Commit()
+	return err
 }
 
-func (p *dbPaste) Writer() (io.WriteCloser, error) {
-	w, err := newPasteWriter(p)
-	if err != nil {
-		return nil, err
+func (p *dbPaste) writer(tx *sqlx.Tx) (io.WriteCloser, error) {
+	w := &pasteWriter{
+		tx: tx,
+		id: p.ID,
 	}
 
 	if p.cryptor != nil {
 		return p.cryptor.Writer(w)
 	}
+
 	return w, nil
 }
