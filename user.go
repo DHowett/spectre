@@ -17,8 +17,8 @@ type User interface {
 	GetSource() UserSource
 	SetSource(UserSource)
 
-	UpdateChallenge(challenger Challenger)
-	Check(challenger Challenger) bool
+	UpdateChallenge(PassphraseMaterial)
+	TestChallenge(PassphraseMaterial) (bool, error)
 
 	GetPastes() ([]PasteID, error)
 
