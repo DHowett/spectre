@@ -75,7 +75,14 @@ func (f *FilesystemStore) Get(name string) *User {
 		err = dec.Decode(&newuser)
 		if err == nil {
 			user = &newuser
+		} else {
+			panic(err)
 		}
+	} else {
+		if !os.IsNotExist(err) {
+			panic(err)
+		}
+		return nil
 	}
 
 	if user == nil {
