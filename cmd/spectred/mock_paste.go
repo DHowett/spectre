@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/base32"
 	"io"
 	"strings"
@@ -45,6 +46,16 @@ type mockPaste struct {
 	ID, LanguageName, Title string
 	ExpirationTime          *time.Time
 	Body                    string
+	PassphraseMaterial      spectre.PassphraseMaterial
+
+	parent *mockPaste
+}
+
+func (m *mockPaste) dup() *mockPaste {
+	d := &mockPaste{}
+	*d = *m
+	d.parent = m
+	return d
 }
 
 func (m *mockPaste) GetID() spectre.PasteID {
@@ -64,11 +75,7 @@ func (m *mockPaste) GetTitle() string {
 }
 
 func (m *mockPaste) IsEncrypted() bool {
-	return false
-}
-
-func (m *mockPaste) GetEncryptionMethod() spectre.EncryptionMethod {
-	return 0
+	return m.PassphraseMaterial != nil
 }
 
 func (m *mockPaste) GetModificationTime() time.Time {
@@ -106,11 +113,22 @@ func (m *mockPaste) Update(u spectre.PasteUpdate) error {
 		m.ExpirationTime = u.ExpirationTime
 	}
 
+	if u.PassphraseMaterial != nil {
+		m.PassphraseMaterial = u.PassphraseMaterial
+	}
+
+	if m.parent != nil {
+		// copy up to parent ("update fake store")
+		*m.parent = *m
+		m.parent.parent = nil
+	}
+
 	return nil
 }
 
-func (m *mockPaste) Erase() error {
-	return nil
+func (m *mockPaste) authenticate(pass spectre.PassphraseMaterial) (bool, error) {
+	d := subtle.ConstantTimeCompare(m.PassphraseMaterial, pass)
+	return d == 1, nil
 }
 
 type mockPasteService struct {
@@ -133,18 +151,22 @@ func (m *mockPasteService) init() {
 
 }
 
-func (m *mockPasteService) CreatePaste(context.Context, spectre.Cryptor) (spectre.Paste, error) {
+func (m *mockPasteService) CreatePaste(ctx context.Context, pu *spectre.PasteUpdate) (spectre.Paste, error) {
 	m.init()
 	logrus.Infof("CreatePaste()")
 	i, _ := generateRandomBase32String(5)
 	id := spectre.PasteID(i)
 	logrus.Infof("-> %v", id)
 	p := &mockPaste{ID: i, LanguageName: "text"}
+	err := p.Update(*pu)
+	if err != nil {
+		return nil, err
+	}
 	m.m[id] = p
 	return p, nil
 }
 
-func (m *mockPasteService) GetPaste(c context.Context, cr spectre.Cryptor, id spectre.PasteID) (spectre.Paste, error) {
+func (m *mockPasteService) GetPaste(c context.Context, pass spectre.PassphraseMaterial, id spectre.PasteID) (spectre.Paste, error) {
 	m.init()
 	logrus.Infof("GetPaste(%v)", id)
 	p, ok := m.m[id]
@@ -152,8 +174,24 @@ func (m *mockPasteService) GetPaste(c context.Context, cr spectre.Cryptor, id sp
 		logrus.Errorf("-> not found")
 		return nil, spectre.ErrNotFound
 	}
+
+	if p.IsEncrypted() {
+		if pass == nil {
+			return nil, spectre.ErrCryptorRequired
+		}
+
+		ok, err := p.authenticate(pass)
+		if err != nil {
+			return nil, err
+		}
+
+		if !ok {
+			return nil, spectre.ErrChallengeRejected
+		}
+	}
+
 	logrus.Infof("-> found")
-	return p, nil
+	return p.dup(), nil
 }
 
 func (m *mockPasteService) GetPastes(context.Context, []spectre.PasteID) ([]spectre.Paste, error) {
