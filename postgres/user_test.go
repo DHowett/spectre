@@ -95,9 +95,9 @@ func TestUserUpdateChallenge(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tc := &testCryptor{"userPassphrase"}
-	u.UpdateChallenge(tc)
-	if !u.Check(tc) {
+	p := spectre.PassphraseMaterial("userPassphrase")
+	u.UpdateChallenge(p)
+	if ok, err := u.TestChallenge(p); err != nil || !ok {
 		t.Fail()
 	}
 }

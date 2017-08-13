@@ -8,8 +8,7 @@ import (
 )
 
 type encryptedPastePlaceholder struct {
-	ID               spectre.PasteID
-	EncryptionMethod spectre.EncryptionMethod
+	ID spectre.PasteID
 }
 
 func (e *encryptedPastePlaceholder) GetID() spectre.PasteID {
@@ -22,10 +21,6 @@ func (e *encryptedPastePlaceholder) GetLanguageName() string {
 
 func (e *encryptedPastePlaceholder) IsEncrypted() bool {
 	return true
-}
-
-func (e *encryptedPastePlaceholder) GetEncryptionMethod() spectre.EncryptionMethod {
-	return e.EncryptionMethod
 }
 
 func (e *encryptedPastePlaceholder) GetExpirationTime() *time.Time {

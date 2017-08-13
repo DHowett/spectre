@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math"
 	"testing"
@@ -12,59 +11,6 @@ import (
 
 	"howett.net/spectre"
 )
-
-type testReadCloser struct {
-	io.ReadCloser
-}
-
-func (r *testReadCloser) Read(p []byte) (int, error) {
-	b := make([]byte, len(p))
-	n, err := r.ReadCloser.Read(b)
-	if err != nil {
-		return n, err
-	}
-	for i, v := range b {
-		p[i] = byte((int(v) + 256 - 1) % 256)
-	}
-	return n, nil
-}
-
-type testWriteCloser struct {
-	io.WriteCloser
-}
-
-func (r *testWriteCloser) Write(p []byte) (int, error) {
-	b := make([]byte, len(p))
-	copy(b, p)
-	for i, v := range b {
-		b[i] = byte((int(v) + 1) % 256)
-	}
-	return r.WriteCloser.Write(b)
-}
-
-type testCryptor struct {
-	passphrase string
-}
-
-func (cr *testCryptor) Authenticate(salt []byte, challenge []byte) (bool, error) {
-	return string(challenge) == (cr.passphrase + string(salt)), nil
-}
-
-func (cr *testCryptor) Challenge() ([]byte, []byte, error) {
-	return []byte(cr.passphrase + "a"), []byte{'a'}, nil
-}
-
-func (cr *testCryptor) Reader(r io.ReadCloser) (io.ReadCloser, error) {
-	return &testReadCloser{r}, nil
-}
-
-func (cr *testCryptor) Writer(w io.WriteCloser) (io.WriteCloser, error) {
-	return &testWriteCloser{w}, nil
-}
-
-func (cr *testCryptor) EncryptionMethod() spectre.EncryptionMethod {
-	return spectre.EncryptionMethod(1)
-}
 
 func TestPaste(t *testing.T) {
 	// used in each subtest to look up the paste anew.
@@ -166,11 +112,10 @@ func TestPaste(t *testing.T) {
 	})
 
 	t.Run("Destroy", func(t *testing.T) {
-		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
-		if err != nil {
-			t.Fatal("failed to get", pID, ":", err)
+		ok, err := pqPasteService.DestroyPaste(context.Background(), pID)
+		if !ok {
+			t.Fatal("paste wasn't found?")
 		}
-		err = p.Erase()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -202,34 +147,21 @@ func TestPasteMutation(t *testing.T) {
 	// used in each subtest to look up the paste anew.
 	var pID spectre.PasteID
 
-	t.Run("Create", func(t *testing.T) {
-		p, err := pqPasteService.CreatePaste(context.Background(), nil)
+	expTime := time.Now().Add(1 * time.Hour)
+
+	t.Run("CreateConverged", func(t *testing.T) {
+		title := "Hello World"
+		lang := "c"
+		p, err := pqPasteService.CreatePaste(context.Background(), &spectre.PasteUpdate{
+			Title:          &title,
+			LanguageName:   &lang,
+			ExpirationTime: &expTime,
+		})
 		if err != nil {
 			t.Fatal(err)
 			return
 		}
 		pID = p.GetID()
-	})
-
-	expTime := time.Now().Add(1 * time.Hour)
-
-	t.Run("SetValues1", func(t *testing.T) {
-		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
-		if err != nil {
-			t.Fatal("failed to get", pID, ":", err)
-		}
-
-		title := "Hello World"
-		lang := "c"
-		err = p.Update(spectre.PasteUpdate{
-			Title:          &title,
-			LanguageName:   &lang,
-			ExpirationTime: &expTime,
-		})
-
-		if err != nil {
-			t.Fatal("failed to save", pID, err)
-		}
 	})
 
 	t.Run("GetValues1", func(t *testing.T) {
@@ -276,36 +208,23 @@ func TestPasteMutationViaWriterCommit(t *testing.T) {
 	// used in each subtest to look up the paste anew.
 	var pID spectre.PasteID
 
-	t.Run("Create", func(t *testing.T) {
-		p, err := pqPasteService.CreatePaste(context.Background(), nil)
-		if err != nil {
-			t.Fatal(err)
-			return
-		}
-		pID = p.GetID()
-	})
-
 	expTime := time.Now().Add(1 * time.Hour)
 
-	t.Run("SetValues1", func(t *testing.T) {
-		p, err := pqPasteService.GetPaste(context.Background(), nil, pID)
-		if err != nil {
-			t.Fatal("failed to get", pID, ":", err)
-		}
-
+	t.Run("CreateConverged", func(t *testing.T) {
 		title := "Hello World"
 		lang := "c"
 		body := "-"
-		err = p.Update(spectre.PasteUpdate{
+		p, err := pqPasteService.CreatePaste(context.Background(), &spectre.PasteUpdate{
 			Title:          &title,
 			LanguageName:   &lang,
 			ExpirationTime: &expTime,
 			Body:           &body,
 		})
-
 		if err != nil {
 			t.Fatal(err)
+			return
 		}
+		pID = p.GetID()
 	})
 
 	t.Run("GetValues1", func(t *testing.T) {
@@ -355,7 +274,10 @@ func TestPasteReadAfterDestroy(t *testing.T) {
 		return
 	}
 
-	err = p.Erase()
+	ok, err := pqPasteService.DestroyPaste(context.Background(), p.GetID())
+	if !ok {
+		t.Fatal("paste not found?")
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -372,24 +294,19 @@ func TestPasteReadAfterDestroy(t *testing.T) {
 }
 
 func TestPasteEncryption(t *testing.T) {
-	p, err := pqPasteService.CreatePaste(context.Background(), &testCryptor{"passphrase"})
+	title := "My Test Paste"
+	body := "secret data!"
+	p, err := pqPasteService.CreatePaste(context.Background(), &spectre.PasteUpdate{
+		Title:              &title,
+		Body:               &body,
+		PassphraseMaterial: []byte("passphrase"),
+	})
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
 
-	title := "My Test Paste"
-	body := "secret data!"
-	err = p.Update(spectre.PasteUpdate{
-		Title: &title,
-		Body:  &body,
-	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	pBad, err := pqPasteService.GetPaste(context.Background(), &testCryptor{"bad!"}, p.GetID())
+	pBad, err := pqPasteService.GetPaste(context.Background(), []byte("bad!"), p.GetID())
 	if pBad != nil || err == nil {
 		t.Fatal("got back a paste with a bad passphrase!")
 	}
@@ -416,7 +333,7 @@ func TestPasteEncryption(t *testing.T) {
 		t.Fatal("encrypted paste retrieved without password readable?")
 	}
 
-	pReal, err := pqPasteService.GetPaste(context.Background(), &testCryptor{"passphrase"}, p.GetID())
+	pReal, err := pqPasteService.GetPaste(context.Background(), []byte("passphrase"), p.GetID())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -442,8 +359,6 @@ func TestPasteEncryption(t *testing.T) {
 	if !bytes.Equal([]byte(body), rereadData) {
 		t.Fatalf("incomprehensible paste data; real <%s>, readback <%s>", body, string(rereadData))
 	}
-
-	//p.Erase()
 }
 
 func TestPasteCollision(t *testing.T) {

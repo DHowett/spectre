@@ -83,54 +83,53 @@ func isUniquenessError(err error) bool {
 	return ok && pqe.Code == pq.ErrorCode("23505")
 }
 
-func (c *conn) CreatePaste(ctx context.Context, cryptor spectre.Cryptor) (spectre.Paste, error) {
-	var salt []byte
-	var hmac []byte
-
+func (c *conn) CreatePaste(ctx context.Context, pu *spectre.PasteUpdate) (spectre.Paste, error) {
 	for {
-		id := c.generateNewPasteID(cryptor != nil) //method != spectre.PasteEncryptionMethodNone)
-		var err error
-		method := spectre.EncryptionMethodNone
-		if cryptor != nil {
-			//TODO(DH) if passphraseMaterial == nil {
-			//return nil, errors.New("model: unacceptable encryption material")
-			//}
-			var err error
-			hmac, salt, err = cryptor.Challenge()
-			if err != nil {
-				return nil, err
-			}
-
-			method = cryptor.EncryptionMethod()
+		tx, err := c.db.BeginTxx(ctx, nil)
+		if err != nil {
+			return nil, err
 		}
 
-		_, err = c.db.ExecContext(ctx,
+		id := c.generateNewPasteID(pu != nil && pu.PassphraseMaterial != nil)
+		_, err = tx.ExecContext(ctx,
 			`INSERT INTO pastes(
-				id,
-				encryption_salt,
-				encryption_method,
-				hmac
-			) VALUES($1, $2, $3, $4)`, id, salt, method, hmac)
+				id
+			) VALUES($1)`, id)
+
 		if err != nil {
+			tx.Rollback()
+
 			if isUniquenessError(err) {
 				continue
 			}
 			return nil, err
 		}
 
-		return &dbPaste{
-			conn:             c,
-			ctx:              ctx,
-			cryptor:          cryptor,
-			ID:               string(id),
-			EncryptionSalt:   salt,
-			EncryptionMethod: method,
-			HMAC:             hmac,
-		}, nil
+		paste := &dbPaste{
+			conn: c,
+			ctx:  ctx,
+			ID:   string(id),
+		}
+
+		if pu != nil {
+			err = paste.executeUpdate(tx, pu)
+			if err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		return paste, nil
 	}
 }
 
-func (c *conn) GetPaste(ctx context.Context, cryptor spectre.Cryptor, id spectre.PasteID) (spectre.Paste, error) {
+func (c *conn) GetPaste(ctx context.Context, p spectre.PassphraseMaterial, id spectre.PasteID) (spectre.Paste, error) {
 	paste := dbPaste{
 		conn: c,
 		ctx:  ctx,
@@ -147,19 +146,18 @@ func (c *conn) GetPaste(ctx context.Context, cryptor spectre.Cryptor, id spectre
 		// If they haven't requested decryption, we can
 		// still tell them that a paste exists.
 		// It will be a stub/placeholder that only has an ID.
-		if cryptor == nil {
+		if p == nil {
 			return &encryptedPastePlaceholder{
-				ID:               id,
-				EncryptionMethod: paste.EncryptionMethod,
+				ID: id,
 			}, spectre.ErrCryptorRequired
 		}
 
-		ok, err := cryptor.Authenticate(paste.EncryptionSalt, paste.HMAC)
+		ok, err := paste.authenticate(p)
 		if !ok || err != nil {
 			return nil, spectre.ErrChallengeRejected
 		}
 
-		paste.cryptor = cryptor
+		//paste.decryptor = cryptor TODO(DH)
 	}
 
 	return &paste, nil

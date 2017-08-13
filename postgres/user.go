@@ -52,29 +52,32 @@ func (u *dbUser) SetSource(source spectre.UserSource) {
 	tx.Commit()
 }
 
-func (u *dbUser) UpdateChallenge(ch spectre.Challenger) {
-	tx, _ := u.conn.db.BeginTxx(u.ctx, nil)
+func (u *dbUser) UpdateChallenge(p spectre.PassphraseMaterial) {
+	// TODO (DH)
+	/*
+		tx, _ := u.conn.db.BeginTxx(u.ctx, nil)
 
-	// TODO(DH) REMEMBER USER CHALLENGE IS SALT+USERNAME HMAC'D
-	challenge, salt, err := ch.Challenge()
-	if err != nil {
-		panic(err) //TODO(DH)
-	}
+		// TODO(DH) REMEMBER USER CHALLENGE IS SALT+USERNAME HMAC'D
+		challenge, salt, err := ch.ChallengeUser(u)
+		if err != nil {
+			panic(err) //TODO(DH)
+		}
 
-	if _, err = tx.ExecContext(u.ctx, `UPDATE users SET salt = $1, challenge = $2 WHERE id = $3`, salt, challenge, u.ID); err != nil {
-		tx.Rollback()
-		return
-	}
+		if _, err = tx.ExecContext(u.ctx, `UPDATE users SET salt = $1, challenge = $2 WHERE id = $3`, salt, challenge, u.ID); err != nil {
+			tx.Rollback()
+			return
+		}
 
-	u.Salt = salt
-	u.Challenge = challenge
+		u.Salt = salt
+		u.Challenge = challenge
 
-	tx.Commit()
+		tx.Commit()
+	*/
 }
 
-func (u *dbUser) Check(ch spectre.Challenger) bool {
-	ok, _ := ch.Authenticate(u.Salt, u.Challenge)
-	return ok
+func (u *dbUser) TestChallenge(p spectre.PassphraseMaterial) (bool, error) {
+	// TODO (DH)
+	return false, nil
 }
 
 func (u *dbUser) Permissions(class spectre.PermissionClass, args ...interface{}) spectre.PermissionScope {
