@@ -78,20 +78,7 @@ func (ph *pasteHandler) getPasteFromRequest(r *http.Request) (spectre.Paste, err
 	return ph.PasteService.GetPaste(r.Context(), nil, spectre.PasteID(pc[0]))
 }
 
-// TODO(DH) Move
-func Redirect(w http.ResponseWriter, status int, urlString string) {
-	w.Header().Set("Location", urlString)
-	w.WriteHeader(status)
-}
-
-// TODO(DH) Rename
-func (ph *pasteHandler) updatePasteC(p spectre.Paste, w http.ResponseWriter, pu *spectre.PasteUpdate) {
-	err := p.Update(*pu)
-	if err != nil {
-		// TODO(DH) bounce'em
-		panic(err)
-	}
-
+func (ph *pasteHandler) updatePasteC(p spectre.Paste, w http.ResponseWriter) {
 	Redirect(w, http.StatusSeeOther, fmt.Sprintf("/paste/%v", p.GetID()))
 }
 
@@ -119,7 +106,13 @@ func (ph *pasteHandler) updatePaste(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ph.updatePasteC(p, w, pu)
+	err = p.Update(*pu)
+	if err != nil {
+		// TODO(DH) bounce'em
+		panic(err)
+	}
+
+	ph.updatePasteC(p, w)
 }
 
 func (ph *pasteHandler) createPaste(w http.ResponseWriter, r *http.Request) {
@@ -133,12 +126,7 @@ func (ph *pasteHandler) createPaste(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	password := r.FormValue("password")
-	encrypted := password != ""
-	_ = encrypted
-	// TODO(DH) disallow encryption on insecure links
-
-	p, err := ph.PasteService.CreatePaste(r.Context(), nil /* TODO(DH) cryptor */)
+	p, err := ph.PasteService.CreatePaste(r.Context(), pu)
 	if err != nil {
 		// TODO(DH) err
 		return
@@ -148,7 +136,7 @@ func (ph *pasteHandler) createPaste(w http.ResponseWriter, r *http.Request) {
 	perms := permitter.Permissions(spectre.PermissionClassPaste, p.GetID())
 	perms.Grant(spectre.PastePermissionAll)
 
-	ph.updatePasteC(p, w, pu)
+	ph.updatePasteC(p, w)
 }
 
 func (ph *pasteHandler) deletePaste(w http.ResponseWriter, r *http.Request) {

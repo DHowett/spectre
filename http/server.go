@@ -41,8 +41,6 @@ type Server struct {
 	SessionService            SessionService
 	RequestUserService        UserService
 	RequestPermitterProvider  PermitterProvider
-	RequestChallengerProvider ChallengerProvider
-	PasteCryptorProvider      PasteCryptorProvider
 
 	// Internal: handlers
 	prefixes map[string]http.Handler
