@@ -23,6 +23,7 @@ func (h *PrefixHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), prefixRestKey, rest)
 		r = r.WithContext(ctx)
 		h.Handler.ServeHTTP(w, r)
+		return
 	}
 
 	Error(w, r, 500)
