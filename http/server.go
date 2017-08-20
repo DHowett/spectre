@@ -38,9 +38,9 @@ type Server struct {
 	ReportService spectre.ReportService
 
 	// User-controlled: web services
-	SessionService            SessionService
-	RequestUserService        UserService
-	RequestPermitterProvider  PermitterProvider
+	SessionService           SessionService
+	LoginService             LoginService
+	RequestPermitterProvider PermitterProvider
 
 	// Internal: handlers
 	prefixes map[string]http.Handler
@@ -91,28 +91,41 @@ func (s *Server) rootHandler() http.Handler {
 }
 
 func (s *Server) addPrefixedHandler(prefix string, handler http.Handler) {
-	s.prefixes[prefix] = handler
+	s.prefixes[prefix] = &PrefixHandler{
+		Prefix:  prefix,
+		Handler: handler,
+	}
 }
 
 func (s *Server) init() {
 	handler := s.rootHandler()
 
+	cbls := &contextBindingLoginService{
+		Handler:      handler,
+		LoginService: s.LoginService,
+	}
+
+	pph := &contextBindingPermitterProvider{
+		Handler:           cbls,
+		PermitterProvider: s.RequestPermitterProvider,
+	}
+	handler = pph
+
 	s.prefixes = make(map[string]http.Handler)
 
 	// TODO(DH): Killify this
 	ph := &pasteHandler{
-		PasteService: s.PasteService,
+		PasteService:      s.PasteService,
+		PermitterProvider: pph,
 	}
 
-
-	wps := &contextBindingPermitterProvider{
-		Handler:           ph,
-		PermitterProvider: s.RequestPermitterProvider,
+	uh := &userHandler{
+		UserService:  s.UserService,
+		LoginService: cbls,
 	}
 
-	ph.PermitterProvider = wps
-
-	s.addPrefixedHandler("/paste", wps)
+	s.addPrefixedHandler("/paste", ph)
+	s.addPrefixedHandler("/auth", uh)
 
 	if s.Proxied {
 		handler = handlers.ProxyHeaders(handler)

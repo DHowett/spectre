@@ -6,10 +6,9 @@ import (
 	"howett.net/spectre"
 )
 
-// TODO(DH) This file should be split up and have its comments cleaned.
-
-type UserService interface {
-	GetUserForRequest(r *http.Request) spectre.User
+type LoginService interface {
+	GetLoggedInUser(r *http.Request) spectre.User
+	SetLoggedInUser(w http.ResponseWriter, r *http.Request, u spectre.User)
 }
 
 type PermitterProvider interface {

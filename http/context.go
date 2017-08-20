@@ -8,9 +8,9 @@ import (
 	"howett.net/spectre"
 )
 
-type contextBindingUserService struct {
+type contextBindingLoginService struct {
 	http.Handler
-	UserService
+	LoginService
 }
 
 type lateUser struct {
@@ -18,17 +18,23 @@ type lateUser struct {
 	u spectre.User
 }
 
-func (s *contextBindingUserService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *contextBindingLoginService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r = r.WithContext(context.WithValue(r.Context(), s, &lateUser{}))
 	s.Handler.ServeHTTP(w, r)
 }
 
-func (s *contextBindingUserService) GetUserForRequest(r *http.Request) spectre.User {
+func (s *contextBindingLoginService) GetLoggedInUser(r *http.Request) spectre.User {
 	lu := r.Context().Value(s).(*lateUser)
 	lu.o.Do(func() {
-		lu.u = s.UserService.GetUserForRequest(r)
+		lu.u = s.LoginService.GetLoggedInUser(r)
 	})
 	return lu.u
+}
+
+func (s *contextBindingLoginService) SetLoggedInUser(w http.ResponseWriter, r *http.Request, u spectre.User) {
+	lu := r.Context().Value(s).(*lateUser)
+	lu.u = u
+	s.LoginService.SetLoggedInUser(w, r, u)
 }
 
 type contextBindingPermitterProvider struct {
