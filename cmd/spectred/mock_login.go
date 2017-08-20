@@ -18,6 +18,7 @@ type mockLoginService struct {
 func (m *mockLoginService) GetLoggedInUser(r *http.Request) spectre.User {
 	logrus.Infof("GetLoggedInUser(... %v ...)", r.URL)
 	cookie, _ := r.Cookie("uid")
+	logrus.Infof("<- Cookies: %v", r.Cookies())
 	uid, _ := strconv.ParseUint(cookie.Value, 10, 0)
 	u, _ := m.UserService.GetUserByID(context.Background(), uint(uid))
 	logrus.Infof("-> %+v", u)
