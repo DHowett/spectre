@@ -2,8 +2,9 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"path"
 	"strings"
@@ -23,6 +24,7 @@ func (ph *pasteHandler) pasteUpdateFromRequest(r *http.Request) (*spectre.PasteU
 	language := r.FormValue("lang")
 	expireIn := r.FormValue("expire")
 	title := r.FormValue("title")
+	password := r.FormValue("password")
 
 	l := len(body)
 	if l == 0 || l > 1048576 /* TODO(DH) limit */ {
@@ -55,6 +57,10 @@ func (ph *pasteHandler) pasteUpdateFromRequest(r *http.Request) (*spectre.PasteU
 		pu.Title = &title
 	}
 
+	if password != "" {
+		pu.PassphraseMaterial = []byte(password)
+	}
+
 	return &pu, nil
 }
 
@@ -65,10 +71,6 @@ func (ph *pasteHandler) validMethod(w http.ResponseWriter, r *http.Request, meth
 		}
 	}
 	return false
-}
-
-func (ph *pasteHandler) getBodyFromRequest(r *http.Request) (string, error) {
-	return "", nil
 }
 
 func (ph *pasteHandler) getPasteFromRequest(r *http.Request) (spectre.Paste, error) {
@@ -143,30 +145,66 @@ func (ph *pasteHandler) deletePaste(w http.ResponseWriter, r *http.Request) {
 	if !ph.validMethod(w, r, "GET", "POST") {
 		return
 	}
+
+	p, err := ph.getPasteFromRequest(r)
+	if err != nil {
+		// TODO(DH) errors!
+		return
+	}
+
+	permitter := ph.PermitterProvider.GetPermitterForRequest(r)
+	perms := permitter.Permissions(spectre.PermissionClassPaste, p.GetID())
+	if !perms.Has(spectre.PastePermissionEdit) {
+		// TODO(DH) bounce'em
+		return
+	}
+
+	ph.PasteService.DestroyPaste(r.Context(), p.GetID())
 }
 
 func (ph *pasteHandler) showPaste(w http.ResponseWriter, r *http.Request) {
 	p, err := ph.getPasteFromRequest(r)
+	var b string
+	var perm bool
+	if p != nil {
+		rdr, _ := p.Reader()
+		if rdr != nil {
+			bs, _ := ioutil.ReadAll(rdr)
+			b = string(bs)
+		}
+		perm = ph.PermitterProvider.GetPermitterForRequest(r).Permissions(spectre.PermissionClassPaste, p.GetID()).Has(spectre.PastePermissionEdit)
+	}
 	enc := json.NewEncoder(w)
 	enc.Encode(map[string]interface{}{
 		"paste":     p,
-		"permitted": ph.PermitterProvider.GetPermitterForRequest(r).Permissions(spectre.PermissionClassPaste, p.GetID()).Has(spectre.PastePermissionEdit),
+		"body":      b,
+		"permitted": perm,
 		"err":       fmt.Sprintf("%v", err),
 	})
 }
 
 func (ph *pasteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO(DH): All of this is bad
-	clean := path.Clean(r.URL.Path)
-	clean = strings.TrimPrefix(clean, "/paste/")
-	pc := strings.Split(clean, "/")
+	pc := strings.Split(PathSuffix(r), "/")
 
-	switch pc[0] {
+	switch pc[1] {
 	case "new":
 		// POST only
 		ph.createPaste(w, r)
 		return
 	default:
+		if len(pc) > 1 {
+			switch pc[1] {
+			case "edit":
+				ph.updatePaste(w, r)
+				return
+			case "delete":
+				ph.deletePaste(w, r)
+				return
+			case "disavow":
+			case "grant":
+			}
+		}
 		ph.showPaste(w, r)
 		return
 	}

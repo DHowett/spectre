@@ -6,6 +6,11 @@ import (
 	"howett.net/spectre"
 )
 
+////////
+// TODO(DH)
+// This file does not belong in spectre/http!
+////////
+
 var (
 	errPermissionNotApplicable = errors.New("permission not applicable")
 )

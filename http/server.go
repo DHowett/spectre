@@ -82,6 +82,7 @@ func (s *Server) serveHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if handler, ok := s.prefixes[prefix]; ok {
 		handler.ServeHTTP(w, r)
+		//s.SessionService.SessionForRequest(r).Save()
 		return
 	}
 }
