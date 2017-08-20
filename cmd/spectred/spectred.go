@@ -5,6 +5,7 @@ import (
 )
 
 func main() {
+	us := &mockUserService{}
 	server := &http.Server{
 		Addr:         ":8080",
 		Proxied:      false,
@@ -12,6 +13,8 @@ func main() {
 
 		PasteService:             &mockPasteService{},
 		RequestPermitterProvider: loggingPermitter{},
+		UserService:              us,
+		LoginService:             &mockLoginService{UserService: us},
 	}
 	server.Listen()
 }
