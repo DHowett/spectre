@@ -3,34 +3,35 @@ package http
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"net"
 	"net/http"
+	"sync"
 )
 
 type Discarder interface {
-	Discard()
+	Discard() error
 }
 
-// TODO(DH): Consider this.
-// ### Pros
-//  * We can buffer the response; if an error is encountered we can destroy it
-//  * We can accumulate its size for logging purposes
-// ### Cons
-//  * Need to reimplement Hijacker and CloseNotifier
-//  * Need to reimplement Headers and any other mutators
 type bufferedResponseWriter struct {
 	w http.ResponseWriter
+	h http.Header
+	o sync.Once
 
-	bytes.Buffer
+	b bytes.Buffer
 
 	code    int
 	written bool
+	flushed bool
 
 	hijacked bool
 }
 
 func (w *bufferedResponseWriter) Header() http.Header {
-	return w.w.Header()
+	w.o.Do(func() {
+		w.h = http.Header{}
+	})
+	return w.h
 }
 
 func (w *bufferedResponseWriter) WriteHeader(code int) {
@@ -38,15 +39,40 @@ func (w *bufferedResponseWriter) WriteHeader(code int) {
 	w.written = true
 }
 
-// Write is implemented by bytes.Buffer
+func (w *bufferedResponseWriter) Write(p []byte) (int, error) {
+	return w.b.Write(p)
+}
 
 func (w *bufferedResponseWriter) Flush() {
 	if !w.hijacked {
+		if w.h != nil {
+			ph := w.w.Header()
+			for k, v := range w.h {
+				ph[k] = v
+			}
+		}
 		if w.written {
 			w.w.WriteHeader(w.code)
 		}
-		w.Buffer.WriteTo(w.w)
+		w.b.WriteTo(w.w)
+		w.flushed = true
 	}
+}
+
+func (w *bufferedResponseWriter) Discard() error {
+	if w.hijacked {
+		return errors.New("BufferedResponseWriter: Discard on hijacked connection")
+	}
+
+	if w.flushed {
+		return errors.New("BufferedResponseWriter: Discard on flushed connection")
+	}
+
+	w.h = http.Header{}
+	w.code = 0
+	w.written = false
+	w.b = bytes.Buffer{}
+	return nil
 }
 
 type hijackableBufferedResponseWriter struct {
