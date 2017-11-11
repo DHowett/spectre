@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -14,16 +13,7 @@ var args struct {
 	PasteDirectory string `short:"p" description:"paste directory" default:"pastes"`
 }
 
-func drawPasteList(v *gocui.View) {
-	v.Clear()
-	for _, rp := range sortedReports {
-		fmt.Fprintf(v, "PASTE %s (%d REPORTS)\n", rp.ID, rp.ReportCount)
-		for i := 0; i < 5; i++ {
-			fmt.Fprintf(v, "--- fake line %d ---\n", i+1)
-		}
-	}
-}
-
+/*
 func layout(g *gocui.Gui) error {
 	maxX, maxY := g.Size()
 	if v, err := g.SetView("table", 0, 0, maxX-11, maxY-1); err != nil {
@@ -45,10 +35,6 @@ func layout(g *gocui.Gui) error {
 	}
 	g.SetCurrentView("table")
 	return nil
-}
-
-func kQuit(g *gocui.Gui, v *gocui.View) error {
-	return gocui.ErrQuit
 }
 
 func kDown(g *gocui.Gui, v *gocui.View) error {
@@ -145,14 +131,19 @@ func keybindings(g *gocui.Gui) error {
 	}
 	return nil
 }
+*/
+func kQuit(g *gocui.Gui, v *gocui.View) error {
+	return gocui.ErrQuit
+}
 
-func refreshDatamodel() {
-	sortedReports = SortReports(reports.GetReports())
+func keybindings(g *gocui.Gui) error {
+	if err := g.SetKeybinding("", 'q', gocui.ModNone, kQuit); err != nil {
+		return err
+	}
+	return nil
 }
 
 var reports *ReportStore
-var sortedReports []*ReportedPaste
-var ops []string
 
 func main() {
 	_, err := flags.Parse(&args)
@@ -172,12 +163,16 @@ func main() {
 	}
 	defer g.Close()
 
-	refreshDatamodel()
-	g.SetManagerFunc(layout)
+	tableVc := &reportTableVC{
+		ReportService: reports,
+	}
+	g.SetManager(tableVc)
 
 	if err := keybindings(g); err != nil {
 		log.Panicln(err)
 	}
+
+	tableVc.BindKeys(g)
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
 		log.Panicln(err)
