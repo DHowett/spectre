@@ -1,7 +1,9 @@
-package main
+package fs
 
 import (
+	"context"
 	"encoding/base32"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,6 +16,7 @@ import (
 	ghtime "howett.net/spectre/internal/time"
 )
 
+var errReadOnly error = errors.New("fs: get/delete-only paste store")
 var base32Encoder = base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789")
 
 type pasteReader struct {
@@ -38,24 +41,49 @@ type fsPaste struct {
 	EncryptionSalt   []byte
 	EncryptionMethod int
 
-	store *FilesystemPasteStore
+	store *fsPasteService
+}
+
+func (p *fsPaste) GetID() spectre.PasteID {
+	return p.ID
+}
+
+func (p *fsPaste) GetLanguageName() string {
+	return p.Language
+}
+
+func (p *fsPaste) GetExpirationTime() *time.Time {
+	return p.ExpirationTime
+}
+
+func (p *fsPaste) GetTitle() string {
+	if p.Title != nil {
+		return *p.Title
+	}
+	return ""
+}
+
+func (p *fsPaste) IsEncrypted() bool {
+	return p.EncryptionMethod != 0
+}
+
+func (p *fsPaste) GetModificationTime() time.Time {
+	return p.ModTime
+}
+
+func (p *fsPaste) Update(spectre.PasteUpdate) error {
+	return errReadOnly
 }
 
 func (p *fsPaste) Reader() (io.ReadCloser, error) {
 	return p.store.readStream(p)
 }
 
-type FilesystemPasteStore struct {
+type fsPasteService struct {
 	path string
 }
 
-func NewFilesystemPasteStore(path string) *FilesystemPasteStore {
-	return &FilesystemPasteStore{
-		path: path,
-	}
-}
-
-func (store *FilesystemPasteStore) filenameForID(id spectre.PasteID) string {
+func (store *fsPasteService) filenameForID(id spectre.PasteID) string {
 	return filepath.Join(store.path, id.String())
 }
 
@@ -68,7 +96,7 @@ func getMetadata(fn string, name string, dflt string) string {
 	return string(bytes)
 }
 
-func (store *FilesystemPasteStore) Get(id spectre.PasteID, passphraseMaterial []byte) (*fsPaste, error) {
+func (store *fsPasteService) GetPaste(ctx context.Context, passphraseMaterial spectre.PassphraseMaterial, id spectre.PasteID) (spectre.Paste, error) {
 	filename := store.filenameForID(id)
 	stat, err := os.Stat(filename)
 	if err != nil {
@@ -122,8 +150,24 @@ func (store *FilesystemPasteStore) Get(id spectre.PasteID, passphraseMaterial []
 
 	return paste, nil
 }
+func (store *fsPasteService) CreatePaste(context.Context, *spectre.PasteUpdate) (spectre.Paste, error) {
+	return nil, errReadOnly
+}
 
-func (store *FilesystemPasteStore) readStream(p *fsPaste) (io.ReadCloser, error) {
+func (store *fsPasteService) GetPastes(ctx context.Context, ids []spectre.PasteID) ([]spectre.Paste, error) {
+	ps := make([]spectre.Paste, len(ids))
+	for i, id := range ids {
+		ps[i], _ = store.GetPaste(ctx, nil, id)
+	}
+	return ps, nil
+}
+
+func (store *fsPasteService) DestroyPaste(ctx context.Context, id spectre.PasteID) (bool, error) {
+	// high fidelity here isn't necessary; we can say the file existed
+	return true, os.Remove(store.filenameForID(id))
+}
+
+func (store *fsPasteService) readStream(p *fsPaste) (io.ReadCloser, error) {
 	filename := store.filenameForID(p.ID)
 	var r io.ReadCloser
 	var err error
@@ -133,4 +177,10 @@ func (store *FilesystemPasteStore) readStream(p *fsPaste) (io.ReadCloser, error)
 
 	r = &pasteReader{ReadCloser: r}
 	return r, nil
+}
+
+func NewPasteService(path string) spectre.PasteService {
+	return &fsPasteService{
+		path: path,
+	}
 }
