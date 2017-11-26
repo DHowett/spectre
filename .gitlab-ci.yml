@@ -1,0 +1,24 @@
+tags: [ "ghostbin", "deploy" ]
+
+stages:
+    - deploy
+
+variables:
+    GIT_STRATEGY: none
+
+before-script: |
+    curl -L -O --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.howett.net/api/v4/projects/2/jobs/artifacts/$SOURCE_BRANCH/download?job=build"
+
+deploy to production:
+    stage: deploy
+    variables:
+        SOURCE_BRANCH: v1-stable
+    when: manual
+    environment:
+        name: production
+        url: https://ghostbin.com
+    script: |
+        DATE=$(date +%Y%m%d%H%M%S)
+        unzip artifacts.zip
+        mv build /opt/ghostbin/$DATE
+        ln -sf /opt/ghostbin/$DATE /opt/ghostbin/latest-test
