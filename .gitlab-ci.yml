@@ -22,5 +22,5 @@ deploy to production:
         DATE=$(date +%Y%m%d%H%M%S)
         unzip artifacts.zip
         mv build /opt/ghostbin/$DATE
-        ln -sf /opt/ghostbin/$DATE /opt/ghostbin/latest
+        ln -Tsf /opt/ghostbin/$DATE /opt/ghostbin/latest
         sudo systemctl restart ghostbin
