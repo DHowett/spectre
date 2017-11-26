@@ -17,9 +17,9 @@ build:
     script:
         - npm install
         - go get .
+        - ./node_modules/grunt-cli/bin/grunt
         - go build -ldflags="-w -s" -o build/ghostbin
         - "cp *.yml build/"
-        - ./node_modules/grunt-cli/bin/grunt
     artifacts:
         paths:
             - build/
