@@ -2,10 +2,8 @@ formatters:
   default:
     name: default
     func: commandFormatter
-    env:
-    - "PYTHONPATH=./lib/python"
     args:
-    - ./bin/pygmentize
+    - ./bin/pygments/pygmentize
     - "-f"
     - html
     - "-l"
