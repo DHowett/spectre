@@ -1,4 +1,3 @@
-tags: [ "ghostbin", "deploy" ]
 
 stages:
     - deploy
@@ -11,6 +10,7 @@ before-script: |
 
 deploy to production:
     stage: deploy
+    tags: [ "ghostbin", "deploy" ]
     variables:
         SOURCE_BRANCH: v1-stable
     when: manual
