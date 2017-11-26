@@ -5,7 +5,7 @@ formatters:
     env:
     - "PYTHONPATH=./bin/lib/python"
     args:
-    - ./bin/pygments/pygmentize
+    - ./bin/pygmentize
     - "-f"
     - html
     - "-l"
