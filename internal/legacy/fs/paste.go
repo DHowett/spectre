@@ -19,6 +19,12 @@ import (
 var errReadOnly error = errors.New("fs: get/delete-only paste store")
 var base32Encoder = base32.NewEncoding("abcdefghjkmnopqrstuvwxyz23456789")
 
+type PasteInternal interface {
+	GetHMAC() []byte
+	GetEncryptionSalt() []byte
+	GetEncryptionMethod() int
+}
+
 type pasteReader struct {
 	io.ReadCloser
 }
@@ -79,6 +85,19 @@ func (p *fsPaste) Reader() (io.ReadCloser, error) {
 	return p.store.readStream(p)
 }
 
+// PasteInternal
+func (p *fsPaste) GetHMAC() []byte {
+	return p.HMAC
+}
+
+func (p *fsPaste) GetEncryptionSalt() []byte {
+	return p.EncryptionSalt
+}
+
+func (p *fsPaste) GetEncryptionMethod() int {
+	return p.EncryptionMethod
+}
+
 type fsPasteService struct {
 	path string
 }
@@ -100,7 +119,7 @@ func (store *fsPasteService) GetPaste(ctx context.Context, passphraseMaterial sp
 	filename := store.filenameForID(id)
 	stat, err := os.Stat(filename)
 	if err != nil {
-		return nil, os.ErrNotExist
+		return nil, spectre.ErrNotFound
 	}
 
 	paste := &fsPaste{ID: id, store: store, ModTime: stat.ModTime()}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"howett.net/spectre"
+	"howett.net/spectre/internal/legacy/fs"
 	"howett.net/spectre/postgres"
 
 	"github.com/Sirupsen/logrus"
@@ -34,7 +36,7 @@ type migrator struct {
 	opts options
 
 	// source
-	pasteStore *FilesystemPasteStore
+	pasteStore spectre.PasteService
 	userStore  *FilesystemUserStore
 
 	// destination
@@ -43,7 +45,7 @@ type migrator struct {
 	pasteHits map[spectre.PasteID]struct{}
 	userHits  map[string]struct{}
 
-	pendingPasteBodies chan *fsPaste
+	pendingPasteBodies chan spectre.Paste
 	pendingUserPerms   chan *User
 
 	// stages 1/2 waitgroups
@@ -60,11 +62,11 @@ func newMigrator(opts options, logger logrus.FieldLogger) (*migrator, error) {
 		opts:               opts,
 		pasteHits:          make(map[spectre.PasteID]struct{}),
 		userHits:           make(map[string]struct{}),
-		pendingPasteBodies: make(chan *fsPaste, 1000000),
+		pendingPasteBodies: make(chan spectre.Paste, 1000000),
 		pendingUserPerms:   make(chan *User, 100000),
 		finished:           make(chan bool),
 	}
-	m.pasteStore = NewFilesystemPasteStore(opts.Pastes)
+	m.pasteStore = fs.NewPasteService(opts.Pastes)
 	m.userStore = NewFilesystemUserStore(opts.Accounts)
 
 	db, err := sqlx.Open("postgres", m.opts.Database)
@@ -98,18 +100,23 @@ func (m *migrator) migratePastes(logger logrus.FieldLogger) (int, error) {
 			return nil
 		}
 		plog := logger.WithField("paste", fi.Name())
-		fsp, err := m.pasteStore.Get(spectre.PasteID(fi.Name()), nil)
+		fsp, err := m.pasteStore.GetPaste(context.Background(), nil, spectre.PasteID(fi.Name()))
 		if err != nil {
 			plog.Error(err)
 			return nil
 		}
-		m.pasteHits[fsp.ID] = struct{}{}
+		fspi, ok := fsp.(fs.PasteInternal)
+		if !ok {
+			plog.Fatal("Can't get paste internal interface")
+			return nil
+		}
+		m.pasteHits[fsp.GetID()] = struct{}{}
 		nPastes++
 		if nPastes%1000 == 0 {
 			logger.Infof("%d...", nPastes)
 		}
 
-		err = inserter.Insert(fsp.ID.String(), fsp.ModTime, fsp.ModTime, fsp.ExpirationTime, fsp.Title, fsp.Language, fsp.HMAC, fsp.EncryptionSalt, fsp.EncryptionMethod)
+		err = inserter.Insert(fsp.GetID().String(), fsp.GetModificationTime(), fsp.GetModificationTime(), fsp.GetExpirationTime(), fsp.GetTitle(), fsp.GetLanguageName(), fspi.GetHMAC(), fspi.GetEncryptionSalt(), fspi.GetEncryptionMethod())
 		if err != nil {
 			logger.Errorf("%d batch failed: %v", nPastes, err)
 		}
@@ -127,8 +134,8 @@ func (m *migrator) migratePastes(logger logrus.FieldLogger) (int, error) {
 	return nPastes, nil
 }
 
-func (m *migrator) migratePasteBody(logger logrus.FieldLogger, p *fsPaste, body []byte) error {
-	_, err := m.db.Exec("INSERT INTO paste_bodies(paste_id, data) VALUES($1, $2)", p.ID.String(), body)
+func (m *migrator) migratePasteBody(logger logrus.FieldLogger, p spectre.Paste, body []byte) error {
+	_, err := m.db.Exec("INSERT INTO paste_bodies(paste_id, data) VALUES($1, $2)", p.GetID().String(), body)
 	return err
 }
 
@@ -259,7 +266,7 @@ outer:
 				continue
 			}
 
-			plog := logger.WithField("paste", paste.ID.String())
+			plog := logger.WithField("paste", paste.GetID().String())
 			rdr, err := paste.Reader()
 
 			if rdr == nil || err != nil {
