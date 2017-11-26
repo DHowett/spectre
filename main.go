@@ -794,9 +794,6 @@ func main() {
 			return 0
 		}
 	})
-	healthServer.RegisterComputedMetric("ephstore.count", func() interface{} {
-		return ephStore.Len()
-	})
 	healthServer.RegisterComputedMetric("uptime", func() interface{} {
 		return int(time.Now().Sub(launchTime) / time.Second)
 	})
