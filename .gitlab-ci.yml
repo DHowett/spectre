@@ -21,7 +21,7 @@ build:
         - go build -ldflags="-w -s" -o build/ghostbin
         - cp *.yml build/
         - pip3 install --prefix=./build --force-reinstall --disable-pip-version-check --isolated pygments
-        - ln -s ./build/lib/python* ./build/lib/python
+        - ln -sr ./build/lib/python* ./build/lib/python
     artifacts:
         paths:
             - build/
