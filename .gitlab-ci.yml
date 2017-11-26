@@ -6,6 +6,7 @@ variables:
 
 before_script:
     - |
+        rm -f artifacts.zip
         curl -J -L -O --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.howett.net/api/v4/projects/2/jobs/artifacts/$SOURCE_BRANCH/download?job=build"
 
 deploy to production:
