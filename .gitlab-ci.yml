@@ -20,7 +20,7 @@ build:
         - ./node_modules/grunt-cli/bin/grunt
         - go build -ldflags="-w -s" -o build/ghostbin
         - cp *.yml build/
-        - mkdir ./build/bin/pygments
+        - mkdir -p ./build/bin/pygments
         - curl https://bitbucket.org/birkenfeld/pygments-main/get/stable.tar.bz2 | tar -x -j -C ./build/bin/pygments --strip-components=1
     artifacts:
         paths:
