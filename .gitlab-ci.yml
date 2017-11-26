@@ -19,7 +19,9 @@ build:
         - go get .
         - ./node_modules/grunt-cli/bin/grunt
         - go build -ldflags="-w -s" -o build/ghostbin
-        - "cp *.yml build/"
+        - cp *.yml build/
+        - pip3 install --prefix=./build --force-reinstall --disable-pip-version-check --isolated pygments
+        - ln -s ./build/python* ./build/python
     artifacts:
         paths:
             - build/
