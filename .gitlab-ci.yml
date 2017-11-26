@@ -4,8 +4,9 @@ stages:
 variables:
     GIT_STRATEGY: none
 
-before_script: |
-    curl -L -O --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.howett.net/api/v4/projects/2/jobs/artifacts/$SOURCE_BRANCH/download?job=build"
+before_script:
+    - |
+        curl -L -O --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.howett.net/api/v4/projects/2/jobs/artifacts/$SOURCE_BRANCH/download?job=build"
 
 deploy to production:
     stage: deploy
