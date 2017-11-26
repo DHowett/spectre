@@ -3,7 +3,7 @@ formatters:
     name: default
     func: commandFormatter
     env:
-    - "PYTHONPATH=./bin/lib/python"
+    - "PYTHONPATH=./lib/python"
     args:
     - ./bin/pygmentize
     - "-f"
