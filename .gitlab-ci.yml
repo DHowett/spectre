@@ -10,10 +10,10 @@ before_script:
     - "ln -s $(pwd) $GOPATH/src/$GO_PACKAGE"
     - "cd $GOPATH/src/$GO_PACKAGE"
 
-build:
+build v1-stable:
     stage: build
-    #only:
-    #    - production
+    only:
+        - v1-stable
     script:
         - npm install
         - go get .
@@ -25,3 +25,16 @@ build:
     artifacts:
         paths:
             - build/
+
+build master:
+    image: golang:alpine
+    variables:
+        GO_PACKAGE: "howett.net/spectre"
+    stage: build
+    except:
+        - master
+    script:
+        - go get $GO_PACKAGE/cmd/spectred
+        - mkdir -p build/
+        - cp $GOPATH/bin/spectred build/
+
