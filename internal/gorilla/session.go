@@ -3,32 +3,32 @@ package gorilla
 import (
 	"context"
 	"fmt"
-	gohttp "net/http"
+	"net/http"
 	"sync"
 
 	"github.com/gorilla/sessions"
-	"howett.net/spectre/http"
+	"howett.net/spectre/internal/auth"
 )
 
-var scopeCookieName = map[http.SessionScope]string{
-	http.SessionScopeServer:    "session",
-	http.SessionScopeClient:    "c_session",
-	http.SessionScopeSensitive: "authentication",
+var scopeCookieName = map[auth.SessionScope]string{
+	auth.SessionScopeServer:    "session",
+	auth.SessionScopeClient:    "c_session",
+	auth.SessionScopeSensitive: "authentication",
 }
 
-var _ http.SessionService = &gorillaSessionService{}
+var _ auth.SessionService = &gorillaSessionService{}
 
 type gorillaSessionService struct {
-	stores map[http.SessionScope]sessions.Store
+	stores map[auth.SessionScope]sessions.Store
 }
 
-func (b *gorillaSessionService) getSessionStore(scope http.SessionScope) (sessions.Store, bool) {
+func (b *gorillaSessionService) getSessionStore(scope auth.SessionScope) (sessions.Store, bool) {
 	store, ok := b.stores[scope]
 	return store, ok
 }
 
-func (b *gorillaSessionService) Handler(handler gohttp.Handler) gohttp.Handler {
-	return gohttp.HandlerFunc(func(w gohttp.ResponseWriter, r *gohttp.Request) {
+func (b *gorillaSessionService) Handler(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		session := &session{
 			broker: b,
 			writer: w,
@@ -41,14 +41,14 @@ func (b *gorillaSessionService) Handler(handler gohttp.Handler) gohttp.Handler {
 
 }
 
-func (b *gorillaSessionService) SessionForRequest(r *gohttp.Request) http.Session {
+func (b *gorillaSessionService) SessionForRequest(r *http.Request) auth.Session {
 	if ses, ok := r.Context().Value(b).(*session); ok {
 		return ses
 	}
 	return nil
 }
 
-func NewSessionService(stores map[http.SessionScope]sessions.Store) http.SessionService {
+func NewSessionService(stores map[auth.SessionScope]sessions.Store) auth.SessionService {
 	return &gorillaSessionService{
 		stores: stores,
 	}
@@ -59,15 +59,15 @@ type session struct {
 
 	broker *gorillaSessionService
 
-	sessions map[http.SessionScope]*sessions.Session
+	sessions map[auth.SessionScope]*sessions.Session
 
-	dirty map[http.SessionScope]bool
+	dirty map[auth.SessionScope]bool
 
-	writer  gohttp.ResponseWriter
-	request *gohttp.Request
+	writer  http.ResponseWriter
+	request *http.Request
 }
 
-func (s *session) logFailure(scope http.SessionScope, operation, key string, err error) {
+func (s *session) logFailure(scope auth.SessionScope, operation, key string, err error) {
 	// TODO(DH) Log
 	/*
 		s.logger.WithFields(logrus.Fields{
@@ -97,7 +97,7 @@ func (s *session) Save() {
 	}
 }
 
-func (s *session) getGorillaSession(scope http.SessionScope, create bool) (*sessions.Session, error) {
+func (s *session) getGorillaSession(scope auth.SessionScope, create bool) (*sessions.Session, error) {
 	s.mutex.RLock()
 	session, ok := s.sessions[scope]
 	s.mutex.RUnlock()
@@ -131,7 +131,7 @@ func (s *session) getGorillaSession(scope http.SessionScope, create bool) (*sess
 			}
 
 			if s.sessions == nil {
-				s.sessions = make(map[http.SessionScope]*sessions.Session)
+				s.sessions = make(map[auth.SessionScope]*sessions.Session)
 			}
 
 			s.sessions[scope] = session
@@ -140,7 +140,7 @@ func (s *session) getGorillaSession(scope http.SessionScope, create bool) (*sess
 	return session, nil
 }
 
-func (s *session) GetOk(scope http.SessionScope, key string) (interface{}, bool) {
+func (s *session) GetOk(scope auth.SessionScope, key string) (interface{}, bool) {
 	store, err := s.getGorillaSession(scope, false)
 	if err != nil {
 		s.logFailure(scope, key, "get", err)
@@ -158,12 +158,12 @@ func (s *session) GetOk(scope http.SessionScope, key string) (interface{}, bool)
 	return val, ok
 }
 
-func (s *session) Get(scope http.SessionScope, key string) interface{} {
+func (s *session) Get(scope auth.SessionScope, key string) interface{} {
 	val, _ := s.GetOk(scope, key)
 	return val
 }
 
-func (s *session) Set(scope http.SessionScope, key string, val interface{}) {
+func (s *session) Set(scope auth.SessionScope, key string, val interface{}) {
 	store, err := s.getGorillaSession(scope, true)
 	if err != nil {
 		s.logFailure(scope, key, "set", err)
@@ -176,7 +176,7 @@ func (s *session) Set(scope http.SessionScope, key string, val interface{}) {
 	store.Values[key] = val
 
 	if s.dirty == nil {
-		s.dirty = make(map[http.SessionScope]bool)
+		s.dirty = make(map[auth.SessionScope]bool)
 	}
 
 	s.dirty[scope] = true
@@ -185,18 +185,18 @@ func (s *session) Set(scope http.SessionScope, key string, val interface{}) {
 // MarkDirty will mark a session scope as dirty, forcing it to be saved.
 // This is only necessary when the session is storing object references
 // that can be updated without a call to Set.
-func (s *session) MarkDirty(scope http.SessionScope) {
+func (s *session) MarkDirty(scope auth.SessionScope) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	if s.dirty == nil {
-		s.dirty = make(map[http.SessionScope]bool)
+		s.dirty = make(map[auth.SessionScope]bool)
 	}
 
 	s.dirty[scope] = true
 }
 
-func (s *session) Delete(scope http.SessionScope, key string) {
+func (s *session) Delete(scope auth.SessionScope, key string) {
 	// nocreate: deleting a nonexistent key from a nonexistent session is useless.
 	store, err := s.getGorillaSession(scope, false)
 	if err != nil {
@@ -215,7 +215,7 @@ func (s *session) Delete(scope http.SessionScope, key string) {
 	delete(store.Values, key)
 
 	if s.dirty == nil {
-		s.dirty = make(map[http.SessionScope]bool)
+		s.dirty = make(map[auth.SessionScope]bool)
 	}
 
 	// If it didn't exist, don't dirty the session.
