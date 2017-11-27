@@ -18,7 +18,7 @@ type latePermitter struct {
 	u spectre.Permitter
 }
 
-func (s *LoginService) Middleware(h http.Handler) http.Handler {
+func (s *PermitterProvider) Middleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r = r.WithContext(context.WithValue(r.Context(), s, &latePermitter{}))
 		h.ServeHTTP(w, r)
