@@ -1,20 +1,22 @@
 package main
 
 import (
-	"howett.net/spectre/http"
+	"net/http"
+
+	"github.com/gorilla/mux"
+	"howett.net/spectre/web/pastes"
 )
 
 func main() {
 	us := &mockUserService{}
-	server := &http.Server{
-		Addr:         ":8080",
-		Proxied:      false,
-		DocumentRoot: ".",
+	ps := &mockPasteService{}
+	perm := &loggingPermitter{}
+	login := &mockLoginService{}
+	_, _ = us, login
 
-		PasteService:             &mockPasteService{},
-		RequestPermitterProvider: loggingPermitter{},
-		UserService:              us,
-		LoginService:             &mockLoginService{UserService: us},
-	}
-	server.Listen()
+	router := mux.NewRouter()
+	pasteHandler := pastes.NewHandler(ps, perm)
+	pasteHandler.BindRoutes("/pastes", router.Path("/pastes").Subrouter())
+
+	http.ListenAndServe(":8080", router)
 }

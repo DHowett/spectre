@@ -1,4 +1,4 @@
-package http
+package auth
 
 import (
 	"net/http"
@@ -9,8 +9,4 @@ import (
 type LoginService interface {
 	GetLoggedInUser(r *http.Request) spectre.User
 	SetLoggedInUser(w http.ResponseWriter, r *http.Request, u spectre.User)
-}
-
-type PermitterProvider interface {
-	GetPermitterForRequest(r *http.Request) spectre.Permitter
 }
