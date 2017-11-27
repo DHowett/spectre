@@ -4,19 +4,31 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/justinas/alice"
+	"howett.net/spectre/internal/ctxbound"
 	"howett.net/spectre/web/pastes"
 )
+
+func subrouter(r *mux.Router, prefix string) *mux.Router {
+	n := mux.NewRouter()
+	r.PathPrefix(prefix).Handler(http.StripPrefix(prefix, n))
+	return n
+}
 
 func main() {
 	us := &mockUserService{}
 	ps := &mockPasteService{}
-	perm := &loggingPermitter{}
-	login := &mockLoginService{}
+	perm := &ctxbound.PermitterProvider{&loggingPermitter{}}
+	login := &ctxbound.LoginService{&mockLoginService{us}}
 	_, _ = us, login
 
 	router := mux.NewRouter()
-	pasteHandler := pastes.NewHandler(ps, perm)
-	pasteHandler.BindRoutes("/pastes", router.Path("/pastes").Subrouter())
+	pasteRouter := subrouter(router, "/paste")
 
-	http.ListenAndServe(":8080", router)
+	pasteHandler := pastes.NewHandler(ps, perm)
+	pasteHandler.BindRoutes(pasteRouter)
+
+	defaultStack := alice.New(perm.Middleware, login.Middleware)
+
+	http.ListenAndServe(":8080", defaultStack.Then(router))
 }
