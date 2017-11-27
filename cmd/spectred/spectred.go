@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/justinas/alice"
+	"howett.net/spectre/api/v0/users"
 	"howett.net/spectre/internal/ctxbound"
 	"howett.net/spectre/web/pastes"
 )
@@ -24,9 +25,14 @@ func main() {
 
 	router := mux.NewRouter()
 	pasteRouter := subrouter(router, "/paste")
+	v0Router := subrouter(router, "/api/v0")
+	usersRouter := subrouter(v0Router, "/user")
 
 	pasteHandler := pastes.NewHandler(ps, perm)
 	pasteHandler.BindRoutes(pasteRouter)
+
+	userHandler := users.NewHandler(us, login)
+	userHandler.BindRoutes(usersRouter)
 
 	defaultStack := alice.New(perm.Middleware, login.Middleware)
 
