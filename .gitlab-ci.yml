@@ -1,0 +1,27 @@
+image: registry.howett.net/ghostbin/builder:master
+stages:
+    - build
+
+variables:
+    GO_PACKAGE: "github.com/DHowett/ghostbin"
+
+before_script:
+    - "mkdir -p $(dirname $GOPATH/src/$GO_PACKAGE)/build"
+    - "ln -s $(pwd) $GOPATH/src/$GO_PACKAGE"
+    - "cd $GOPATH/src/$GO_PACKAGE"
+
+build:
+    stage: build
+    #only:
+    #    - production
+    script:
+        - npm install
+        - go get .
+        - ./node_modules/grunt-cli/bin/grunt
+        - go build -ldflags="-w -s" -o build/ghostbin
+        - cp *.yml build/
+        - mkdir -p ./build/bin/pygments
+        - curl https://bitbucket.org/birkenfeld/pygments-main/get/stable.tar.bz2 | tar -x -j -C ./build/bin/pygments --strip-components=1
+    artifacts:
+        paths:
+            - build/
