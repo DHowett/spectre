@@ -163,14 +163,33 @@ func (h *Handler) handleShow(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handler) handleShowEditor(w http.ResponseWriter, r *http.Request) {
+}
+
 func (h *Handler) BindRoutes(router *mux.Router) error {
+	// Methods() does not open a new handling context,
+	// so we can't chain path.methods->a, .methods->b
 	router.Path("/").
-		Methods("POST").HandlerFunc(h.handleNew).
+		Methods("POST").HandlerFunc(h.handleNew)
+
+	router.Path("/").
 		Methods("GET").HandlerFunc(nil)
 
+	// Legacy
+	router.Path("/new").
+		Methods("POST").HandlerFunc(h.handleNew)
+
 	router.Path("/{id}").
-		Methods("POST", "PUT").HandlerFunc(h.handleUpdate).
+		Methods("POST", "PUT").HandlerFunc(h.handleUpdate)
+
+	router.Path("/{id}").
 		Methods("GET").HandlerFunc(h.handleShow)
+
+	router.Path("/{id}/edit").
+		Methods("POST", "PUT").HandlerFunc(h.handleUpdate)
+
+	router.Path("/{id}/edit").
+		Methods("GET").HandlerFunc(h.handleShowEditor)
 
 	router.Path("/{id}/delete").
 		Methods("POST").HandlerFunc(h.handleDelete)
