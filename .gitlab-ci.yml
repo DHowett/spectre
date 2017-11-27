@@ -32,7 +32,7 @@ build master:
         GO_PACKAGE: "howett.net/spectre"
     stage: build
     except:
-        - master
+        - v1-stable
     script:
         - go get $GO_PACKAGE/cmd/spectred
         - mkdir -p build/
