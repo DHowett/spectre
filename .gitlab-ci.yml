@@ -27,7 +27,6 @@ build v1-stable:
             - build/
 
 build master:
-    image: golang:alpine
     variables:
         GO_PACKAGE: "howett.net/spectre"
     stage: build
