@@ -187,7 +187,7 @@ func (ph *pasteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO(DH): All of this is bad
 	pc := strings.Split(PathSuffix(r), "/")
 
-	switch pc[1] {
+	switch pc[0] {
 	case "new":
 		// POST only
 		ph.createPaste(w, r)
