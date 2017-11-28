@@ -1,10 +1,7 @@
 package pastes
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -12,11 +9,13 @@ import (
 	"howett.net/spectre"
 	"howett.net/spectre/internal/auth"
 	ghtime "howett.net/spectre/internal/time"
+	"howett.net/spectre/web"
 )
 
 type Handler struct {
 	PasteService      spectre.PasteService
 	PermitterProvider auth.PermitterProvider
+	Renderer          web.Renderer
 }
 
 func (h *Handler) pasteUpdateFromRequest(r *http.Request) (*spectre.PasteUpdate, error) {
@@ -72,20 +71,16 @@ func (h *Handler) getPasteFromRequest(r *http.Request) (spectre.Paste, error) {
 	return h.PasteService.GetPaste(r.Context(), nil, spectre.PasteID(id))
 }
 
-func (h *Handler) updatePasteC(p spectre.Paste, w http.ResponseWriter) {
-	//Redirect(w, http.StatusSeeOther, fmt.Sprintf("/paste/%v", p.GetID()))
-}
-
 func (h *Handler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	p, err := h.getPasteFromRequest(r)
 	if err != nil {
-		// TODO(DH) errors!
+		h.Renderer.Error(w, r, err)
 		return
 	}
 
 	pu, err := h.pasteUpdateFromRequest(r)
 	if err != nil {
-		// TODO(DH) errors!
+		h.Renderer.Error(w, r, err)
 		return
 	}
 
@@ -102,19 +97,19 @@ func (h *Handler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	h.updatePasteC(p, w)
+	h.Renderer.Render(w, r, 200, &PasteUpdateComplete{p.GetID()})
 }
 
 func (h *Handler) handleNew(w http.ResponseWriter, r *http.Request) {
 	pu, err := h.pasteUpdateFromRequest(r)
 	if err != nil {
-		// TODO(DH) errors!
+		h.Renderer.Error(w, r, err)
 		return
 	}
 
 	p, err := h.PasteService.CreatePaste(r.Context(), pu)
 	if err != nil {
-		// TODO(DH) err
+		h.Renderer.Error(w, r, err)
 		return
 	}
 
@@ -122,13 +117,13 @@ func (h *Handler) handleNew(w http.ResponseWriter, r *http.Request) {
 	perms := permitter.Permissions(spectre.PermissionClassPaste, p.GetID())
 	perms.Grant(spectre.PastePermissionAll)
 
-	h.updatePasteC(p, w)
+	h.Renderer.Render(w, r, 200, &PasteUpdateComplete{p.GetID()})
 }
 
 func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	p, err := h.getPasteFromRequest(r)
 	if err != nil {
-		// TODO(DH) errors!
+		h.Renderer.Error(w, r, err)
 		return
 	}
 
@@ -140,27 +135,19 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.PasteService.DestroyPaste(r.Context(), p.GetID())
+	h.Renderer.Render(w, r, 200, &PasteDeleteComplete{p.GetID()})
 }
 
 func (h *Handler) handleShow(w http.ResponseWriter, r *http.Request) {
 	p, err := h.getPasteFromRequest(r)
-	var b string
-	var perm bool
-	if p != nil {
-		rdr, _ := p.Reader()
-		if rdr != nil {
-			bs, _ := ioutil.ReadAll(rdr)
-			b = string(bs)
-		}
-		perm = h.PermitterProvider.GetPermitterForRequest(r).Permissions(spectre.PermissionClassPaste, p.GetID()).Has(spectre.PastePermissionEdit)
+	if err != nil {
+		h.Renderer.Error(w, r, err)
+		return
 	}
-	enc := json.NewEncoder(w)
-	enc.Encode(map[string]interface{}{
-		"paste":     p,
-		"body":      b,
-		"permitted": perm,
-		"err":       fmt.Sprintf("%v", err),
-	})
+
+	permitted := h.PermitterProvider.GetPermitterForRequest(r).Permissions(spectre.PermissionClassPaste, p.GetID()).Has(spectre.PastePermissionEdit)
+
+	h.Renderer.Render(w, r, 200, &PasteResponse{p, permitted})
 }
 
 func (h *Handler) handleShowEditor(w http.ResponseWriter, r *http.Request) {
@@ -197,9 +184,10 @@ func (h *Handler) BindRoutes(router *mux.Router) error {
 	return nil
 }
 
-func NewHandler(ps spectre.PasteService, perm auth.PermitterProvider) *Handler {
+func NewHandler(ps spectre.PasteService, perm auth.PermitterProvider, r web.Renderer) *Handler {
 	return &Handler{
 		PasteService:      ps,
 		PermitterProvider: perm,
+		Renderer:          r,
 	}
 }

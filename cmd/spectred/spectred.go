@@ -28,7 +28,7 @@ func main() {
 	v0Router := subrouter(router, "/api/v0")
 	usersRouter := subrouter(v0Router, "/user")
 
-	pasteHandler := pastes.NewHandler(ps, perm)
+	pasteHandler := pastes.NewHandler(ps, perm, &jsonRenderer{})
 	pasteHandler.BindRoutes(pasteRouter)
 
 	userHandler := users.NewHandler(us, login)
