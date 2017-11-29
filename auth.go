@@ -50,8 +50,12 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer func() {
+		w.WriteHeader(http.StatusOK)
 		enc := json.NewEncoder(w)
-		enc.Encode(reply)
+		err := enc.Encode(reply)
+		if err != nil {
+			glog.Error(err)
+		}
 	}()
 
 	var user *account.User
@@ -176,12 +180,14 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 			email := verifyResponseJSON["email"].(string)
 			user = userStore.Get(email)
 			if user == nil {
+				healthServer.IncrementMetric("user.persona.create.rejected")
 				reply.Reason = "new Persona accounts cannot be created."
 				return
 			}
 
 			if persona, ok := user.Values["persona"].(bool); !ok || !persona {
-				reply.Reason = "this is not a Persona account."
+				healthServer.IncrementMetric("user.persona.tried_after_migrate")
+				reply.Reason = "this is not an |> E-Mail account."
 				return
 			}
 
