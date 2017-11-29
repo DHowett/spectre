@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
@@ -14,7 +15,6 @@ import (
 	"github.com/DHowett/ghostbin/account"
 	"github.com/golang/glog"
 	"github.com/golang/groupcache/lru"
-	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/scrypt"
@@ -233,8 +233,6 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 	if user != nil {
 		healthServer.IncrementMetric("user.login")
 
-		context.Set(r, userContextKey, user)
-
 		// Attempt to aggregate user, session, and old perms.
 		pastePerms := GetPastePermissions(r)
 		user.Values["permissions"] = pastePerms
@@ -325,12 +323,12 @@ func (a *AuthChallengeProvider) Challenge(message []byte, key []byte) []byte {
 }
 
 func GetUser(r *http.Request) *account.User {
-	u := context.Get(r, userContextKey)
-	user, ok := u.(*account.User)
-	if !ok {
-		return nil
+	if ui := r.Context().Value(userContextKey); ui != nil {
+		if u, ok := ui.(*account.User); ok {
+			return u
+		}
 	}
-	return user
+	return nil
 }
 
 type userLookupWrapper struct {
@@ -342,7 +340,7 @@ func (u userLookupWrapper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	account, ok := ses.Values["account2"].(string)
 	if ok {
 		user := userStore.Get(account)
-		context.Set(r, userContextKey, user)
+		r = r.WithContext(context.WithValue(r.Context(), userContextKey, user))
 	}
 	u.Handler.ServeHTTP(w, r)
 }
