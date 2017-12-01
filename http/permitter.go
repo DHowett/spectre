@@ -2,14 +2,11 @@ package http
 
 import (
 	"errors"
+	"net/http"
 
 	"howett.net/spectre"
+	"howett.net/spectre/internal/auth"
 )
-
-////////
-// TODO(DH)
-// This file does not belong in spectre/http!
-////////
 
 var (
 	errPermissionNotApplicable = errors.New("permission not applicable")
@@ -31,7 +28,7 @@ func (nullPermissionScope) Revoke(spectre.Permission) error {
 
 type requestPermitter struct {
 	u spectre.User
-	s Session
+	s auth.Session
 }
 
 func (p *requestPermitter) Permissions(class spectre.PermissionClass, args ...interface{}) spectre.PermissionScope {
@@ -49,7 +46,7 @@ func (p *requestPermitter) Permissions(class spectre.PermissionClass, args ...in
 
 type sessionPastePermissionScope struct {
 	id        spectre.PasteID
-	s         Session
+	s         auth.Session
 	v3Entries map[spectre.PasteID]spectre.Permission
 }
 
@@ -59,7 +56,7 @@ func (g *sessionPastePermissionScope) Has(p spectre.Permission) bool {
 
 func (g *sessionPastePermissionScope) Grant(p spectre.Permission) error {
 	g.v3Entries[g.id] = g.v3Entries[g.id] | p
-	g.s.MarkDirty(SessionScopeServer)
+	g.s.MarkDirty(auth.SessionScopeServer)
 	return nil
 }
 
@@ -68,21 +65,35 @@ func (g *sessionPastePermissionScope) Revoke(p spectre.Permission) error {
 	if g.v3Entries[g.id] == 0 {
 		delete(g.v3Entries, g.id)
 	}
-	g.s.MarkDirty(SessionScopeServer)
+	g.s.MarkDirty(auth.SessionScopeServer)
 	return nil
 }
 
-func newSessionPastePermissionScope(pID spectre.PasteID, session Session) spectre.PermissionScope {
-	v3EntriesI := session.Get(SessionScopeServer, "v3permissions")
+func newSessionPastePermissionScope(pID spectre.PasteID, session auth.Session) spectre.PermissionScope {
+	v3EntriesI := session.Get(auth.SessionScopeServer, "v3permissions")
 	v3Entries, ok := v3EntriesI.(map[spectre.PasteID]spectre.Permission)
 	if !ok || v3Entries == nil {
 		v3Entries = make(map[spectre.PasteID]spectre.Permission)
-		session.Set(SessionScopeServer, "v3permissions", v3Entries)
+		session.Set(auth.SessionScopeServer, "v3permissions", v3Entries)
 	}
 
 	return &sessionPastePermissionScope{
 		id:        pID,
 		s:         session,
 		v3Entries: v3Entries,
+	}
+}
+
+type loginOrSessionPermitterProvider struct {
+	ls auth.LoginService
+	ss auth.SessionService
+}
+
+var _ auth.PermitterProvider = &loginOrSessionPermitterProvider{}
+
+func (p *loginOrSessionPermitterProvider) GetPermitterForRequest(r *http.Request) spectre.Permitter {
+	return &requestPermitter{
+		s: p.ss.SessionForRequest(r),
+		u: p.ls.GetLoggedInUser(r),
 	}
 }
