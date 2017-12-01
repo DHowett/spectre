@@ -30,6 +30,7 @@ build:
 deploy to production:
     stage: deploy
     image: scratch # This should be ignored: the ghostbin+deploy runner is shell/ssh
+    before_script: []
     variables:
         GIT_STRATEGY: none
     tags: [ "ghostbin", "deploy" ]
