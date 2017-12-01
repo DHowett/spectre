@@ -12,6 +12,7 @@ function usage() {
 	echo "        $prog -U					- Upgrade ghost.sh (this will replace $0)" >&2
 	echo "Options:" >&2
 	echo "        -x <expiry>					- Expiration for paste (with units: ns/us/ms/s/m/h)" >&2
+	echo "        -t <title>					- Title for paste" >&2
 	echo "        -p						- Prompt for password" >&2
 	echo "        -S <server>					- Override server" >&2
 	echo "        -i						- Use http" >&2
@@ -74,6 +75,9 @@ while getopts "d:e:FhIiLlpS:s:t:Uu:x:" o; do
 		s)
 			mode="show"
 			paste=$OPTARG
+			;;
+		t)
+			title=$OPTARG
 			;;
 		U)
 			mode="upgrade"
@@ -218,6 +222,7 @@ url="${server}/paste/new"
 [[ $passworded -eq 1 ]] && _password pw && echo
 export -a curl_formargs=("--data-urlencode" "text@$filename")
 [[ ! -z "${lang}" ]]	&& curl_formargs+=("--data-urlencode" "lang=${lang}")
+[[ ! -z "${title}" ]]   && curl_formargs+=("--data-urlencode" "title=${title}")
 [[ ! -z "${pw}" ]]	&& curl_formargs+=("--data-urlencode" "password=${pw}")
 [[ ! -z "${expiry}" ]]	&& curl_formargs+=("--data-urlencode" "expire=${expiry}")
 
