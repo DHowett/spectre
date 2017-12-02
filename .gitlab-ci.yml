@@ -1,20 +1,32 @@
 image: registry.howett.net/ghostbin/builder:master
+
 stages:
     - build
     - deploy
 
+.no-git-fetch: &no-git-fetch
+    variables:
+        GIT_STRATEGY: none
+
+.dedicated-deploy-runner: &dedicated-deploy-runner
+    tags:
+        - ghostbin
+        - deploy
+
 variables:
-    GO_PACKAGE: "github.com/DHowett/ghostbin"
+    GO_PACKAGE: "howett.net/spectre"
 
 before_script:
     - "mkdir -p $(dirname $GOPATH/src/$GO_PACKAGE)/build"
     - "ln -s $(pwd) $GOPATH/src/$GO_PACKAGE"
     - "cd $GOPATH/src/$GO_PACKAGE"
 
-build:
+legacy build:
     stage: build
-    #only:
-    #    - production
+    variables:
+        GO_PACKAGE: "github.com/DHowett/ghostbin"
+    only:
+        - v1-stable
     script:
         - npm install
         - go get .
@@ -27,21 +39,37 @@ build:
         paths:
             - build/
 
-deploy to production:
+build:
+    stage: build
+    except:
+        - v1-stable
+    script:
+        - go get $GO_PACKAGE/cmd/spectred
+        - mkdir -p build/
+        - cp $GOPATH/bin/spectred build/
+
+.deploy-common: &deploy-common
     stage: deploy
-    image: scratch # This should be ignored: the ghostbin+deploy runner is shell/ssh
-    before_script: []
-    variables:
-        GIT_STRATEGY: none
-    tags: [ "ghostbin", "deploy" ]
     when: manual
-    dependencies:
-        - build
+    before_script:
+        - export DATE=$(date +%Y%m%d%H%M%S)
+        - export DESTDIR=/opt/ghostbin/$CI_COMMIT_REF_NAME
+        - mkdir -p $DESTDIR
+    script:
+        - mv build $DESTDIR/$DATE
+        - ln -Tsrf $DESTDIR/$DATE $DESTDIR/latest
+    after_script:
+        - sudo systemctl restart ghostbin@$CI_COMMIT_REF_NAME
+
+production:
+    <<: *no-git-fetch
+    <<: *dedicated-deploy-runner
+    <<: *deploy-common
     environment:
         name: production
         url: https://ghostbin.com
-    script: |
-        DATE=$(date +%Y%m%d%H%M%S)
-        mv build /opt/ghostbin/$DATE
-        ln -Tsf /opt/ghostbin/$DATE /opt/ghostbin/latest
-        sudo systemctl restart ghostbin
+    only:
+        - v1-stable
+    dependencies:
+        - "legacy build"
+
