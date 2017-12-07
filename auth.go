@@ -233,6 +233,11 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 	if user != nil {
 		healthServer.IncrementMetric("user.login")
 
+		// *HACK*
+		// Inject the user into the request context for GetPastePermissions
+		// to find.
+		r = r.WithContext(context.WithValue(r.Context(), userContextKey, user))
+
 		// Attempt to aggregate user, session, and old perms.
 		pastePerms := GetPastePermissions(r)
 		user.Values["permissions"] = pastePerms
