@@ -236,10 +236,10 @@ func authLoginPostHandler(w http.ResponseWriter, r *http.Request) {
 		// *HACK*
 		// Inject the user into the request context for GetPastePermissions
 		// to find.
-		r = r.WithContext(context.WithValue(r.Context(), userContextKey, user))
+		subr := r.WithContext(context.WithValue(r.Context(), userContextKey, user))
 
 		// Attempt to aggregate user, session, and old perms.
-		pastePerms := GetPastePermissions(r)
+		pastePerms := GetPastePermissions(subr)
 		user.Values["permissions"] = pastePerms
 		delete(serverSession.Values, "pastes")      // delete old perms
 		delete(serverSession.Values, "permissions") // delete new session perms
