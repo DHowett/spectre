@@ -18,7 +18,8 @@ type ReportStore struct {
 }
 
 func (r *ReportStore) Save() error {
-	file, err := os.Create(r.filename)
+	asideFilename := r.filename + ".atomic"
+	file, err := os.Create(asideFilename)
 	if err != nil {
 		return err
 	}
@@ -26,8 +27,12 @@ func (r *ReportStore) Save() error {
 
 	enc := gob.NewEncoder(file)
 
-	// Returns nil if everything worked.
-	return enc.Encode(r)
+	err = enc.Encode(r)
+	if err != nil {
+		return err
+	}
+
+	return os.Rename(asideFilename, r.filename)
 }
 
 func (r *ReportStore) Add(id PasteID, kind string) {
