@@ -56,7 +56,7 @@ func LoadReportStore(filename string) *ReportStore {
 		err := dec.Decode(&decoded_reports)
 
 		if err != nil {
-			glog.Fatal("Failed to decode reports: ", err)
+			glog.Error("Failed to decode reports: ", err)
 		}
 		decoded_reports.filename = filename
 		return decoded_reports

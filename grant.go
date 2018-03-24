@@ -64,7 +64,7 @@ func LoadGrantStore(filename string) *GrantStore {
 		err := dec.Decode(&gs)
 
 		if err != nil {
-			glog.Fatal("Failed to decode grants: ", err)
+			glog.Error("Failed to decode grants: ", err)
 		}
 	}
 	if gs == nil {
