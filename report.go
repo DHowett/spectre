@@ -29,6 +29,7 @@ func (r *ReportStore) Save() error {
 
 	err = enc.Encode(r)
 	if err != nil {
+		glog.Error("Failed to save reports: ", err)
 		return err
 	}
 

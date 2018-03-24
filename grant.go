@@ -32,6 +32,7 @@ func (r *GrantStore) Save() error {
 
 	err = enc.Encode(r)
 	if err != nil {
+		glog.Error("Failed to save grants: ", err)
 		return err
 	}
 
