@@ -55,11 +55,12 @@ func LoadReportStore(filename string) *ReportStore {
 		dec := gob.NewDecoder(report_file)
 		err := dec.Decode(&decoded_reports)
 
-		if err != nil {
+		if err == nil {
+			decoded_reports.filename = filename
+			return decoded_reports
+		} else {
 			glog.Error("Failed to decode reports: ", err)
 		}
-		decoded_reports.filename = filename
-		return decoded_reports
 	}
 	return &ReportStore{Reports: map[PasteID]ReportInfo{}, filename: filename}
 }
