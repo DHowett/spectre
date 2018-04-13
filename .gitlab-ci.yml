@@ -31,7 +31,7 @@ legacy build:
         - npm install
         - go get .
         - ./node_modules/grunt-cli/bin/grunt
-        - go build -ldflags="-w -s" -o build/ghostbin
+        - go build -ldflags="-w -s -X main.VERSION=${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHA}.${CI_JOB_ID}" -o build/ghostbin
         - cp *.yml build/
         - mkdir -p ./build/bin/pygments
         - curl https://bitbucket.org/birkenfeld/pygments-main/get/stable.tar.bz2 | tar -x -j -C ./build/bin/pygments --strip-components=1
