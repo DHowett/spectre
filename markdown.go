@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"io"
 
 	"github.com/microcosm-cc/bluemonday"
@@ -41,7 +42,7 @@ func init() {
 	sanitationPolicy.AllowAttrs("class").OnElements("div", "i", "span")
 }
 
-func markdownFormatter(formatter *Formatter, stream io.Reader, args ...string) (string, error) {
+func markdownFormatter(ctx context.Context, formatter *Formatter, stream io.Reader, args ...string) (string, error) {
 	buf := &bytes.Buffer{}
 	io.Copy(buf, stream)
 	md := blackfriday.Markdown(buf.Bytes(), mkdHtmlRenderer,
