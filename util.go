@@ -126,9 +126,12 @@ func RequestIsHTTPS(r *http.Request) bool {
 }
 
 func SourceIPForRequest(r *http.Request) string {
-	ip := r.Header.Get("X-Forwarded-For")
+	ip := r.Header.Get("CF-Connecting-IP")
 	if ip == "" {
-		ip = r.RemoteAddr[:strings.LastIndex(r.RemoteAddr, ":")]
+		ip := r.Header.Get("X-Forwarded-For")
+		if ip == "" {
+			ip = r.RemoteAddr[:strings.LastIndex(r.RemoteAddr, ":")]
+		}
 	}
 	return ip
 }
