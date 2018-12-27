@@ -92,13 +92,25 @@
 					}
 				});
 			},
+			shouldRefreshPageOnLogin: function() {
+				// Right now, only refresh for session (the only other page
+				// with a login form)
+				return (window.location.pathname.match(/session/)||[]).length > 0;
+			},
+			refreshPage: function() {
+				window.location = window.location;
+			},
 			_loginReplyHandler: function(reply) {
 				$("#partial_container_login_logout .blocker").fadeOut("fast");
 				switch(reply.status) {
 					case "valid":
 						$("#login_error").text("").hide(400);
-						Ghostbin.updatePartial("login_logout");
-						Ghostbin.displayFlash({type: "success", body: "Successfully logged in."});
+						if(!Ghostbin.shouldRefreshPageOnLogin()) {
+							Ghostbin.updatePartial("login_logout");
+							Ghostbin.displayFlash({type: "success", body: "Successfully logged in."});
+						} else {
+							Ghostbin.refreshPage();
+						}
 						break;
 					case "moreinfo":
 						$("#login_error").text("").hide(400);
@@ -149,8 +161,12 @@
 					async: true,
 					success: function() {
 						$("#partial_container_login_logout .blocker").fadeOut("fast");
-						Ghostbin.updatePartial("login_logout");
-						Ghostbin.displayFlash({type: "success", body: "Successfully logged out."});
+						if(!Ghostbin.shouldRefreshPageOnLogin()) {
+							Ghostbin.updatePartial("login_logout");
+							Ghostbin.displayFlash({type: "success", body: "Successfully logged out."});
+						} else {
+							Ghostbin.refreshPage();
+						}
 					},
 					failure: function(wat) {
 						$("#partial_container_login_logout .blocker").fadeOut("fast");
