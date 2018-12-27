@@ -10,6 +10,8 @@
 @toolbox-height: 42px;
 @toolbox-background: darken(@paste-background, 3%);
 
+@warning-background: rgb(red(@toolbox-background), green(@toolbox-background), 0);
+
 @paste-title-font-size: 16pt;
 @paste-title-color: contrast(@toolbox-background, black, white);
 @paste-subtitle-font-size: 10pt;
@@ -28,6 +30,9 @@
 
 @success-highlight: rgb(0, green(@major-highlight), 0);
 @success-highlight-border: rgb(0, green(@major-highlight-border), 0);
+
+@warning-highlight: rgb(red(@major-highlight), green(@major-highlight), 0);
+@warning-highlight-border: rgb(red(@major-highlight-border), green(@major-highlight-border), 0);
 
 @line-number-bar: @minor-highlight;
 @line-numbers: lighten(@paste-background, 25%);
@@ -334,6 +339,23 @@ div.paste-toolbox {
 	}
 	@media print {
 		display: none;
+	}
+}
+
+div.announcement {
+	background-color: @warning-background;
+	padding: 6px;
+	@media @media-tablet {
+		.box-sizing(border-box);
+	}
+	@media print {
+		display: none;
+	}
+
+	span {
+		font-size: @paste-subtitle-font-size;
+		line-height: 1em;
+		vertical-align: middle;
 	}
 }
 
