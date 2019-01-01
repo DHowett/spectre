@@ -41,6 +41,19 @@
 @media-tablet: ~"screen and (min-width: 768px)";
 @media-phone: ~"screen and (max-width: 767px)";
 
+@paste-title-font-features: 'calt' 1, 'case' 1, 'ss01' 1, 'ss02' 1;
+
+html {
+	font-family: 'Inter UI', sans-serif;
+	font-feature-settings: 'calt' 1, 'case' 1;
+}
+
+@supports (font-variation-settings: normal) {
+	html {
+		font-family: 'Inter UI var alt', sans-serif;
+	}
+}
+
 // Suppress default styling on Firefox for Android
 button, button:active, textarea, textarea:focus, input, input:focus {
 	background-image: none;
@@ -366,6 +379,7 @@ div.announcement {
 span.paste-title {
 	position: relative;
 	font-size: @paste-title-font-size;
+	font-feature-settings: @paste-title-font-features;
 	color: @paste-title-color;
 	vertical-align: middle;
 	@media @media-phone {
