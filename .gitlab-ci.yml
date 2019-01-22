@@ -25,11 +25,11 @@ legacy build:
     stage: build
     variables:
         GO_PACKAGE: "github.com/DHowett/ghostbin"
+        GO111MODULE: "on"
     only:
         - v1-stable
     script:
         - npm install
-        - go get .
         - ./node_modules/grunt-cli/bin/grunt
         - go build -ldflags="-w -s -X main.VERSION=${CI_COMMIT_REF_SLUG}.${CI_COMMIT_SHA}.${CI_JOB_ID}" -o build/ghostbin
         - cp *.yml build/
