@@ -5,7 +5,7 @@
 <button type="button" id="logout" class="btn"><i class="icon icon-logout"> </i>Log Out</button>
 <script type="text/javascript">
 $("button#logout").on("click", function() {
-	Ghostbin.logout();
+	Spectre.logout();
 });
 </script>
 {{else}}
@@ -40,7 +40,7 @@ retained as part of your user account. Promise.</small></p>
 </div>
 <script type="text/javascript">
 $("form#loginForm").on('submit', function(event) {
-	Ghostbin.login($(this).serializeObject());
+	Spectre.login($(this).serializeObject());
 	event.preventDefault();
 	event.stopPropagation();
 });

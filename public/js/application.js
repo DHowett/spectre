@@ -1,6 +1,6 @@
 (function(window) {
 	"use strict";
-	window.Ghostbin = function() {
+	window.Spectre = function() {
 		var _s2Languages;
 		var _languageMap;
 		return {
@@ -105,11 +105,11 @@
 				switch(reply.status) {
 					case "valid":
 						$("#login_error").text("").hide(400);
-						if(!Ghostbin.shouldRefreshPageOnLogin()) {
-							Ghostbin.updatePartial("login_logout");
-							Ghostbin.displayFlash({type: "success", body: "Successfully logged in."});
+						if(!Spectre.shouldRefreshPageOnLogin()) {
+							Spectre.updatePartial("login_logout");
+							Spectre.displayFlash({type: "success", body: "Successfully logged in."});
 						} else {
-							Ghostbin.refreshPage();
+							Spectre.refreshPage();
 						}
 						break;
 					case "moreinfo":
@@ -147,7 +147,7 @@
 					async: true,
 					dataType: "json",
 					data: data,
-					success: Ghostbin._loginReplyHandler,
+					success: Spectre._loginReplyHandler,
 					error: function() {
 						$("#partial_container_login_logout .blocker").fadeOut("fast");
 					},
@@ -161,11 +161,11 @@
 					async: true,
 					success: function() {
 						$("#partial_container_login_logout .blocker").fadeOut("fast");
-						if(!Ghostbin.shouldRefreshPageOnLogin()) {
-							Ghostbin.updatePartial("login_logout");
-							Ghostbin.displayFlash({type: "success", body: "Successfully logged out."});
+						if(!Spectre.shouldRefreshPageOnLogin()) {
+							Spectre.updatePartial("login_logout");
+							Spectre.displayFlash({type: "success", body: "Successfully logged out."});
 						} else {
-							Ghostbin.refreshPage();
+							Spectre.refreshPage();
 						}
 					},
 					failure: function(wat) {
@@ -208,10 +208,10 @@ $(function() {
 		var langbox = pasteForm.find("#langbox");
 		var context = pasteForm.data("context");
 
-		Ghostbin.loadLanguages();
+		Spectre.loadLanguages();
 
 		langbox.select2({
-			data: Ghostbin.languagesForSelect2(),
+			data: Spectre.languagesForSelect2(),
 			matcher: function(term, text, lang) {
 				// The ifs here are blown apart so that we might short-circuit.
 				if(!lang.id) return false;
@@ -223,21 +223,21 @@ $(function() {
 				return false;
 			},
 		});
-		var lang = Ghostbin.languageNamed(langbox.data("selected")) ||
-				Ghostbin.defaultLanguage() ||
-				Ghostbin.languageNamed("text");
+		var lang = Spectre.languageNamed(langbox.data("selected")) ||
+				Spectre.defaultLanguage() ||
+				Spectre.languageNamed("text");
 		langbox.select2("data", lang);
 
 		if(context === "new") {
-			pasteForm.find("input[name='expire']").val(Ghostbin.defaultExpiration());
+			pasteForm.find("input[name='expire']").val(Spectre.defaultExpiration());
 
 			var optModal = $("#optionsModal");
 			optModal.modal({show: false});
 
 			optModal.find("input[type='checkbox']").on("change", function() {
-				Ghostbin.setPreference($(this).data("gb-key"), this.checked ? "true" : "false");
+				Spectre.setPreference($(this).data("gb-key"), this.checked ? "true" : "false");
 			}).each(function() {
-				this.checked = Ghostbin.getPreference($(this).data("gb-key"), "false") === "true";
+				this.checked = Spectre.getPreference($(this).data("gb-key"), "false") === "true";
 			});
 
 			$("#optionsButton").on("click", function() {
@@ -247,16 +247,16 @@ $(function() {
 		pasteForm.on('submit', function() {
 			if((codeeditor.val().match(/[^\s]/)||[]).length !== 0) {
 				if(context === "new") {
-					if(Ghostbin.getPreference("saveExpiration", "false") === "true") {
-						Ghostbin.setDefaultExpiration(pasteForm.find("input[name='expire']").val());
+					if(Spectre.getPreference("saveExpiration", "false") === "true") {
+						Spectre.setDefaultExpiration(pasteForm.find("input[name='expire']").val());
 					} else {
-						Ghostbin.clearDefaultExpiration();
+						Spectre.clearDefaultExpiration();
 					}
 
-					if(Ghostbin.getPreference("saveLanguage", "false") === "true") {
-						Ghostbin.setDefaultLanguage(langbox.select2("data"));
+					if(Spectre.getPreference("saveLanguage", "false") === "true") {
+						Spectre.setDefaultLanguage(langbox.select2("data"));
 					} else {
-						Ghostbin.clearDefaultLanguage();
+						Spectre.clearDefaultLanguage();
 					}
 				}
 				pasteForm.find("input[name='title']").val($("#editable-paste-title").text())
@@ -499,7 +499,7 @@ $(function() {
 			var adjust = pageLoadTime - refTime; // For the purpose of illustration, assume computer clock is faster.
 			var remaining = ((0+$(this).data("value")) + adjust - curTime);
 			if(remaining > 0) {
-				return "Expires in " + window.Ghostbin.formatDuration(remaining);
+				return "Expires in " + window.Spectre.formatDuration(remaining);
 			} else {
 				var r = Math.random();
 				return (r <= 0.5) ? "Wha-! It's going to explode! Get out while you still can!" : "He's dead, Jim.";
@@ -516,6 +516,6 @@ $(function(){
 	if(docCookies.hasItem("flash")) {
 		var flash = JSON.parse(atob(docCookies.getItem("flash")));
 		docCookies.removeItem("flash", "/");
-		Ghostbin.displayFlash(flash);
+		Spectre.displayFlash(flash);
 	}
 });
