@@ -26,6 +26,7 @@ module.exports = function(grunt) {
 			in: {
 				assets: 'public',
 				templates: 'templates',
+				brand: 'brand-overlay',
 			},
 			out: {
 				root: 'build',
@@ -98,6 +99,23 @@ module.exports = function(grunt) {
 				{
 					expand: true,
 					cwd: '<%= paths.in.templates %>/',
+					src: [
+						'**/*.tmpl',
+					],
+					dest: '<%= paths.out.templates %>/',
+				},
+				/* Brand overlay stuff */
+				{
+					expand: true,
+					cwd: '<%= paths.in.brand %>/public/',
+					src: [
+						'**/*',
+					],
+					dest: '<%= paths.out.assets %>/',
+				},
+				{
+					expand: true,
+					cwd: '<%= paths.in.brand %>/templates/',
 					src: [
 						'**/*.tmpl',
 					],
