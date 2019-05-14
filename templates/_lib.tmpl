@@ -4,9 +4,9 @@
 	<meta charset="utf-8">
 
 	{{with subtemplate . "title"}}
-	<title>{{.}} - Ghostbin</title>
+	<title>{{.}} - {{brand}}</title>
 	{{else}}
-	<title>Ghostbin</title>
+	<title>{{brand}}</title>
 	{{end}}
 	<meta name="viewport" content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0">
 	<meta name="apple-mobile-web-app-capable" content="yes">
@@ -104,7 +104,7 @@ It looks like you've stumbled upon a page (<strong>{{.Page}}</strong>) that shou
 		<h4><i class="icon icon-user"> </i>Account</h4>
 		{{partial . "login_logout"}}
 		<h4><i class="icon icon-wrench"> </i>Miscellanea</h4>
-		<p><a target="_blank" href="/about">About Ghostbin</a> <small>(in a new window)</small>
+		<p><a target="_blank" href="/about">About {{brand}}</a> <small>(in a new window)</small>
 		<br><a href="/session">My Pastes</a></p>
 	</div>
 	<div class="modal-footer">

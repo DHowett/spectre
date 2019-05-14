@@ -3,72 +3,13 @@
 <div class="paste-toolbox">
 	{{template "home-button"}}
 	<span class="paste-title">
-		<strong>About Ghostbin</strong>
+		<strong>About {{brand}}</strong>
 	</span>
 </div>
 <div class="content">
-<h1>Ghostbin</h1>
+<h1>{{brand}}</h1>
 <p>
-Ghostbin is a paste service, and I&rsquo;m going to skip explaining
-precisely what that is&mdash;it&rsquo;s fairly obvious. The real
-interesting questions are &ldquo;why did you build it?&rdquo; and
-&ldquo;where did I get all these bees?&rdquo;
+{{brand}} is a paste service engine.
 </p>
-<p>
-For the first, I&rsquo;d like to first list my inspirations and
-driving motives. When I started, I&rsquo;d recently fallen in love
-with a small font named <strong>Envy Code R</strong>. I&rsquo;d wanted
-to put together a paste service (under my own control) for some time,
-and Envy provided the final impetus; It made my code look
-awesome&mdash;more awesome, in fact, than my code truly was.
-</p>
-<p>
-At nearly the same time, I&rsquo;d decided that I wanted to learn Go.
-The confluence of these two endeavours could not have been more
-piquant.
-</p>
-<p>
-Other popular, functional and attractive pastebin services certainly
-do exist, but I found them to be somewhat lacking:
-<ul>
-	<li>Pastie was cool, but the ability to delete private pastes
-	eventually evaporated. Later, the ability to even <em>edit</em>
-	private pastes&mdash;which was rather useful for affecting a
-	simulacrum of deletion&mdash;vanished. Pastie is not
-	private by default.</li>
-
-	<li>Pastee is private by default and provides both encryption and
-	expiration, but it looks like it tumbled from the proverbial <em>ugly
-	tree</em>. It&rsquo;s functional, though, and that&rsquo;s great. It
-	seems to use <em>pygments</em>, much like
-	Ghostbin, but it doesn&rsquo;t appear to have an updated language list.</li>
-
-	<li>Hastebin looks neat. I have no qualms with it.</li>
-</ul>
-</p>
-<p>
-Ghostbin is an attempt at not only solving the above, but also solving
-some issues in the industry such as, but not limited to, me not
-knowing Go. It&rsquo;s <a href="http://git.howett.net/paste.git">open-source</a>
-and I don&rsquo;t think it&rsquo;ll be going anywhere any time soon.
-It supports encryption, expiration, pastes up to one megabyte, and
-about six billion languages. Well, some hundreds at the very least.
-Also, doesn&rsquo;t that paint job look simply dandy?
-</p>
-<p>
-And&mdash;get your bees away from me. I don&rsquo;t even know what you
-were expecting in bringing them here.
-</p>
-<p class="signature">
-Dustin L. Howett
-</p>
-<h1>Acknowledgements</h1>
-<ul>
-	<li>irc.saurik.com/#theos, for momentum and necessary resistance</li>
-	<li><a href="http://pygments.org">pygments</a>, for syntax highlighting</li>
-	<li><a href="http://golang.org">Go</a>, for prose</li>
-	<li>the usual smattering of web technologies such as bootstrap
-	and jQuery, for the facade</li>
-</ul>
 </div>
 {{end}}

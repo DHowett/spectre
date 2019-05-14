@@ -1,7 +1,7 @@
 {
   "name": "ghostbin",
   "version": "0.0.1",
-  "description": "Ghostbin",
+  "description": "Spectre",
   "main": "main.go",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

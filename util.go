@@ -23,6 +23,8 @@ import (
 const (
 	EnvironmentDevelopment string = "dev"
 	EnvironmentProduction  string = "production"
+
+	SPECTRE_DEFAULT_BRAND string = "Spectre"
 )
 
 type ReadCloser struct {
@@ -201,12 +203,21 @@ func Env() string {
 }
 
 func init() {
-	environment = os.Getenv("GHOSTBIN_ENV")
+	environment = os.Getenv("SPECTRE_ENV")
 	if environment != EnvironmentProduction {
 		environment = EnvironmentDevelopment
 	}
 
+	brand := os.Getenv("SPECTRE_BRAND")
+	if brand == "" {
+		brand = SPECTRE_DEFAULT_BRAND
+	}
+
 	RegisterTemplateFunction("env", func() string { return environment })
+
+	RegisterTemplateFunction("brand", func() string {
+		return brand
+	})
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGHUP)
